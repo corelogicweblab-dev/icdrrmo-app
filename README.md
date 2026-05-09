@@ -14,6 +14,22 @@ Full-stack emergency response platform for **Isabela City Disaster Risk Reductio
 | `infra/nginx.conf` | Reverse proxy: `/api/*` → API, `/socket.io/*` → API, `/` → admin |
 | `docker-compose.yml` | Postgres, Redis, API, admin, Nginx |
 
+## Windows + Prisma (read this)
+
+- **Paths with spaces:** use quotes: `cd "D:\CoreLogic Files\ICDRRMO"` then `cd backend` (or stay at root and use `npm run …` below).
+- **Do not run `npx prisma` at the repo root** unless you pass `--schema` — the schema and seed live under **`backend/`**. Root scripts call **`npm --prefix backend exec -- prisma …`** so the correct Prisma + `package.json` seed are used.
+
+## Workspace npm scripts (repo root)
+
+| Script | What it does |
+|--------|----------------|
+| `npm run build` | Nest `dist/` + Next `.next/` (not Firebase export) |
+| `npm run start:prod` | Run **API only** (`node backend/dist/main.js`) — run `npm run build` first |
+| `npm run start:admin` | Next production server on :3000 (needs `npm run build:admin` first) |
+| `npm run dev:api` / `npm run dev:admin` | Local dev servers |
+| `npm run prisma:generate` | `prisma generate` using **backend** schema + CLI |
+| `npm run seed` / `npm run db:seed` | Prisma seed — same as `backend`’s `prisma db seed` (uses **`tsx prisma/seed.ts`** there) |
+
 ## Quick start (Docker — production-like)
 
 1. Root: copy `.env.example` → `.env` (JWT etc.). Backend: copy `backend/.env.example` → `backend/.env` (Compose Postgres URL: `postgresql://icdrrmo:icdrrmo@localhost:5432/icdrrmo?schema=public`).
@@ -145,9 +161,17 @@ npm run dev
 9. **Queues:** BullMQ workers (SMS retry, notifications, weather); DLQ dashboards.
 10. **Ops:** runbooks, load test (thousands of WS clients), tabletop disaster exercise.
 
+## Render (Docker API)
+
+See **`docs/RENDER_DEPLOY.md`** — correct **Pre-Deploy** (not a folder path), **Root Directory / Dockerfile** combinations, and env vars (`DATABASE_URL`, optional `REDIS_URL`, `CORS_ORIGINS`).
+
 ## Firebase / Firestore
 
-Rules, indexes, and seed data live in **`infra/firebase/`**. Root **`firebase.json`** points Hosting at **`admin/out`** (static **`next build`** with `STATIC_EXPORT=1`, plus `cleanUrls` for `.html` routes). GitHub Actions build `admin/` then run **`FirebaseExtended/action-hosting-deploy`**. Set repo secrets **`FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E`** (JSON), **`NEXT_PUBLIC_API_URL`**, and **`NEXT_PUBLIC_WS_URL`** to your live API origins (static hosting has no Next rewrites). Deploy rules + indexes: `npm run firebase:deploy-firestore`. Seed Firestore: `npm run firebase:seed` with **`GOOGLE_APPLICATION_CREDENTIALS`**. Project: **`.firebaserc`** (`icdrrmo-b204e`).
+Rules, indexes, and seed data live in **`infra/firebase/`**. Root **`firebase.json`** sets Hosting **`public`** to **`admin/out`** (the static Next export). Do **not** keep a root **`public/index.html`** from `firebase init` — that template is what `*.web.app` shows if it gets deployed instead of **`admin/out`**.
+
+**Ship the Operation Center to Hosting:** from repo root, `firebase login` once, add **`admin/.env.deploy`** from **`admin/.env.deploy.example`** (absolute `NEXT_PUBLIC_*` URLs), then **`npm run deploy:hosting`**. That file overrides dev `.env.local` during export so `/api/v1` is not baked into the Firebase bundle. CI on **`main`** sets the same variables from GitHub secrets instead.
+
+Set repo secrets **`FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E`** (JSON), **`NEXT_PUBLIC_API_URL`**, and **`NEXT_PUBLIC_WS_URL`**. For static Hosting they **must** be absolute `https://…` URLs to your **Nest** host (not `/api/v1` — that only works behind local Next rewrites; otherwise login returns **404**). Put the same Firebase admin origins in **`CORS_ORIGINS`** on the API. Firestore: `npm run firebase:deploy-firestore`; seed: `npm run firebase:seed` with **`GOOGLE_APPLICATION_CREDENTIALS`**. Project: **`.firebaserc`** (`icdrrmo-b204e`).
 
 ## Documentation
 

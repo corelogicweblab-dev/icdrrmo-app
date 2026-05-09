@@ -9,6 +9,8 @@ type OpsLoginProps = {
   password: string;
   setPassword: (v: string) => void;
   loginError: string | null;
+  /** Shown when NEXT_PUBLIC_* was built for local dev but the page is on production hosting. */
+  apiConfigWarning: string | null;
   onSubmit: (e: React.FormEvent) => void;
 };
 
@@ -64,6 +66,14 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
               ICDRRMO SMART Emergency Response — authenticated session required.
             </p>
           </div>
+          {props.apiConfigWarning ? (
+            <div
+              className="mb-6 rounded-xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-50"
+              role="status"
+            >
+              {props.apiConfigWarning}
+            </div>
+          ) : null}
           {props.loginError ? (
             <div
               className="mb-6 rounded-xl border border-rose-500/25 bg-rose-950/35 px-4 py-3 text-sm text-rose-100"

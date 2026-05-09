@@ -35,6 +35,18 @@ $env:DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/icdrrmo?schema=public'
 npx prisma migrate deploy
 ```
 
+## Render / single Web Service
+
+**Dashboard checklist:** `docs/RENDER_DEPLOY.md` (Pre-Deploy must be a shell command or empty — not `backend/`).
+
+- **Schema file:** `backend/prisma/schema.prisma` already exists (full ICDRRMO models). Do **not** replace it with a toy `User`-only schema.
+- **`DATABASE_URL`:** set in the Render dashboard to your **managed Postgres** URL (must reach Postgres from Render’s network). Migrations: same URL, direct `postgresql://…` (not `prisma+…` only) for `migrate deploy`.
+- **`REDIS_URL`:** optional. If you have no Redis on Render, **unset** `REDIS_URL` — the API uses the default Socket.IO adapter and skips BullMQ queues (see `JobsService`). Setting `redis://127.0.0.1:6379` on Render **will** fail.
+- **Prisma from your laptop against Render DB (PowerShell):**  
+  `cd "…\backend"` then  
+  `$env:DATABASE_URL='postgresql://…'; npx prisma migrate deploy`  
+  `$env:DATABASE_URL='postgresql://…'; npx prisma db seed`
+
 ## `prisma dev` / ephemeral ports (`51213`, `51214`)
 
 URLs like `localhost:51214` come from **Prisma dev** tunnels. If that process stops, you get **P1001**. Point `DATABASE_URL` at a stable Postgres (Docker `:5432` or your cloud host) instead.

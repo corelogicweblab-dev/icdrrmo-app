@@ -37,8 +37,8 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-in-production-min-32-chars-long}
       JWT_ACCESS_EXPIRES_SEC: "900"
       SMS_WEBHOOK_SECRET: ${SMS_WEBHOOK_SECRET:-sms-gateway-shared-secret}
-      # Broad enough for Compose + nginx + direct ports (prod should narrow + TLS).
-      CORS_ORIGINS: http://localhost,http://localhost:80,http://127.0.0.1:80,http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001
+      # Compose + nginx + local ports; Firebase static admin (override in root `.env`).
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1:80,http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,https://icdrrmo-b204e.web.app,https://icdrrmo-b204e.firebaseapp.com}
       PORT: "4000"
     depends_on:
       postgres:

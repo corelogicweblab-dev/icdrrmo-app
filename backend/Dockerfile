@@ -1,4 +1,8 @@
 # ICDRRMO API — production multi-stage build
+#
+# Docker build CONTEXT must be the `backend/` folder (same as Compose: `build.context: ./backend`).
+# On Render: set Root Directory = `backend`, Dockerfile Path = `Dockerfile` — NOT repo root + `-f backend/Dockerfile`
+# with default context, or `COPY` will pull the wrong package.json and `npm run build` / Prisma will fail.
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./

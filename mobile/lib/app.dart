@@ -34,9 +34,30 @@ class IcdrrmoApp extends StatelessWidget {
         if (store?.largeText == true) scale *= 1.18;
         if (store?.seniorMode == true) scale *= 1.06;
         final mq = MediaQuery.of(context);
+        final themed = child ?? const SizedBox.shrink();
         return MediaQuery(
           data: mq.copyWith(textScaler: TextScaler.linear(scale)),
-          child: child ?? const SizedBox.shrink(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: themed),
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(bottom: 4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                  child: Text(
+                    'Powered by: CoreLogic',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
+                          letterSpacing: 0.4,
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
       initialRoute: Routes.splash,

@@ -3,8 +3,6 @@ import type { ReactElement } from "react";
 import Link from "next/link";
 import { ArrowRight, Radio, Smartphone, Shield } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "ICDRRMO — SMART Emergency Response",
   description:

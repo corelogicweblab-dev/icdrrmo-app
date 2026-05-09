@@ -5,17 +5,22 @@
   "scripts": {
     "infra:up": "docker compose up -d postgres redis",
     "infra:down": "docker compose down",
-    "db:migrate": "cd backend && npx prisma migrate deploy",
-    "db:seed": "cd backend && npx prisma db seed",
-    "db:setup": "docker compose up -d postgres redis && cd backend && npx prisma migrate deploy && npx prisma db seed",
+    "build": "npm --prefix backend run build && npm --prefix admin run build",
+    "build:backend": "npm --prefix backend run build",
+    "build:admin": "npm --prefix admin run build",
+    "start:prod": "npm --prefix backend run start:prod",
+    "start:admin": "npm --prefix admin run start",
+    "dev:api": "npm --prefix backend run start:dev",
+    "dev:admin": "npm --prefix admin run dev",
+    "prisma:generate": "npm --prefix backend exec -- prisma generate",
+    "db:migrate": "npm --prefix backend exec -- prisma migrate deploy",
+    "db:seed": "npm --prefix backend exec -- prisma db seed",
+    "seed": "npm run db:seed",
+    "db:setup": "docker compose up -d postgres redis && npm --prefix backend exec -- prisma migrate deploy && npm --prefix backend exec -- prisma db seed",
     "docker:full": "docker compose up --build -d",
     "docker:seed": "docker compose exec api npx prisma db seed",
     "firebase:seed": "npm --prefix infra/firebase install && npm --prefix infra/firebase run seed",
     "firebase:deploy-firestore": "npx -y firebase-tools deploy --only firestore --project icdrrmo-b204e",
     "deploy:hosting": "npm --prefix admin run export && npx -y firebase-tools@15.17.0 deploy --only hosting --project icdrrmo-b204e --non-interactive"
-  },
-  "dependencies": {
-    "@reduxjs/toolkit": "^2.11.2",
-    "react-redux": "^9.2.0"
   }
 }

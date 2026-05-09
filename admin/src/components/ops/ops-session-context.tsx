@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import type { Socket } from "socket.io-client";
-import { getApiBaseUrl, getHealthCheckUrl } from "@/lib/env";
+import { getApiBaseUrl, getApiConfigWarning, getHealthCheckUrl } from "@/lib/env";
 import { connectOpsRealtime, type IncidentCreatedPayload } from "@/lib/realtime";
 import { OpsChrome } from "@/components/ops/ops-chrome";
 import { OpsLoginView } from "@/components/ops/ops-login";
@@ -95,11 +95,16 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const [queueLoading, setQueueLoading] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(false);
   const [booted, setBooted] = useState(false);
+  const [apiConfigWarning, setApiConfigWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setTokens(loadOpsTokens());
     setSoundMutedState(loadSoundMuted());
     setBooted(true);
+  }, []);
+
+  useEffect(() => {
+    setApiConfigWarning(getApiConfigWarning());
   }, []);
 
   useEffect(() => {
@@ -209,7 +214,30 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
-        setLoginError(`Authentication failed (${res.status}). Verify credentials.`);
+        const raw = await res.text();
+        let detail = raw;
+        try {
+          const j = JSON.parse(raw) as { message?: string | string[] };
+          if (typeof j.message === "string") detail = j.message;
+          else if (Array.isArray(j.message)) detail = j.message.join("; ");
+        } catch {
+          if (raw) detail = raw.slice(0, 280);
+        }
+        if (res.status === 404) {
+          setLoginError(
+            "Authentication endpoint returned 404. On static hosting the browser calls NEXT_PUBLIC_API_URL on your API host — not this page. Rebuild with an absolute API URL (https://…/api/v1) and ensure Nest exposes POST /auth/login.",
+          );
+        } else if (res.status === 400) {
+          setLoginError(
+            `Login rejected (400): ${detail}. Check email/password format; dev emails like *.icdrrmo.local are allowed.`,
+          );
+        } else if (res.status === 401) {
+          setLoginError(
+            `${detail} If you never ran a seed on this API’s database, SSH/run: npm run db:seed (repo root) with DATABASE_URL pointing at that same DB.`,
+          );
+        } else {
+          setLoginError(`Authentication failed (${res.status}): ${detail}`);
+        }
         setFeed((f) =>
           [`${new Date().toISOString()} · AUTH_FAILURE · ${res.status}`, ...f].slice(0, 80),
         );
@@ -220,9 +248,18 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       setTokens(pair);
       setQueueError(null);
       setFeed((f) => [`${new Date().toISOString()} · SESSION_ESTABLISHED`, ...f].slice(0, 80));
-    } catch {
+    } catch (err: unknown) {
+      const api = getApiBaseUrl();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const detail = err instanceof Error ? err.message : "Network error";
+      const mixed =
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:" &&
+        api.startsWith("http:");
       setLoginError(
-        "Cannot reach the authentication service. Start the API (port 4000) and confirm network settings.",
+        mixed
+          ? `Cannot reach ${api} (${detail}). This admin page is HTTPS but the API URL is HTTP — use https:// for the API or the browser blocks the request.`
+          : `Cannot reach ${api} (${detail}). Confirm Nest is reachable from the internet, NEXT_PUBLIC_API_URL in this build points at it, and CORS_ORIGINS on the API includes ${origin || "your admin origin"}.`,
       );
       setFeed((f) => [`${new Date().toISOString()} · AUTH_NETWORK_ERROR`, ...f].slice(0, 80));
     }
@@ -306,6 +343,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
         password={password}
         setPassword={setPassword}
         loginError={loginError}
+        apiConfigWarning={apiConfigWarning}
         onSubmit={(ev) => void login(ev)}
       />
     );

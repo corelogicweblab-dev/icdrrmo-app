@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 
+# GCP / Firebase service account JSON (hosting, CI — never commit)
+infra/hosting/service-account.json
+**/firebase-adminsdk-*.json
+infra/firebase/node_modules/
+
 # Dependencies
 node_modules/
 
@@ -28,6 +33,9 @@ mobile/.flutter-plugins-dependencies
 .DS_Store
 Thumbs.db
 .idea/
+.agents/
+.firebase/
+skills-lock.json
 
 # Logs
 *.log
