@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  GoneException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -25,7 +26,9 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string }> {
+  async register(
+    dto: RegisterDto,
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
     const existing = await this.prisma.user.findFirst({
       where: { OR: [{ email: dto.email }, { phone: dto.phone }] },
     });
@@ -47,13 +50,13 @@ export class AuthService {
         },
       },
     });
-    return this.issueTokens(user.id, user.email, user.role, null, null);
+    return this.issueAuthResponse(user.id, user.email, user.role, null, null);
   }
 
   async login(
     dto: LoginDto,
     meta: { ip?: string; userAgent?: string },
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -64,7 +67,7 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.issueTokens(
+    return this.issueAuthResponse(
       user.id,
       user.email,
       user.role,
@@ -76,7 +79,12 @@ export class AuthService {
   async refresh(
     refreshToken: string,
     meta: { ip?: string; userAgent?: string },
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
+    if (!this.refreshEnabled()) {
+      throw new GoneException(
+        'Refresh tokens are disabled (set AUTH_REFRESH_TOKENS=false). Sign in again with POST /auth/login.',
+      );
+    }
     const hash = this.hashToken(refreshToken);
     const session = await this.prisma.session.findFirst({
       where: {
@@ -93,7 +101,7 @@ export class AuthService {
       where: { id: session.id },
       data: { revokedAt: new Date() },
     });
-    return this.issueTokens(
+    return this.issueAuthResponse(
       session.userId,
       session.user.email,
       session.user.role,
@@ -102,19 +110,21 @@ export class AuthService {
     );
   }
 
-  private async issueTokens(
+  private refreshEnabled(): boolean {
+    return this.config.get<string>('AUTH_REFRESH_TOKENS', 'true') !== 'false';
+  }
+
+  private async issueAuthResponse(
     userId: string,
     email: string,
     role: UserRole,
     ip: string | null,
     userAgent: string | null,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload: JwtPayload = { sub: userId, role, email };
-    const expiresSec = Number(this.config.get<string>('JWT_ACCESS_EXPIRES_SEC', '900'));
-    const accessToken = await this.jwt.signAsync(payload, {
-      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      expiresIn: Number.isFinite(expiresSec) && expiresSec > 0 ? expiresSec : 900,
-    });
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
+    const accessToken = await this.signAccessToken(userId, email, role);
+    if (!this.refreshEnabled()) {
+      return { accessToken };
+    }
     const refreshRaw = randomBytes(REFRESH_BYTES).toString('base64url');
     const refreshHash = this.hashToken(refreshRaw);
     const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
@@ -128,6 +138,15 @@ export class AuthService {
       },
     });
     return { accessToken, refreshToken: refreshRaw };
+  }
+
+  private async signAccessToken(userId: string, email: string, role: UserRole): Promise<string> {
+    const payload: JwtPayload = { sub: userId, role, email };
+    const expiresSec = Number(this.config.get<string>('JWT_ACCESS_EXPIRES_SEC', '900'));
+    return this.jwt.signAsync(payload, {
+      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: Number.isFinite(expiresSec) && expiresSec > 0 ? expiresSec : 900,
+    });
   }
 
   private hashToken(token: string): string {

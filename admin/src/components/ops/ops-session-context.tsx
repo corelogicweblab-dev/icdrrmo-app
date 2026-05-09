@@ -243,7 +243,15 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
         );
         return;
       }
-      const pair = (await res.json()) as TokenPair;
+      const raw = (await res.json()) as { accessToken?: string; refreshToken?: string };
+      const pair: TokenPair = {
+        accessToken: raw.accessToken ?? "",
+        refreshToken: raw.refreshToken ?? "",
+      };
+      if (!pair.accessToken) {
+        setLoginError("Login response missing accessToken.");
+        return;
+      }
       saveOpsTokens(pair);
       setTokens(pair);
       setQueueError(null);

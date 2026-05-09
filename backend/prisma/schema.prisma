@@ -83,6 +83,12 @@ enum DispatchAssignmentStatus {
   CANCELLED
 }
 
+enum VehicleFleetStatus {
+  AVAILABLE
+  DEPLOYED
+  UNDER_MAINTENANCE
+}
+
 enum VoiceProvider {
   WEBRTC
   AGORA
@@ -200,12 +206,13 @@ model Barangay {
 }
 
 model Vehicle {
-  id          String   @id @default(cuid())
-  plateNumber String   @unique @map("plate_number")
+  id          String             @id @default(cuid())
+  plateNumber String             @unique @map("plate_number")
   name        String?
   type        String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
+  fleetStatus VehicleFleetStatus @default(AVAILABLE) @map("fleet_status")
+  isActive    Boolean            @default(true) @map("is_active")
+  createdAt   DateTime           @default(now()) @map("created_at")
 
   responders           Responder[]
   dispatchAssignments DispatchAssignment[]

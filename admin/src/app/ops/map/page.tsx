@@ -20,6 +20,7 @@ import { hasMapboxToken } from "@/lib/env";
 import { defaultOpsMapLayerToggles, OPS_MAP_LAYER_GROUPS } from "@/lib/ops-map-layer-groups";
 import { incidentsToMapPins } from "@/lib/map-pins";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
+import { EocLeafletMap } from "@/components/ops/eoc-leaflet-map";
 
 export default function OpsMapPage(): ReactElement {
   const { queue, lastQueueSync, socketState } = useOpsSession();
@@ -34,7 +35,8 @@ export default function OpsMapPage(): ReactElement {
   const syncLabel = lastQueueSync ? `Synced ${formatOpsSync(lastQueueSync)}` : "Awaiting first sync";
 
   return (
-    <div className="flex min-h-[calc(100vh-140px)] flex-col gap-3 p-3 lg:flex-row lg:p-5">
+    <div className="flex flex-col gap-4 p-3 lg:p-5">
+    <div className="flex min-h-[calc(100vh-140px)] flex-col gap-3 lg:flex-row">
       <aside className="max-h-[40vh] shrink-0 space-y-3 overflow-y-auto scroll-ops lg:max-h-none lg:w-80">
         <OpsPanelCard
           title="Layer control"
@@ -123,6 +125,20 @@ export default function OpsMapPage(): ReactElement {
           <SituationMap incidentPins={mapPins} layerToggles={layers} />
         </div>
       </section>
+    </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <OpsPanelCard title="Leaflet EOC (live REST)" subtitle="OSM tiles · EOC reference · incidents · responders · shelters">
+          <EocLeafletMap />
+        </OpsPanelCard>
+        <OpsPanelCard title="Weather radar (RainViewer)" subtitle="Composite viewport — embed">
+          <iframe
+            title="RainViewer radar"
+            className="h-[420px] w-full rounded-lg border border-white/10 bg-black/40"
+            src="https://www.rainviewer.com/map.html?loc=6.7048,121.9715,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&rmt=1&c=1&o=83&lm=0&th=0&sm=0&sn=1"
+            loading="lazy"
+          />
+        </OpsPanelCard>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Activity,
   AlertTriangle,
@@ -22,6 +23,85 @@ import type { OpsIncident } from "@/components/ops/ops-types";
 import { OpsKpiCard, OpsPanelCard } from "@/components/ops/ops-widgets";
 import { SituationMap } from "@/components/situation-map";
 import { incidentsToMapPins } from "@/lib/map-pins";
+import { opsFetchJson } from "@/lib/ops-api";
+
+type DashboardSummary = {
+  openIncidents: number;
+  activeResponders: number;
+  activeVehicles: number;
+  evacuationSites: number;
+  barangays: number;
+  activeUsers: number;
+};
+
+function DashboardSummaryChart({ accessToken }: { accessToken: string | undefined }): ReactElement {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await opsFetchJson<DashboardSummary>("/dashboard/summary", accessToken);
+        if (!cancelled) {
+          setSummary(s);
+          setErr(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setSummary(null);
+          setErr("Unable to load /dashboard/summary");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  const chartData = summary
+    ? [
+        { label: "Incidents", value: summary.openIncidents },
+        { label: "Responders", value: summary.activeResponders },
+        { label: "Vehicles", value: summary.activeVehicles },
+        { label: "Evac sites", value: summary.evacuationSites },
+        { label: "Barangays", value: summary.barangays },
+        { label: "Users", value: summary.activeUsers },
+      ]
+    : [];
+
+  if (!accessToken) {
+    return <p className="text-xs text-zinc-500">Sign in to load API summary.</p>;
+  }
+  if (err) {
+    return <p className="text-xs text-rose-300">{err}</p>;
+  }
+  if (!summary) {
+    return <p className="text-xs text-zinc-500">Loading summary…</p>;
+  }
+
+  return (
+    <div className="h-[200px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+          <Tooltip
+            contentStyle={{
+              background: "#09090b",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+            labelStyle={{ color: "#e4e4e7" }}
+          />
+          <Bar dataKey="value" fill="rgba(244,63,94,0.55)" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 function SparkBars(props: { values: number[]; color: string }): ReactElement {
   const max = Math.max(...props.values, 1);
@@ -53,7 +133,6 @@ export default function OpsCommandDashboardPage(): ReactElement {
   const wsLabel =
     socketState === "live" ? "Synchronized" : socketState === "error" ? "Fault" : "Standby";
 
-  const mockHourlyIncidents = [2, 4, 3, 6, 8, 5, 11, openCount || 7, 4, 6, 3, 2];
   const mockDispatchLatency = [12, 9, 11, 8, 7, 14, 10, 9, 8, 6, 11, 9];
 
   return (
@@ -176,11 +255,11 @@ export default function OpsCommandDashboardPage(): ReactElement {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <OpsPanelCard
-          title="Incident counters / hour (simulated trend)"
-          subtitle="Replace with Postgres time-series / analytics pipeline"
+          title="Live platform counts"
+          subtitle="Recharts · GET /api/v1/dashboard/summary"
           className="xl:col-span-4"
         >
-          <SparkBars values={mockHourlyIncidents} color="bg-emerald-500/60" />
+          <DashboardSummaryChart accessToken={tokens?.accessToken} />
         </OpsPanelCard>
         <OpsPanelCard title="Median dispatch latency (min · sim)" subtitle="Rolling window analytics" className="xl:col-span-4">
           <SparkBars values={mockDispatchLatency.map((x) => 20 - x)} color="bg-sky-500/55" />

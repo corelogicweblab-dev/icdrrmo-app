@@ -12,7 +12,7 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
-  register(@Body() dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string }> {
+  register(@Body() dto: RegisterDto): Promise<{ accessToken: string; refreshToken?: string }> {
     return this.auth.register(dto);
   }
 
@@ -23,7 +23,7 @@ export class AuthController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string | undefined,
     @Req() req: Request,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
     const forwarded = req.headers['x-forwarded-for'];
     const clientIp =
       typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : ip;
@@ -37,7 +37,7 @@ export class AuthController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string | undefined,
     @Req() req: Request,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
     const forwarded = req.headers['x-forwarded-for'];
     const clientIp =
       typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : ip;

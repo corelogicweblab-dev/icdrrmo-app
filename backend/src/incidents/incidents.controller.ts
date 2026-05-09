@@ -24,6 +24,15 @@ export class IncidentsController {
         patch: 'PATCH /api/v1/incidents/:id (ops roles)',
         responders:
           'GET /api/v1/incidents/responders-assignable (ops roles)',
+        users: 'CRUD /api/v1/users (ADMIN | SUPER_ADMIN)',
+        vehicles: 'CRUD /api/v1/vehicles',
+        respondersAdmin: 'CRUD /api/v1/responders',
+        barangays: 'GET /api/v1/barangays + /barangays/stats/user-counts',
+        evacuationCenters: 'CRUD /api/v1/evacuation-centers',
+        notifications: 'GET /api/v1/notifications + POST /notifications/broadcast',
+        auditLogs: 'GET /api/v1/audit-logs',
+        map: 'GET /api/v1/map/ops-live',
+        dashboard: 'GET /api/v1/dashboard/summary',
       },
     };
   }

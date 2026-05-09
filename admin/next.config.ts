@@ -28,7 +28,7 @@ if (isStaticExport) {
 const nextConfig: NextConfig = {
   ...(isDocker ? { output: "standalone" as const } : {}),
   ...(isStaticExport ? { output: "export" as const } : {}),
-  transpilePackages: ["mapbox-gl"],
+  transpilePackages: ["mapbox-gl", "leaflet"],
   ...(!isStaticExport
     ? {
         async rewrites() {
