@@ -9,6 +9,13 @@
     "db:seed": "cd backend && npx prisma db seed",
     "db:setup": "docker compose up -d postgres redis && cd backend && npx prisma migrate deploy && npx prisma db seed",
     "docker:full": "docker compose up --build -d",
-    "docker:seed": "docker compose exec api npx prisma db seed"
+    "docker:seed": "docker compose exec api npx prisma db seed",
+    "firebase:seed": "npm --prefix infra/firebase install && npm --prefix infra/firebase run seed",
+    "firebase:deploy-firestore": "npx -y firebase-tools deploy --only firestore --project icdrrmo-b204e",
+    "deploy:hosting": "npm --prefix admin run export && npx -y firebase-tools@15.17.0 deploy --only hosting --project icdrrmo-b204e --non-interactive"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "react-redux": "^9.2.0"
   }
 }
