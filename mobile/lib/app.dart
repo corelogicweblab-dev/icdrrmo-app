@@ -1,0 +1,67 @@
+import 'package:flutter/material.dart';
+
+import 'core/bootstrap/global_store.dart';
+import 'core/navigation/routes.dart';
+import 'features/auth/presentation/forgot_password_screen.dart';
+import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/register_screen.dart';
+import 'features/communications/emergency_communications_screen.dart';
+import 'features/contacts/emergency_contacts_screen.dart';
+import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/profile/presentation/profile_setup_screen.dart';
+import 'features/settings/settings_screen.dart';
+import 'features/safety/safety_guide_screen.dart';
+import 'features/shell/citizen_main_shell.dart';
+import 'features/splash/presentation/splash_screen.dart';
+import 'features/tracking/presentation/incident_tracking_screen.dart';
+
+class IcdrrmoApp extends StatelessWidget {
+  const IcdrrmoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'ICDRRMO Citizen',
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.dark,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB91C1C), brightness: Brightness.dark),
+        useMaterial3: true,
+      ),
+      builder: (context, child) {
+        final store = gCitizenStore;
+        var scale = 1.0;
+        if (store?.largeText == true) scale *= 1.18;
+        if (store?.seniorMode == true) scale *= 1.06;
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(textScaler: TextScaler.linear(scale)),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      initialRoute: Routes.splash,
+      routes: {
+        Routes.splash: (_) => const SplashScreen(),
+        Routes.onboarding: (_) => const OnboardingScreen(),
+        Routes.login: (_) => const LoginScreen(),
+        Routes.register: (_) => const RegisterScreen(),
+        Routes.forgotPassword: (_) => const ForgotPasswordScreen(),
+        Routes.profileSetup: (_) => const ProfileSetupScreen(),
+        Routes.home: (_) => const CitizenMainShell(),
+        Routes.settings: (_) => const SettingsScreen(),
+        Routes.guide: (_) => const SafetyGuideScreen(),
+        Routes.emergencyContacts: (_) => const EmergencyContactsScreen(),
+        Routes.communications: (_) => const EmergencyCommunicationsScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == Routes.track) {
+          final id = settings.arguments as String?;
+          if (id != null && id.isNotEmpty) {
+            return MaterialPageRoute<void>(builder: (_) => IncidentTrackingScreen(incidentId: id));
+          }
+        }
+        return null;
+      },
+    );
+  }
+}

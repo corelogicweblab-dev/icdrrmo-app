@@ -1,0 +1,483 @@
+// ICDRRMO SMART EMERGENCY RESPONSE SYSTEM — PostgreSQL schema
+// Prisma ORM — optimized indexes for incident queue + geo/time-series reads
+
+generator client {
+  provider      = "prisma-client-js"
+  // Build stage may detect openssl-1.1; Docker runner uses OpenSSL 3 (bookworm). Include both engines.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CITIZEN
+  RESPONDER
+  OPERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Gender {
+  UNSPECIFIED
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_SAY
+}
+
+enum BloodType {
+  UNKNOWN
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  O_POS
+  O_NEG
+  AB_POS
+  AB_NEG
+}
+
+enum EmergencyType {
+  FIRE
+  FLOOD
+  ACCIDENT
+  MEDICAL_EMERGENCY
+  LANDSLIDE
+  CRIME
+  EARTHQUAKE
+  TYPHOON
+  RESCUE_REQUEST
+  OTHER
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  DISPATCHED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  FALSE_ALARM
+}
+
+enum ResponderStatus {
+  AVAILABLE
+  DISPATCHED
+  EN_ROUTE
+  ON_SCENE
+  TRANSPORTING
+  COMPLETED
+  OFF_DUTY
+  UNAVAILABLE
+}
+
+enum DispatchAssignmentStatus {
+  PENDING
+  ACCEPTED
+  EN_ROUTE
+  ON_SCENE
+  COMPLETED
+  CANCELLED
+}
+
+enum VoiceProvider {
+  WEBRTC
+  AGORA
+  PSTN_BRIDGE
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
+  WEB
+  UNKNOWN
+}
+
+enum IncidentChannel {
+  MOBILE_APP
+  SMS
+  ADMIN
+  PHONE
+  OTHER
+}
+
+enum NotificationType {
+  EMERGENCY_ALERT
+  WEATHER_ALERT
+  EVACUATION
+  RESPONDER_UPDATE
+  SYSTEM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(CITIZEN)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profile             UserProfile?
+  emergencyContacts EmergencyContact[]
+  incidentsReported Incident[]         @relation("ReporterIncidents")
+  sessions            Session[]
+  auditLogs           AuditLog[]         @relation("ActorAuditLogs")
+  notifications       Notification[]
+  userLocations       UserLocation[]
+  responder           Responder?
+  incidentLogsCreated IncidentLog[]      @relation("IncidentLogCreatedBy")
+  deviceTokens        DeviceToken[]
+  dispatchAssignments DispatchAssignment[] @relation("DispatchAssignedBy")
+  voiceCallsInitiated VoiceCallLog[]      @relation("VoiceInitiator")
+  voiceCallsJoined    VoiceCallLog[]      @relation("VoiceParticipant")
+
+  @@index([role, isActive])
+  @@map("users")
+}
+
+model UserProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique @map("user_id")
+  fullName           String    @map("full_name")
+  gender             Gender    @default(UNSPECIFIED)
+  birthday           DateTime? @db.Date
+  address            String?
+  barangayId         String?   @map("barangay_id")
+  bloodType          BloodType @default(UNKNOWN) @map("blood_type")
+  allergies          String?
+  medicalConditions  String?   @map("medical_conditions")
+  emergencyNotes     String?   @map("emergency_notes")
+  profilePhotoUrl    String?   @map("profile_photo_url")
+  validIdUrl         String?   @map("valid_id_url")
+  setupCompleted     Boolean   @default(false) @map("setup_completed")
+  lastKnownBattery   Int?      @map("last_known_battery")
+  lastSignalQuality  Int?      @map("last_signal_quality")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barangay Barangay? @relation(fields: [barangayId], references: [id])
+
+  @@index([barangayId])
+  @@index([fullName])
+  @@map("user_profiles")
+}
+
+model EmergencyContact {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  fullName       String   @map("full_name")
+  phone          String
+  relationship   String?
+  priority       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+model Barangay {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  geometryGeoJson  Json?    @map("geometry_geojson")
+  riskNotes        String?  @map("risk_notes")
+  isFloodProne     Boolean  @default(false) @map("is_flood_prone")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  profiles           UserProfile[]
+  incidents          Incident[]
+  evacuationCenters EvacuationCenter[]
+
+  @@map("barangays")
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  plateNumber String   @unique @map("plate_number")
+  name        String?
+  type        String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  responders           Responder[]
+  dispatchAssignments DispatchAssignment[]
+
+  @@map("vehicles")
+}
+
+model Responder {
+  id            String          @id @default(cuid())
+  userId        String          @unique @map("user_id")
+  badgeNumber   String?         @unique @map("badge_number")
+  status        ResponderStatus @default(OFF_DUTY)
+  vehicleId     String?         @map("vehicle_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle?             @relation(fields: [vehicleId], references: [id])
+  locations   ResponderLocation[]
+  assignments Incident[]           @relation("AssignedResponder")
+  dispatchAssignments DispatchAssignment[]
+
+  @@index([status])
+  @@map("responders")
+}
+
+model Incident {
+  id                    String           @id @default(cuid())
+  reporterId            String?          @map("reporter_id")
+  assignedResponderId   String?          @map("assigned_responder_id")
+  barangayId            String?          @map("barangay_id")
+  type                  EmergencyType
+  status                IncidentStatus   @default(OPEN)
+  channel               IncidentChannel  @default(MOBILE_APP)
+  title                 String?
+  description           String?
+  latitude              Decimal          @db.Decimal(10, 7)
+  longitude             Decimal          @db.Decimal(10, 7)
+  batteryLevel          Int?             @map("battery_level")
+  signalStrength        Int?             @map("signal_strength")
+  rawSmsBody            String?          @map("raw_sms_body")
+  isCritical            Boolean          @default(true) @map("is_critical")
+  closedAt              DateTime?        @map("closed_at")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  reporter   User?          @relation("ReporterIncidents", fields: [reporterId], references: [id])
+  assigned   Responder?     @relation("AssignedResponder", fields: [assignedResponderId], references: [id])
+  barangay   Barangay?      @relation(fields: [barangayId], references: [id])
+  logs       IncidentLog[]
+  smsIngress SmsIngress[]
+  dispatchAssignments DispatchAssignment[]
+  voiceCallLogs       VoiceCallLog[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([reporterId])
+  @@index([assignedResponderId])
+  @@index([barangayId])
+  @@index([type, status])
+  @@map("incidents")
+}
+
+model IncidentLog {
+  id          String   @id @default(cuid())
+  incidentId  String   @map("incident_id")
+  action      String
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdById String?  @map("created_by_id")
+
+  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("IncidentLogCreatedBy", fields: [createdById], references: [id])
+
+  @@index([incidentId, createdAt(sort: Desc)])
+  @@map("incident_logs")
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String?            @map("user_id")
+  title     String
+  body      String
+  type      NotificationType
+  payload   Json?
+  readAt    DateTime?          @map("read_at")
+  pushSent  Boolean            @default(false) @map("push_sent")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([type, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model WeatherAlert {
+  id        String    @id @default(cuid())
+  source    String
+  severity  String
+  headline  String
+  body      String
+  geoJson   Json?     @map("geo_json")
+  startsAt  DateTime? @map("starts_at")
+  endsAt    DateTime? @map("ends_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([source])
+  @@map("weather_alerts")
+}
+
+model ResponderLocation {
+  id          String   @id @default(cuid())
+  responderId String   @map("responder_id")
+  latitude    Decimal  @db.Decimal(10, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+  accuracyM   Float?   @map("accuracy_m")
+  heading     Float?
+  speedMps    Float?   @map("speed_mps")
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  responder Responder @relation(fields: [responderId], references: [id], onDelete: Cascade)
+
+  @@index([responderId, recordedAt(sort: Desc)])
+  @@map("responder_locations")
+}
+
+model UserLocation {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  latitude   Decimal  @db.Decimal(10, 7)
+  longitude  Decimal  @db.Decimal(10, 7)
+  accuracyM  Float?   @map("accuracy_m")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt(sort: Desc)])
+  @@map("user_locations")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  metadata   Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("ActorAuditLogs", fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  refreshHash String    @map("refresh_hash")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshHash])
+  @@map("sessions")
+}
+
+model SmsIngress {
+  id          String   @id @default(cuid())
+  fromPhone   String   @map("from_phone")
+  body        String
+  payloadHash String   @unique @map("payload_hash")
+  processed   Boolean  @default(false)
+  incidentId  String?  @map("incident_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  incident Incident? @relation(fields: [incidentId], references: [id])
+
+  @@index([fromPhone, createdAt(sort: Desc)])
+  @@map("sms_ingress")
+}
+
+/// Evacuation sites — GIS polygon optional; coordinates required for map routing.
+model EvacuationCenter {
+  id              String   @id @default(cuid())
+  name            String
+  barangayId      String?  @map("barangay_id")
+  latitude        Decimal  @db.Decimal(10, 7)
+  longitude       Decimal  @db.Decimal(10, 7)
+  capacity        Int?
+  occupancy       Int      @default(0)
+  contactPhone    String?  @map("contact_phone")
+  notes           String?
+  isActive        Boolean  @default(true) @map("is_active")
+  geometryGeoJson Json?    @map("geometry_geojson")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  barangay Barangay? @relation(fields: [barangayId], references: [id])
+
+  @@index([barangayId])
+  @@index([isActive])
+  @@map("evacuation_centers")
+}
+
+/// Dispatcher assignment lifecycle — supports multi-unit dispatch (multiple rows per incident).
+model DispatchAssignment {
+  id             String                   @id @default(cuid())
+  incidentId     String                   @map("incident_id")
+  responderId    String?                  @map("responder_id")
+  vehicleId      String?                  @map("vehicle_id")
+  assignedById   String?                  @map("assigned_by_id")
+  status         DispatchAssignmentStatus @default(PENDING)
+  notes          String?
+  dispatchedAt   DateTime?                @map("dispatched_at")
+  arrivedAt      DateTime?                @map("arrived_at")
+  completedAt    DateTime?                @map("completed_at")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  incident   Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  responder  Responder? @relation(fields: [responderId], references: [id])
+  vehicle    Vehicle?   @relation(fields: [vehicleId], references: [id])
+  assignedBy User?      @relation("DispatchAssignedBy", fields: [assignedById], references: [id])
+
+  @@index([incidentId, status])
+  @@index([responderId])
+  @@map("dispatch_assignments")
+}
+
+/// Voice session records for ops ↔ responder ↔ citizen (WebRTC / CPaaS).
+model VoiceCallLog {
+  id                String        @id @default(cuid())
+  incidentId        String?       @map("incident_id")
+  initiatorUserId   String?       @map("initiator_user_id")
+  participantUserId String?       @map("participant_user_id")
+  provider          VoiceProvider @default(WEBRTC)
+  roomId            String        @map("room_id")
+  startedAt         DateTime      @map("started_at")
+  endedAt           DateTime?     @map("ended_at")
+  metadata          Json?
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  incident    Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  initiator   User?     @relation("VoiceInitiator", fields: [initiatorUserId], references: [id])
+  participant User?     @relation("VoiceParticipant", fields: [participantUserId], references: [id])
+
+  @@index([incidentId])
+  @@index([roomId])
+  @@map("voice_call_logs")
+}
+
+/// FCM / Web Push device endpoints for alert broadcasting.
+model DeviceToken {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  token      String         @unique
+  platform   DevicePlatform @default(UNKNOWN)
+  lastSeenAt DateTime?      @map("last_seen_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
+}

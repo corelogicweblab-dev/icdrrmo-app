@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+coverage
+*.md
+.env
+.env.*
+
+# Stale TS incremental graphs break `nest build` inside Docker (no .js emitted → missing dist/main.js)
+*.tsbuildinfo

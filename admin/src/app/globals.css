@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #060608;
+  --foreground: #f4f4f5;
+  --ops-accent: #e11d48;
+  --ops-accent-dim: rgba(225, 29, 72, 0.12);
+  --ops-grid: rgba(255, 255, 255, 0.03);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Subtle tactical grid for command surfaces */
+.ops-grid-bg {
+  background-image:
+    linear-gradient(var(--ops-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ops-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Scrollbar — low-profile, operations-friendly */
+.scroll-ops {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.scroll-ops::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-ops::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}

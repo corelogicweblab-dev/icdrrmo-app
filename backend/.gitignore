@@ -1,0 +1,8 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# TypeScript incremental — do not commit; stale file can make `nest build` emit nothing
+*.tsbuildinfo

@@ -1,0 +1,14 @@
+{
+  "name": "icdrrmo",
+  "private": true,
+  "description": "ICDRRRMO SMART Emergency Response — workspace scripts",
+  "scripts": {
+    "infra:up": "docker compose up -d postgres redis",
+    "infra:down": "docker compose down",
+    "db:migrate": "cd backend && npx prisma migrate deploy",
+    "db:seed": "cd backend && npx prisma db seed",
+    "db:setup": "docker compose up -d postgres redis && cd backend && npx prisma migrate deploy && npx prisma db seed",
+    "docker:full": "docker compose up --build -d",
+    "docker:seed": "docker compose exec api npx prisma db seed"
+  }
+}
