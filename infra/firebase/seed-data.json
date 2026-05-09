@@ -1,0 +1,41 @@
+[
+  {
+    "path": "config_public/app",
+    "data": {
+      "appName": "ICDRRRMO SMART",
+      "minFlutterBuild": 1,
+      "maintenance": false,
+      "maintenanceMessage": "",
+      "supportPhone": "",
+      "privacyPolicyUrl": "",
+      "termsUrl": ""
+    }
+  },
+  {
+    "path": "reference/emergency_types",
+    "data": {
+      "items": [
+        { "code": "FIRE", "label": "Fire" },
+        { "code": "FLOOD", "label": "Flood" },
+        { "code": "ACCIDENT", "label": "Accident" },
+        { "code": "MEDICAL_EMERGENCY", "label": "Medical emergency" },
+        { "code": "LANDSLIDE", "label": "Landslide" },
+        { "code": "CRIME", "label": "Crime / violence" },
+        { "code": "EARTHQUAKE", "label": "Earthquake" },
+        { "code": "TYPHOON", "label": "Typhoon / severe wind" },
+        { "code": "RESCUE_REQUEST", "label": "Rescue request" },
+        { "code": "OTHER", "label": "Other" }
+      ]
+    }
+  },
+  {
+    "path": "broadcasts/welcome",
+    "data": {
+      "title": "Isabela City ICDRRMO",
+      "body": "Public safety notices and drills will appear here when published.",
+      "severity": "INFO",
+      "publishedAt": "2026-05-09T00:00:00.000Z",
+      "source": "icdrrmo"
+    }
+  }
+]

@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Client-readable app gates (no secrets). Written only via Admin SDK / Console.
+    match /config_public/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Static reference lists for clients (e.g. emergency type labels).
+    match /reference/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Public advisories (weather, drills). Treat content as non-sensitive.
+    match /broadcasts/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Per-user subtree — requires Firebase Auth uid to match path segment.
+    // Link backend `users.id` to Firebase Auth uid (same value or mapped) before relying on this.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
