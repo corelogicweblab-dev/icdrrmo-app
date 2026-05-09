@@ -6,6 +6,18 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Layers, MapPin } from "lucide-react";
 import type { MapIncidentPin } from "@/lib/map-pins";
+import { pinsToFeatureCollection } from "@/lib/map-pins";
+import {
+  bindClusterExpansionClick,
+  installIcdOpsMapLayers,
+  setIncidentGeoJson,
+  syncOpsMapLayerVisibility,
+} from "@/components/situation-map-style";
+
+/** Inline `NEXT_PUBLIC_*` so the client bundle always picks up `.env.local` / Docker build args. */
+function readMapboxToken(): string {
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";
+}
 
 /** Isabela City, Basilan — city center (WGS84). */
 const ISABELA_CENTER: [number, number] = [121.9715, 6.7042];
@@ -19,20 +31,33 @@ function markerColorForType(type: string): string {
   return "#f43f5e";
 }
 
-export function SituationMap(props: { incidentPins?: MapIncidentPin[] }): ReactElement {
-  const pins = useMemo(() => props.incidentPins ?? [], [props.incidentPins]);
+export type SituationMapProps = {
+  incidentPins?: MapIncidentPin[];
+  /** When passed (GIS page), heatmap / cluster / stub visibility follows ops checkboxes. Omit on dashboard. */
+  layerToggles?: Record<string, boolean>;
+};
+
+export function SituationMap(props: SituationMapProps): ReactElement {
+  const { incidentPins: incidentPinsProp, layerToggles } = props;
+  const pins = useMemo(() => incidentPinsProp ?? [], [incidentPinsProp]);
+  const fc = useMemo(() => pinsToFeatureCollection(pins), [pins]);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const unbindClusterRef = useRef<(() => void) | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";
+  const token = readMapboxToken();
+
+  const showHtmlMarkers = layerToggles === undefined ? true : Boolean(layerToggles["Incident markers"]);
 
   useEffect(() => {
     if (!token || !containerRef.current) return;
 
     mapboxgl.accessToken = token;
+    const el = containerRef.current;
     const map = new mapboxgl.Map({
-      container: containerRef.current,
+      container: el,
       style: "mapbox://styles/mapbox/dark-v11",
       center: ISABELA_CENTER,
       zoom: 12.2,
@@ -41,19 +66,41 @@ export function SituationMap(props: { incidentPins?: MapIncidentPin[] }): ReactE
     });
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
     mapRef.current = map;
+
+    const bumpResize = (): void => {
+      requestAnimationFrame(() => {
+        map.resize();
+      });
+    };
+
     const onLoad = (): void => {
+      installIcdOpsMapLayers(map);
+      unbindClusterRef.current = bindClusterExpansionClick(map);
+      bumpResize();
       setMapReady(true);
     };
     map.once("load", onLoad);
 
-    const onResize = (): void => {
+    const onWinResize = (): void => {
       map.resize();
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onWinResize);
+
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            map.resize();
+          })
+        : null;
+    ro?.observe(el);
+    bumpResize();
 
     return () => {
-      window.removeEventListener("resize", onResize);
+      ro?.disconnect();
+      window.removeEventListener("resize", onWinResize);
       map.off("load", onLoad);
+      unbindClusterRef.current?.();
+      unbindClusterRef.current = null;
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       setMapReady(false);
@@ -65,26 +112,35 @@ export function SituationMap(props: { incidentPins?: MapIncidentPin[] }): ReactE
   useEffect(() => {
     if (!token || !mapRef.current || !mapReady) return;
     const map = mapRef.current;
+    setIncidentGeoJson(map, fc);
+    syncOpsMapLayerVisibility(map, layerToggles);
+  }, [fc, layerToggles, mapReady, token]);
+
+  useEffect(() => {
+    if (!token || !mapRef.current || !mapReady) return;
+    const map = mapRef.current;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    for (const p of pins) {
-      const el = document.createElement("div");
-      el.style.width = "14px";
-      el.style.height = "14px";
-      el.style.borderRadius = "9999px";
-      el.style.border = "2px solid rgba(255,255,255,0.95)";
-      el.style.background = markerColorForType(p.type);
-      el.style.boxShadow = "0 0 10px rgba(0,0,0,0.55)";
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([p.lng, p.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 14, maxWidth: "240px" }).setHTML(
-            `<div class="text-xs font-sans text-zinc-800"><strong>${p.label}</strong><br/><span class="font-mono text-[10px] opacity-80">${p.id}</span></div>`,
-          ),
-        )
-        .addTo(map);
-      markersRef.current.push(marker);
+    if (showHtmlMarkers) {
+      for (const p of pins) {
+        const el = document.createElement("div");
+        el.style.width = "14px";
+        el.style.height = "14px";
+        el.style.borderRadius = "9999px";
+        el.style.border = "2px solid rgba(255,255,255,0.95)";
+        el.style.background = markerColorForType(p.type);
+        el.style.boxShadow = "0 0 10px rgba(0,0,0,0.55)";
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([p.lng, p.lat])
+          .setPopup(
+            new mapboxgl.Popup({ offset: 14, maxWidth: "240px" }).setHTML(
+              `<div class="text-xs font-sans text-zinc-800"><strong>${escapeHtml(p.label)}</strong><br/><span class="font-mono text-[10px] opacity-80">${escapeHtml(p.id)}</span></div>`,
+            ),
+          )
+          .addTo(map);
+        markersRef.current.push(marker);
+      }
     }
 
     if (pins.length > 0) {
@@ -94,19 +150,17 @@ export function SituationMap(props: { incidentPins?: MapIncidentPin[] }): ReactE
     } else {
       map.flyTo({ center: ISABELA_CENTER, zoom: 12.2, duration: 400 });
     }
-  }, [pins, mapReady, token]);
+  }, [pins, mapReady, token, showHtmlMarkers]);
 
   if (!token) {
     return (
-      <div className="flex-1 relative min-h-[280px] flex flex-col">
+      <div className="relative flex min-h-[min(52vh,560px)] w-full flex-col">
         <div className="absolute inset-0 ops-grid-bg opacity-60" aria-hidden />
         <div className="relative flex-1 flex flex-col items-center justify-center p-8 text-center border-t border-white/[0.04] bg-gradient-to-b from-zinc-950/40 to-black/60">
           <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] shadow-panel">
             <Layers className="h-7 w-7 text-zinc-500" strokeWidth={1.25} aria-hidden />
           </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            Geospatial layer
-          </p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Geospatial layer</p>
           <p className="mt-2 max-w-sm text-sm font-medium text-zinc-300">
             Basemap not configured — add Mapbox credentials to activate live mapping and incident markers.
           </p>
@@ -116,17 +170,24 @@ export function SituationMap(props: { incidentPins?: MapIncidentPin[] }): ReactE
           </p>
           <p className="mt-4 text-xs text-zinc-600 max-w-md leading-relaxed">
             Set <code className="text-zinc-400">NEXT_PUBLIC_MAPBOX_TOKEN</code> in{" "}
-            <code className="text-zinc-400">.env.local</code>, then restart the dev server or rebuild
-            the admin image.
+            <code className="text-zinc-400">.env.local</code>, then restart the dev server or rebuild the admin image.
           </p>
         </div>
       </div>
     );
   }
 
+  const gisHud =
+    layerToggles !== undefined ? (
+      <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[200px] rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-[9px] font-mono text-zinc-400 backdrop-blur-sm">
+        Layers follow queue · {pins.length} geo pin{pins.length === 1 ? "" : "s"}
+      </div>
+    ) : null;
+
   return (
-    <div className="flex-1 relative min-h-[280px]">
-      <div ref={containerRef} className="absolute inset-0" />
+    <div className="relative h-[min(52vh,560px)] min-h-[320px] w-full">
+      <div ref={containerRef} className="absolute inset-0 min-h-[280px]" />
+      {gisHud}
       {pins.length > 0 ? (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 text-[10px] font-mono text-zinc-300 backdrop-blur-sm">
           {pins.length} incident pin{pins.length === 1 ? "" : "s"}
@@ -134,4 +195,12 @@ export function SituationMap(props: { incidentPins?: MapIncidentPin[] }): ReactE
       ) : null}
     </div>
   );
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

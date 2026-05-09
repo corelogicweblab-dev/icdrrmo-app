@@ -36,7 +36,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-[#060608] text-zinc-100`}
       >
         <PwaRegister />
-        {children}
+        <div className="flex min-h-dvh flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <footer className="shrink-0 border-t border-white/5 py-2.5 text-center text-[11px] tracking-wide text-zinc-500">
+            Powered by: CoreLogic
+          </footer>
+        </div>
       </body>
     </html>
   );

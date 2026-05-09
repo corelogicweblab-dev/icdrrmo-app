@@ -1,3 +1,12 @@
+/** Mapbox public token (client bundle). Set in `admin/.env.local` as `NEXT_PUBLIC_MAPBOX_TOKEN`. */
+export function getMapboxToken(): string {
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";
+}
+
+export function hasMapboxToken(): boolean {
+  return getMapboxToken().length > 0;
+}
+
 /** Browser-safe public configuration (set at build time for Docker). */
 export function getApiBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();

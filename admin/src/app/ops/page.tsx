@@ -15,7 +15,7 @@ import {
   Users,
   Waves,
 } from "lucide-react";
-import { getHealthCheckUrl } from "@/lib/env";
+import { getHealthCheckUrl, hasMapboxToken } from "@/lib/env";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { formatOpsSync, incidentBorderClass, statusBadgeClass } from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
@@ -200,15 +200,17 @@ export default function OpsCommandDashboardPage(): ReactElement {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <section className="xl:col-span-5 overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel flex flex-col min-h-[360px]">
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3 bg-black/25">
+        <section className="xl:col-span-5 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
+          <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-black/25 px-4 py-3">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
               <Map className="h-4 w-4 text-rose-400/90" aria-hidden />
               Tactical map — layers in GIS panel
             </h2>
             <ShieldAlert className="h-4 w-4 text-zinc-600" aria-hidden />
           </div>
-          <SituationMap incidentPins={mapPins} />
+          <div className="min-h-0 w-full flex-1">
+            <SituationMap incidentPins={mapPins} />
+          </div>
         </section>
 
         <section className="xl:col-span-4 flex min-h-[360px] flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
@@ -298,8 +300,15 @@ export default function OpsCommandDashboardPage(): ReactElement {
 
       <footer className="rounded-xl border border-white/[0.04] bg-black/30 px-5 py-3 text-[10px] text-zinc-600 font-mono">
         ICDRRMO OPS · Command dashboard · Sidebar modules for incidents, GIS, dispatch, responders, weather, SMS,
-        voice, barangays, analytics, audit, vehicles, evacuation, notifications, evidence, RBAC · Mapbox heat layers
-        require NEXT_PUBLIC_MAPBOX_TOKEN.
+        voice, barangays, analytics, audit, vehicles, evacuation, notifications, evidence, RBAC.
+        {!hasMapboxToken() ? (
+          <>
+            {" "}
+            · Mapbox basemap / heat layers: set <span className="text-zinc-500">NEXT_PUBLIC_MAPBOX_TOKEN</span> in{" "}
+            <span className="text-zinc-500">.env.local</span>, then restart <span className="text-zinc-500">npm run dev</span>{" "}
+            or rebuild the admin image.
+          </>
+        ) : null}
       </footer>
     </div>
   );

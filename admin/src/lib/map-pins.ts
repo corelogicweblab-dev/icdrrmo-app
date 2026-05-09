@@ -20,3 +20,22 @@ export function incidentsToMapPins(rows: OpsIncident[]): MapIncidentPin[] {
     }))
     .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 }
+
+/** GeoJSON for Mapbox sources (heatmap / cluster). */
+export function pinsToFeatureCollection(pins: MapIncidentPin[]): {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: { type: "Point"; coordinates: [number, number] };
+    properties: { id: string; label: string; incidentType: string };
+  }>;
+} {
+  return {
+    type: "FeatureCollection",
+    features: pins.map((p) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
+      properties: { id: p.id, label: p.label, incidentType: p.type },
+    })),
+  };
+}
