@@ -42,9 +42,9 @@ Do **not** combine **Root Directory = `backend`** with **Dockerfile Path = `back
 | Key | Notes |
 |-----|--------|
 | `DATABASE_URL` | Render Postgres **External** URL, `postgresql://…`, includes DB name and `?sslmode=require` if your host requires TLS |
-| `JWT_ACCESS_SECRET` | Long random string (32+ bytes) |
+| `JWT_ACCESS_SECRET` | Long random string (32+ bytes). The API does **not** read `JWT_SECRET` — remove that variable on Render if you added it, to avoid confusion. |
 | `NODE_ENV` | `production` |
-| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API (include your Firebase admin URL and local dev URLs if needed) |
+| `CORS_ORIGINS` | Comma-separated origins, **no spaces** (e.g. `https://icdrrmo-b204e.web.app,https://icdrrmo-b204e.firebaseapp.com`). Add Firebase **preview** URLs if you use PR channels, e.g. `https://icdrrmo-b204e--pr-12.web.app`. |
 | `REDIS_URL` | **Unset** if you have no Redis on Render (avoids `ECONNREFUSED 127.0.0.1:6379`). Optional: use Render Redis / Upstash URL |
 
 ### 4. One-time seed (ops admin)

@@ -171,7 +171,14 @@ Rules, indexes, and seed data live in **`infra/firebase/`**. Root **`firebase.js
 
 **Ship the Operation Center to Hosting:** from repo root, `firebase login` once, add **`admin/.env.deploy`** from **`admin/.env.deploy.example`** (absolute `NEXT_PUBLIC_*` URLs), then **`npm run deploy:hosting`**. That file overrides dev `.env.local` during export so `/api/v1` is not baked into the Firebase bundle. CI on **`main`** sets the same variables from GitHub secrets instead.
 
-Set repo secrets **`FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E`** (JSON), **`NEXT_PUBLIC_API_URL`**, and **`NEXT_PUBLIC_WS_URL`**. For static Hosting they **must** be absolute `https://…` URLs to your **Nest** host (not `/api/v1` — that only works behind local Next rewrites; otherwise login returns **404**). Put the same Firebase admin origins in **`CORS_ORIGINS`** on the API. Firestore: `npm run firebase:deploy-firestore`; seed: `npm run firebase:seed` with **`GOOGLE_APPLICATION_CREDENTIALS`**. Project: **`.firebaserc`** (`icdrrmo-b204e`).
+Set repo secrets **`FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E`** (JSON), **`NEXT_PUBLIC_API_URL`**, and **`NEXT_PUBLIC_WS_URL`**. For the Render service **`icdrrmo-api`**, use exactly:
+
+- **`NEXT_PUBLIC_API_URL`** = `https://icdrrmo-api.onrender.com/api/v1`
+- **`NEXT_PUBLIC_WS_URL`** = `https://icdrrmo-api.onrender.com`
+
+Do **not** use `icdrrmo-app-1.onrender.com` (that is a different Render hostname); the Hosting workflow will **fail the build** if those secrets still contain `icdrrmo-app-1`. Values are baked at **build** time — after changing secrets, run the workflow again (push to `main` or **Actions → re-run**).
+
+Put your Firebase admin origins in **`CORS_ORIGINS`** on the API (e.g. `https://icdrrmo-b204e.web.app`, `https://icdrrmo-b204e.firebaseapp.com`, plus any preview `*.web.app` URLs you use). Firestore: `npm run firebase:deploy-firestore`; seed: `npm run firebase:seed` with **`GOOGLE_APPLICATION_CREDENTIALS`**. Project: **`.firebaserc`** (`icdrrmo-b204e`).
 
 ## Documentation
 

@@ -31,6 +31,9 @@ export function getApiConfigWarning(): string | null {
   }
   try {
     const apiHost = new URL(base).hostname;
+    if (apiHost === "icdrrmo-app-1.onrender.com") {
+      return "This build points at icdrrmo-app-1.onrender.com. Rebuild with NEXT_PUBLIC_API_URL=https://icdrrmo-api.onrender.com/api/v1 and NEXT_PUBLIC_WS_URL=https://icdrrmo-api.onrender.com (GitHub secret or admin/.env.deploy), then redeploy Firebase Hosting.";
+    }
     if (apiHost === h) {
       return "NEXT_PUBLIC_API_URL points at this same hostname as the admin UI. Use your Nest API host (different subdomain or domain).";
     }
