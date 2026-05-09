@@ -145,6 +145,10 @@ npm run dev
 9. **Queues:** BullMQ workers (SMS retry, notifications, weather); DLQ dashboards.
 10. **Ops:** runbooks, load test (thousands of WS clients), tabletop disaster exercise.
 
+## Firebase / Firestore
+
+Rules, indexes, and seed data live in **`infra/firebase/`**. Root **`firebase.json`** points Hosting at **`admin/out`** (static **`next build`** with `STATIC_EXPORT=1`, plus `cleanUrls` for `.html` routes). GitHub Actions build `admin/` then run **`FirebaseExtended/action-hosting-deploy`**. Set repo secrets **`FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E`** (JSON), **`NEXT_PUBLIC_API_URL`**, and **`NEXT_PUBLIC_WS_URL`** to your live API origins (static hosting has no Next rewrites). Deploy rules + indexes: `npm run firebase:deploy-firestore`. Seed Firestore: `npm run firebase:seed` with **`GOOGLE_APPLICATION_CREDENTIALS`**. Project: **`.firebaserc`** (`icdrrmo-b204e`).
+
 ## Documentation
 
 See **`docs/ARCHITECTURE.md`** for system diagrams, flows (SOS, SMS, offline sync), rollout roadmap, and module-by-module implementation order.
