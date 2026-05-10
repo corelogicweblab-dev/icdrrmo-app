@@ -28,6 +28,7 @@ export default {
       animation: {
         "live-pulse": "live-pulse 2s ease-in-out infinite",
         "alert-blink": "alert-blink 1.6s ease-in-out infinite",
+        "voice-ring-flash": "voice-ring-flash 0.9s ease-in-out infinite",
       },
       keyframes: {
         "live-pulse": {
@@ -37,6 +38,14 @@ export default {
         "alert-blink": {
           "0%, 100%": { opacity: "1", boxShadow: "0 0 0 0 rgba(225,29,72,0.35)" },
           "50%": { opacity: "0.92", boxShadow: "0 0 14px rgba(225,29,72,0.45)" },
+        },
+        "voice-ring-flash": {
+          "0%, 100%": {
+            boxShadow: "0 0 0 1px rgba(225,29,72,0.4), 0 0 32px rgba(225,29,72,0.25)",
+          },
+          "50%": {
+            boxShadow: "0 0 0 2px rgba(251,113,133,0.85), 0 0 56px rgba(225,29,72,0.55)",
+          },
         },
       },
     },

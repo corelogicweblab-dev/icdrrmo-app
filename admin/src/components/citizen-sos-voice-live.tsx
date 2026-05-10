@@ -10,11 +10,13 @@ function statusLabel(s: string): string {
     case "connecting":
       return "Opening microphone…";
     case "joining":
-      return "Connecting to ops voice room…";
+      return "Syncing with voice server…";
+    case "standby":
+      return "Mic live — waiting for ops desk…";
     case "negotiating":
       return "Linking audio (WebRTC)…";
     case "live":
-      return "Live — ops desk can hear you";
+      return "Duplex — ops desk on channel";
     case "error":
       return "Voice link issue";
     default:
@@ -53,14 +55,23 @@ export function CitizenSosVoiceLive(props: {
         Browser voice to ops
       </div>
       <p className="text-[11px] text-zinc-400 leading-relaxed">
-        Your microphone stays open for this incident until you leave this page or sign out. Ops joins from the incidents
-        console (same WebRTC room).
+        Your microphone is tied to this incident. Ops gets a flashing alert with Answer — keep this page open until the desk
+        joins the same WebRTC room.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        {status === "error" ? null : status === "live" ? (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-950/50 px-2.5 py-1 text-[11px] font-medium text-emerald-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
-            Connected
+        {status === "error" ? null : status === "live" || status === "standby" ? (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium ${
+              status === "live"
+                ? "bg-emerald-950/50 text-emerald-200"
+                : "bg-amber-950/40 text-amber-100 border border-amber-500/25"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full shrink-0 ${status === "live" ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`}
+              aria-hidden
+            />
+            {status === "live" ? "Connected" : "Mic on"}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900/80 px-2.5 py-1 text-[11px] text-zinc-400">
@@ -71,7 +82,7 @@ export function CitizenSosVoiceLive(props: {
         <button
           type="button"
           onClick={() => setMuted(!muted)}
-          disabled={status === "error" || status === "idle"}
+          disabled={status === "error" || status === "idle" || status === "connecting"}
           className="inline-flex items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-1.5 text-[11px] font-medium text-zinc-200 hover:bg-white/[0.1] disabled:opacity-40"
         >
           {muted ? <MicOff className="h-3.5 w-3.5" aria-hidden /> : <Mic className="h-3.5 w-3.5" aria-hidden />}

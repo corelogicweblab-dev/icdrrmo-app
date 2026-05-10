@@ -44,12 +44,24 @@ export function getApiConfigWarning(): string | null {
 }
 
 /**
- * Socket.IO origin. If unset, uses the dashboard origin so `/socket.io` is proxied by Next
- * (`next.config.ts`) to Nest — avoids CORS/host mismatches during local dev.
+ * Socket.IO origin (no path — client uses `/socket.io` on this host).
+ * - Prefer `NEXT_PUBLIC_WS_URL` when set.
+ * - Else, if `NEXT_PUBLIC_API_URL` is absolute (e.g. https://api.host/api/v1), use that **API host**
+ *   so static hosting (Firebase) still reaches Nest — the page origin often has no Socket.IO server.
+ * - Else in the browser, fall back to `window.location.origin` (Next dev rewrites /socket.io).
  */
 export function getWsBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_WS_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const api = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (api && /^https?:\/\//i.test(api)) {
+    try {
+      const u = new URL(api);
+      return `${u.protocol}//${u.host}`;
+    } catch {
+      /* fall through */
+    }
+  }
   if (typeof window !== "undefined") return window.location.origin;
   return "http://127.0.0.1:4000";
 }

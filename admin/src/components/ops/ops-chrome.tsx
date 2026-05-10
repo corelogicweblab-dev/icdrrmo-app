@@ -26,6 +26,7 @@ import { useOpsSession } from "@/components/ops/ops-session-context";
 import { decodeJwtEmail, formatOpsClock, formatOpsSync } from "@/components/ops/ops-format";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { OpsStatusCapsule } from "@/components/ops/ops-widgets";
+import { OpsVoiceRingOverlay } from "@/components/ops/ops-voice-ring-overlay";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -343,6 +344,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
 
         <main className="flex-1 overflow-auto scroll-ops">{children}</main>
       </div>
+      <OpsVoiceRingOverlay />
     </div>
   );
 }

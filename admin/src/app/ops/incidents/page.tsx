@@ -91,6 +91,9 @@ export default function OpsIncidentsPage(): ReactElement {
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const lastFocusScrollRef = useRef<string | null>(null);
+  /** One-shot from ?voiceAnswer=1 after answering the SOS voice ring overlay. */
+  const [autoJoinVoiceOnce, setAutoJoinVoiceOnce] = useState(false);
+  const pendingVoiceAnswerRef = useRef(false);
 
   useEffect(() => {
     if (queue.length === 0) {
@@ -117,6 +120,28 @@ export default function OpsIncidentsPage(): ReactElement {
       });
     });
   }, [queue]);
+
+  /** Strip voiceAnswer=1 from URL once the focused incident is selected (auto-opens voice panel). */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("voiceAnswer") !== "1") return;
+    const focus = sp.get("focus");
+    if (!focus || selectedId !== focus) return;
+    pendingVoiceAnswerRef.current = true;
+    setAutoJoinVoiceOnce(true);
+    sp.delete("voiceAnswer");
+    const q = sp.toString();
+    router.replace(q ? `/ops/incidents?${q}` : "/ops/incidents", { scroll: false });
+  }, [selectedId, router]);
+
+  useEffect(() => {
+    if (pendingVoiceAnswerRef.current) {
+      pendingVoiceAnswerRef.current = false;
+      return;
+    }
+    setAutoJoinVoiceOnce(false);
+  }, [selectedId]);
 
   const openIncident = useCallback(
     (id: string) => {
@@ -529,6 +554,7 @@ export default function OpsIncidentsPage(): ReactElement {
                   incidentId={selected.id}
                   realtimeSocket={realtimeSocket}
                   socketLive={socketState === "live"}
+                  autoJoinVoice={autoJoinVoiceOnce}
                 />
                 <div className="rounded-lg border border-dashed border-white/10 p-3 text-[11px] text-zinc-500">
                   <Binoculars className="inline h-4 w-4 mr-1 text-zinc-600 align-text-bottom" aria-hidden />

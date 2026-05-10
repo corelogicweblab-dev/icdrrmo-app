@@ -26,6 +26,13 @@ import {
 } from "@/components/ops/ops-storage";
 import type { OpsIncident, TokenPair } from "@/components/ops/ops-types";
 
+/** Citizen entered the WebRTC voice room — ops UI should surface Answer/Cancel. */
+export type VoiceIncidentRingPayload = {
+  incidentId: string;
+  reporterId: string;
+  at: string;
+};
+
 function playIncidentChime(): void {
   try {
     type WinAudio = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -72,6 +79,9 @@ export type OpsSessionContextValue = {
   loginError: string | null;
   soundMuted: boolean;
   setSoundMuted: (v: boolean) => void;
+  /** Incoming citizen voice ring (server `voice_incident_ring`). */
+  voiceRing: VoiceIncidentRingPayload | null;
+  dismissVoiceRing: () => void;
 };
 
 const OpsSessionContext = createContext<OpsSessionContextValue | null>(null);
@@ -103,6 +113,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const [booted, setBooted] = useState(false);
   const [apiConfigWarning, setApiConfigWarning] = useState<string | null>(null);
   const [realtimeSocket, setRealtimeSocket] = useState<Socket | null>(null);
+  const [voiceRing, setVoiceRing] = useState<VoiceIncidentRingPayload | null>(null);
 
   useEffect(() => {
     setTokens(loadOpsTokens());
@@ -122,6 +133,10 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const setSoundMuted = useCallback((muted: boolean) => {
     setSoundMutedState(muted);
     saveSoundMuted(muted);
+  }, []);
+
+  const dismissVoiceRing = useCallback((): void => {
+    setVoiceRing(null);
   }, []);
 
   const refreshQueue = useCallback(async (access: string) => {
@@ -220,6 +235,17 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       },
     });
     setRealtimeSocket(socket);
+    const onVoiceIncidentRing = (raw: unknown): void => {
+      const p = raw as { incidentId?: string; reporterId?: string; at?: string };
+      if (!p?.incidentId) return;
+      setVoiceRing({
+        incidentId: p.incidentId,
+        reporterId: typeof p.reporterId === "string" ? p.reporterId : "",
+        at: typeof p.at === "string" ? p.at : new Date().toISOString(),
+      });
+      if (!loadSoundMuted()) playIncidentChime();
+    };
+    socket.on("voice_incident_ring", onVoiceIncidentRing);
     socket.on("connect", () => {
       setSocketState("live");
       setWsErrorDetail(null);
@@ -228,6 +254,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     socket.on("disconnect", () => setSocketState("off"));
     return () => {
       setRealtimeSocket(null);
+      socket.off("voice_incident_ring", onVoiceIncidentRing);
       socket.removeAllListeners();
       socket.close();
     };
@@ -316,6 +343,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     setLastHealthAt(null);
     setLastSocketAt(null);
     setRealtimeSocket(null);
+    setVoiceRing(null);
     router.replace("/");
   }, [router]);
 
@@ -343,6 +371,8 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       loginError,
       soundMuted,
       setSoundMuted,
+      voiceRing,
+      dismissVoiceRing,
     }),
     [
       tokens,
@@ -365,6 +395,8 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       loginError,
       soundMuted,
       setSoundMuted,
+      voiceRing,
+      dismissVoiceRing,
     ],
   );
 

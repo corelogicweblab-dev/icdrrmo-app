@@ -12,6 +12,8 @@ function statusLabel(s: string): string {
       return "Microphone…";
     case "joining":
       return "Joining voice room…";
+    case "standby":
+      return "Mic on — citizen may be waiting…";
     case "negotiating":
       return "WebRTC handshake…";
     case "live":
@@ -27,16 +29,26 @@ export function OpsIncidentVoicePanel(props: {
   incidentId: string;
   realtimeSocket: Socket | null;
   socketLive: boolean;
+  /** Rising edge: Answer from SOS voice ring — auto-starts browser voice for this incident. */
+  autoJoinVoice?: boolean;
 }): ReactElement {
-  const { incidentId, realtimeSocket, socketLive } = props;
+  const { incidentId, realtimeSocket, socketLive, autoJoinVoice } = props;
   const [active, setActive] = useState(false);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const prevAutoJoin = useRef(false);
 
   const { status, error, muted, setMuted, remoteStream } = useVoiceIncidentCall({
     incidentId,
     active: active && socketLive && realtimeSocket != null,
     externalSocket: realtimeSocket ?? undefined,
   });
+
+  useEffect(() => {
+    if (autoJoinVoice && !prevAutoJoin.current && socketLive && realtimeSocket) {
+      setActive(true);
+    }
+    prevAutoJoin.current = Boolean(autoJoinVoice);
+  }, [autoJoinVoice, socketLive, realtimeSocket]);
 
   useEffect(() => {
     const el = remoteAudioRef.current;
@@ -50,6 +62,7 @@ export function OpsIncidentVoicePanel(props: {
 
   useEffect(() => {
     setActive(false);
+    prevAutoJoin.current = false;
   }, [incidentId]);
 
   return (

@@ -5,6 +5,7 @@ import type { Socket } from "socket.io-client";
 import { connectIncidentVoiceSocket } from "@/lib/realtime";
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+const VOICE_JOIN_TIMEOUT_MS = 22_000;
 
 type VoiceJoinAck = { ok: boolean; error?: string; peersAlreadyPresent?: number };
 
@@ -21,7 +22,14 @@ type VoicePeerJoinedMsg = {
   role?: string;
 };
 
-export type VoiceIncidentCallStatus = "idle" | "connecting" | "joining" | "negotiating" | "live" | "error";
+export type VoiceIncidentCallStatus =
+  | "idle"
+  | "connecting"
+  | "joining"
+  | "standby"
+  | "negotiating"
+  | "live"
+  | "error";
 
 export type UseVoiceIncidentCallResult = {
   status: VoiceIncidentCallStatus;
@@ -46,6 +54,7 @@ export function useVoiceIncidentCall(opts: {
   const ownedSocketRef = useRef<Socket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const joinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setMuted = useCallback((m: boolean) => {
     setMutedState(m);
@@ -225,8 +234,16 @@ export function useVoiceIncidentCall(opts: {
 
       setStatus("joining");
 
+      const clearJoinTimer = (): void => {
+        if (joinTimeoutRef.current != null) {
+          clearTimeout(joinTimeoutRef.current);
+          joinTimeoutRef.current = null;
+        }
+      };
+
       try {
         await new Promise<void>((resolve, reject) => {
+          let settled = false;
           const clearConnectWait = (): void => {
             if (pendingConnectJoinRef.current) {
               socket.off("connect", pendingConnectJoinRef.current);
@@ -234,31 +251,50 @@ export function useVoiceIncidentCall(opts: {
             }
           };
 
-          const onErr = (err: Error): void => {
-            socket.off("connect_error", onErr);
+          const finishOnce = (fn: () => void): void => {
+            if (settled) return;
+            settled = true;
+            clearJoinTimer();
             clearConnectWait();
-            reject(err);
+            socket.off("connect_error", onErr);
+            fn();
+          };
+
+          const onErr = (err: Error): void => {
+            finishOnce(() => reject(err));
           };
           socket.once("connect_error", onErr);
 
+          joinTimeoutRef.current = setTimeout(() => {
+            joinTimeoutRef.current = null;
+            finishOnce(() =>
+              reject(
+                new Error(
+                  "Voice server did not respond in time. Set NEXT_PUBLIC_WS_URL (or NEXT_PUBLIC_API_URL) so Socket.IO reaches the same host as Nest.",
+                ),
+              ),
+            );
+          }, VOICE_JOIN_TIMEOUT_MS);
+
           const runJoin = (): void => {
             socket.emit("voice_join", { incidentId: rid }, (ack: VoiceJoinAck) => {
-              socket.off("connect_error", onErr);
-              clearConnectWait();
+              if (settled) return;
               if (disposed) {
-                resolve();
+                finishOnce(() => resolve());
                 return;
               }
               if (!ack?.ok) {
                 setError(ack?.error ?? "voice_join rejected");
                 setStatus("error");
-                reject(new Error(ack?.error ?? "voice_join rejected"));
+                finishOnce(() => reject(new Error(ack?.error ?? "voice_join rejected")));
                 return;
               }
               if ((ack.peersAlreadyPresent ?? 0) > 0) {
                 void createAndSendOffer();
+              } else if (!disposed) {
+                setStatus("standby");
               }
-              resolve();
+              finishOnce(() => resolve());
             });
           };
 
@@ -273,6 +309,7 @@ export function useVoiceIncidentCall(opts: {
           }
         });
       } catch (e) {
+        clearJoinTimer();
         if (!disposed) {
           setError(e instanceof Error ? e.message : "Voice socket failed");
           setStatus("error");
@@ -284,6 +321,10 @@ export function useVoiceIncidentCall(opts: {
 
     return () => {
       disposed = true;
+      if (joinTimeoutRef.current != null) {
+        clearTimeout(joinTimeoutRef.current);
+        joinTimeoutRef.current = null;
+      }
       if (pendingConnectJoinRef.current) {
         socket.off("connect", pendingConnectJoinRef.current);
         pendingConnectJoinRef.current = null;

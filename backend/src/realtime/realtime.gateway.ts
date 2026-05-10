@@ -113,6 +113,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const before = await this.server.in(room).fetchSockets();
     const peersAlreadyPresent = before.filter((s) => s.id !== client.id).length;
     await client.join(room);
+    if (!OPS_ROLES.has(user.role)) {
+      this.server.to('ops').emit('voice_incident_ring', {
+        incidentId,
+        reporterId: user.sub,
+        at: new Date().toISOString(),
+      });
+    }
     client.to(room).emit('voice_peer_joined', {
       incidentId,
       userId: user.sub,
