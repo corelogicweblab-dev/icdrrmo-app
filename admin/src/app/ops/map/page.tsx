@@ -122,7 +122,7 @@ export default function OpsMapPage(): ReactElement {
           </div>
           <Layers className="h-5 w-5 text-zinc-600" aria-hidden />
         </div>
-        <div className="min-h-0 w-full flex-1">
+        <div className="flex h-full min-h-[420px] w-full flex-1 flex-col">
           <SituationMap incidentPins={mapPins} layerToggles={layers} />
         </div>
       </section>

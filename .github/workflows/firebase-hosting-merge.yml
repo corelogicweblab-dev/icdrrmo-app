@@ -96,3 +96,7 @@ jobs:
             --project icdrrmo-b204e \
             --non-interactive \
             --force
+
+      - name: Mobile release dart-define note
+        run: |
+          echo "::notice::Flutter production builds should set ICDRRMO_WEB_URL=https://icdrrmo-b204e.web.app (or your custom domain) so Responder/Operator open the correct web console. See mobile/scripts/build_release.ps1."

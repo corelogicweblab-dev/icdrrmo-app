@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -20,4 +20,14 @@ export class RegisterDto {
   @MaxLength(32)
   @Matches(/^\+?[0-9]{8,15}$/, { message: 'phone must be E.164-like digits' })
   phone!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  barangayId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  streetPurok?: string | null;
 }

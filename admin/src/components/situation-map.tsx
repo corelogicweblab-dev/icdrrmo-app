@@ -153,7 +153,7 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     ) : null;
 
   return (
-    <div className="relative h-[min(52vh,560px)] min-h-[320px] w-full">
+    <div className="relative h-full min-h-[min(52vh,560px)] min-h-[320px] w-full flex-1">
       <div ref={containerRef} className="absolute inset-0 min-h-[280px]" />
       {gisHud}
       {pins.length > 0 ? (

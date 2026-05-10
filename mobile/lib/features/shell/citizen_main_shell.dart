@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/bootstrap/global_store.dart';
 import '../../../core/navigation/routes.dart';
-import '../../auth/data/auth_repository.dart';
+import '../auth/data/auth_repository.dart';
 import '../alerts/alerts_hub_page.dart';
 import '../home/home_dashboard_page.dart';
 import '../history/incident_archive_page.dart';

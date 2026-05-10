@@ -2,7 +2,6 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   language:
-    strict-cascade: true
     strict-inference: true
     strict-raw-types: true
 

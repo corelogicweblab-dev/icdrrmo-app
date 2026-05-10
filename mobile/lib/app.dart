@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'core/bootstrap/global_store.dart';
+import 'core/navigation/app_navigator_key.dart';
 import 'core/navigation/routes.dart';
 import 'features/auth/presentation/forgot_password_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
+import 'features/auth/presentation/role_gateway_screen.dart';
 import 'features/communications/emergency_communications_screen.dart';
 import 'features/contacts/emergency_contacts_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
@@ -21,12 +23,28 @@ class IcdrrmoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'ICDRRMO Citizen',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB91C1C), brightness: Brightness.dark),
         useMaterial3: true,
+        canvasColor: const Color(0xFF18181b),
+        dropdownMenuTheme: DropdownMenuThemeData(
+          menuStyle: MenuStyle(
+            backgroundColor: WidgetStateProperty.all(const Color(0xFF27272a)),
+          ),
+        ),
+        popupMenuTheme: const PopupMenuThemeData(
+          color: Color(0xFF27272a),
+          surfaceTintColor: Colors.transparent,
+        ),
+        menuTheme: MenuThemeData(
+          style: MenuStyle(
+            backgroundColor: WidgetStateProperty.all(const Color(0xFF27272a)),
+          ),
+        ),
       ),
       builder: (context, child) {
         final store = gCitizenStore;
@@ -64,6 +82,7 @@ class IcdrrmoApp extends StatelessWidget {
       routes: {
         Routes.splash: (_) => const SplashScreen(),
         Routes.onboarding: (_) => const OnboardingScreen(),
+        Routes.gateway: (_) => const RoleGatewayScreen(),
         Routes.login: (_) => const LoginScreen(),
         Routes.register: (_) => const RegisterScreen(),
         Routes.forgotPassword: (_) => const ForgotPasswordScreen(),

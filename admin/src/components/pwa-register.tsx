@@ -5,7 +5,7 @@ import { useEffect } from "react";
 /**
  * PWA service worker — production only.
  * In `next dev`, we **unregister** any existing workers so the browser cannot keep serving
- * stale dashboard chunks (common cause of “walang nagbabago” / old MVP copy).
+ * stale dashboard chunks (a common reason the UI “never updates” during development).
  */
 export function PwaRegister(): null {
   useEffect(() => {

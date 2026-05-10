@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 /// Point to your API (through Nginx in production).
 ///
 /// Overrides: `--dart-define=API_BASE=...` and `--dart-define=WS_BASE=...`.
+/// Desk browser URLs: `web_portal_config.dart` / dart-define `ICDRRMO_WEB_URL`.
 /// When unset: **web/desktop** uses `localhost`; **mobile** defaults to the
 /// Android emulator loopback (`10.0.2.2`).
 abstract final class ApiConfig {

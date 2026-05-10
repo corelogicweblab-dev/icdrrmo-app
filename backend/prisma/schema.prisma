@@ -160,6 +160,7 @@ model UserProfile {
   gender             Gender    @default(UNSPECIFIED)
   birthday           DateTime? @db.Date
   address            String?
+  streetPurok        String?   @map("street_purok")
   barangayId         String?   @map("barangay_id")
   availabilityStatus ProfileAvailabilityStatus @default(ACTIVE) @map("availability_status")
   bloodType          BloodType @default(UNKNOWN) @map("blood_type")

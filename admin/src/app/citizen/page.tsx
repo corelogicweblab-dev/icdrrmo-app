@@ -14,6 +14,8 @@ import {
   UserPlus,
 } from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
+import { PasswordInput } from "@/components/password-input";
+import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
@@ -56,12 +58,24 @@ type CitizenMe = {
   profile: null | {
     fullName: string;
     barangayId: string | null;
+    streetPurok: string | null;
+    address: string | null;
     bloodType: string;
     allergies: string | null;
     medicalConditions: string | null;
     availabilityStatus: string;
     barangay: { name: string } | null;
   };
+};
+
+type PublicBarangay = { id: string; name: string; code: string };
+
+type SosPanelState = {
+  incidentId: string;
+  deduplicated: boolean;
+  userLat: number;
+  userLon: number;
+  emergencyLabel: string;
 };
 
 export default function CitizenPage(): ReactElement {
@@ -72,6 +86,9 @@ export default function CitizenPage(): ReactElement {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("+639");
+  const [registerBarangayId, setRegisterBarangayId] = useState("");
+  const [registerStreetPurok, setRegisterStreetPurok] = useState("");
+  const [registerBarangays, setRegisterBarangays] = useState<PublicBarangay[]>([]);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -81,7 +98,7 @@ export default function CitizenPage(): ReactElement {
   const [geoBusy, setGeoBusy] = useState(false);
   const [kind, setKind] = useState<(typeof SOS_TYPES)[number]["id"]>("MEDICAL_EMERGENCY");
   const [sosBusy, setSosBusy] = useState(false);
-  const [sosResult, setSosResult] = useState<string | null>(null);
+  const [sosPanel, setSosPanel] = useState<SosPanelState | null>(null);
 
   const [me, setMe] = useState<CitizenMe | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -90,6 +107,29 @@ export default function CitizenPage(): ReactElement {
   useEffect(() => {
     setTokens(loadTokens());
   }, []);
+
+  useEffect(() => {
+    if (mode !== "register") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/barangays/public`);
+        const j = (await res.json()) as unknown;
+        if (cancelled || !Array.isArray(j)) return;
+        setRegisterBarangays(
+          j.filter((x): x is PublicBarangay => {
+            const o = x as Record<string, unknown>;
+            return typeof o?.id === "string" && typeof o?.name === "string";
+          }),
+        );
+      } catch {
+        if (!cancelled) setRegisterBarangays([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
 
   useEffect(() => {
     const t = tokens?.accessToken;
@@ -109,10 +149,10 @@ export default function CitizenPage(): ReactElement {
         if (!cancelled) {
           const hint =
             e instanceof OpsApiError && e.status === 404
-              ? " (API path not found — set NEXT_PUBLIC_API_URL sa build para sa tamang Nest server.)"
+              ? " (API path not found — set NEXT_PUBLIC_API_URL at build time to your Nest server.)"
               : "";
           setProfileErr(
-            e instanceof OpsApiError ? `${e.message}${hint}` : "Hindi ma-load ang profile. Suriin ang API URL.",
+            e instanceof OpsApiError ? `${e.message}${hint}` : "Could not load profile. Check the API URL.",
           );
           setMe(null);
         }
@@ -165,7 +205,14 @@ export default function CitizenPage(): ReactElement {
       const res = await fetch(`${getApiBaseUrl()}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, fullName, phone: phone.replace(/\s/g, "") }),
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          phone: phone.replace(/\s/g, ""),
+          ...(registerBarangayId ? { barangayId: registerBarangayId } : {}),
+          ...(registerStreetPurok.trim() ? { streetPurok: registerStreetPurok.trim() } : {}),
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as Partial<Tokens> & { message?: string | string[] };
       if (!res.ok) {
@@ -221,7 +268,7 @@ export default function CitizenPage(): ReactElement {
     }
     if (!tokens) return;
     setSosBusy(true);
-    setSosResult(null);
+    setSosPanel(null);
     setMsg(null);
     try {
       const res = await fetch(`${getApiBaseUrl()}/incidents/sos`, {
@@ -249,11 +296,14 @@ export default function CitizenPage(): ReactElement {
         return;
       }
       const id = body.incidentId ?? "—";
-      setSosResult(
-        body.deduplicated
-          ? `Linked to open report ${id} (deduplicated).`
-          : `Emergency reported. Reference ${id}. ICDRRMO ops has been notified in realtime.`,
-      );
+      const emergencyLabel = SOS_TYPES.find((x) => x.id === kind)?.label ?? kind;
+      setSosPanel({
+        incidentId: id,
+        deduplicated: !!body.deduplicated,
+        userLat: lat,
+        userLon: lon,
+        emergencyLabel,
+      });
     } catch {
       setMsg("Could not deliver SOS — verify API connectivity.");
     } finally {
@@ -264,7 +314,7 @@ export default function CitizenPage(): ReactElement {
   function logout(): void {
     localStorage.removeItem(STORAGE);
     setTokens(null);
-    setSosResult(null);
+    setSosPanel(null);
     setMsg(null);
     setLat(null);
     setLon(null);
@@ -366,13 +416,12 @@ export default function CitizenPage(): ReactElement {
                   />
                 </Field>
                 <Field label="Password">
-                  <input
+                  <PasswordInput
                     required
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                    inputClassName="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   />
                 </Field>
                 <button
@@ -402,6 +451,28 @@ export default function CitizenPage(): ReactElement {
                     className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   />
                 </Field>
+                <Field label="Barangay">
+                  <select
+                    value={registerBarangayId}
+                    onChange={(e) => setRegisterBarangayId(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                  >
+                    <option value="">— Select (optional) —</option>
+                    {registerBarangays.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Street / purok (optional)">
+                  <input
+                    value={registerStreetPurok}
+                    onChange={(e) => setRegisterStreetPurok(e.target.value)}
+                    placeholder="e.g. Purok 3, Malamawi Road"
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
+                  />
+                </Field>
                 <Field label="Email">
                   <input
                     required
@@ -412,13 +483,12 @@ export default function CitizenPage(): ReactElement {
                   />
                 </Field>
                 <Field label="Password (min 12 characters)">
-                  <input
+                  <PasswordInput
                     required
-                    type="password"
                     minLength={12}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                    inputClassName="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   />
                 </Field>
                 <button
@@ -450,7 +520,7 @@ export default function CitizenPage(): ReactElement {
                     Account &amp; medical
                   </p>
                   <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
-                    Dito mo i-edit ang pangalan, barangay, dugo, allergy, at evacuation centers na malapit sa&apos;yo.
+                    Edit name, barangay, blood type, allergies, and nearby evacuation centers.
                   </p>
                 </div>
                 <UserCircle className="h-8 w-8 shrink-0 text-zinc-600" aria-hidden />
@@ -459,58 +529,82 @@ export default function CitizenPage(): ReactElement {
               {profileLoading ? (
                 <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Kinukuha ang profile…
+                  Loading profile…
                 </div>
               ) : profileErr ? (
                 <p className="mt-3 text-xs text-rose-300/95 leading-relaxed">{profileErr}</p>
-              ) : me?.profile ? (
-                <dl className="mt-4 grid gap-2 text-xs text-zinc-300">
-                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                    <dt className="text-zinc-500">Pangalan</dt>
-                    <dd className="font-medium text-white text-right">{me.profile.fullName}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                    <dt className="text-zinc-500">Barangay</dt>
-                    <dd className="text-right">{me.profile.barangay?.name ?? "— (i-set sa profile)"}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                    <dt className="text-zinc-500">Phone</dt>
-                    <dd className="font-mono text-right">{me.phone ?? "—"}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                    <dt className="text-zinc-500">Blood type</dt>
-                    <dd className="text-right">{me.profile.bloodType.replace(/_/g, " ")}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3 pb-1">
-                    <dt className="text-zinc-500">Status</dt>
-                    <dd className="text-right text-emerald-200/90">{me.profile.availabilityStatus}</dd>
-                  </div>
-                  {(me.profile.allergies || me.profile.medicalConditions) && (
-                    <div className="rounded-lg bg-black/30 p-2.5 text-[11px] text-zinc-400 leading-snug">
-                      {me.profile.allergies ? (
-                        <p>
-                          <span className="text-zinc-500">Allergies: </span>
-                          {me.profile.allergies}
-                        </p>
-                      ) : null}
-                      {me.profile.medicalConditions ? (
-                        <p className={me.profile.allergies ? "mt-1.5" : ""}>
-                          <span className="text-zinc-500">Medical: </span>
-                          {me.profile.medicalConditions}
-                        </p>
-                      ) : null}
+              ) : me ? (
+                <>
+                  <dl className="mt-4 grid gap-2 text-xs text-zinc-300">
+                    <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                      <dt className="text-zinc-500">Email</dt>
+                      <dd className="font-mono text-right text-zinc-200">{me.email}</dd>
                     </div>
+                    <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                      <dt className="text-zinc-500">Phone</dt>
+                      <dd className="font-mono text-right">{me.phone ?? "—"}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3 pb-1">
+                      <dt className="text-zinc-500">Role</dt>
+                      <dd className="text-right text-zinc-400">{me.role}</dd>
+                    </div>
+                  </dl>
+                  {me.profile ? (
+                    <dl className="mt-4 grid gap-2 border-t border-white/[0.06] pt-4 text-xs text-zinc-300">
+                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                        <dt className="text-zinc-500">Full name</dt>
+                        <dd className="font-medium text-white text-right">{me.profile.fullName}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                        <dt className="text-zinc-500">Barangay</dt>
+                        <dd className="text-right">{me.profile.barangay?.name ?? "— (set on profile)"}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                        <dt className="text-zinc-500">Street / purok</dt>
+                        <dd className="text-right text-zinc-200">
+                          {me.profile.streetPurok?.trim() ? me.profile.streetPurok : "—"}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                        <dt className="text-zinc-500">Blood type</dt>
+                        <dd className="text-right">{me.profile.bloodType.replace(/_/g, " ")}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3 pb-1">
+                        <dt className="text-zinc-500">Status</dt>
+                        <dd className="text-right text-emerald-200/90">{me.profile.availabilityStatus}</dd>
+                      </div>
+                      {(me.profile.allergies || me.profile.medicalConditions) && (
+                        <div className="rounded-lg bg-black/30 p-2.5 text-[11px] text-zinc-400 leading-snug">
+                          {me.profile.allergies ? (
+                            <p>
+                              <span className="text-zinc-500">Allergies: </span>
+                              {me.profile.allergies}
+                            </p>
+                          ) : null}
+                          {me.profile.medicalConditions ? (
+                            <p className={me.profile.allergies ? "mt-1.5" : ""}>
+                              <span className="text-zinc-500">Medical: </span>
+                              {me.profile.medicalConditions}
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    </dl>
+                  ) : (
+                    <p className="mt-3 text-xs text-amber-200/90 leading-relaxed">
+                      No profile record in the database — open the profile page to complete details.
+                    </p>
                   )}
-                </dl>
+                </>
               ) : (
-                <p className="mt-3 text-xs text-zinc-500">Walang profile record.</p>
+                <p className="mt-3 text-xs text-zinc-500">Could not load account.</p>
               )}
 
               <Link
                 href="/citizen/profile"
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-900/35 transition-colors"
               >
-                Buksan ang buong profile &amp; evacuation
+                Open full profile &amp; evacuation
                 <ChevronRight className="h-4 w-4" aria-hidden />
               </Link>
             </div>
@@ -581,16 +675,22 @@ export default function CitizenPage(): ReactElement {
               </div>
             </form>
 
-            {sosResult ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-4 py-4 text-center text-sm text-emerald-100">
-                {sosResult}
+            {sosPanel ? (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-4 py-4 text-sm text-emerald-100">
+                <CitizenSosRouteCard
+                  incidentId={sosPanel.incidentId}
+                  deduplicated={sosPanel.deduplicated}
+                  userLat={sosPanel.userLat}
+                  userLon={sosPanel.userLon}
+                  emergencyLabel={sosPanel.emergencyLabel}
+                />
               </div>
             ) : null}
 
             <p className="text-center text-[11px] leading-relaxed text-zinc-600">
-              ICDRRMO operations staff see new incidents instantly on the{" "}
-              <Link href="/ops" className="text-rose-400 underline-offset-4 hover:underline">
-                Operation Center
+              ICDRRMO ops sees new incidents immediately; the desk is at{" "}
+              <Link href="/signin/operator" className="text-rose-400 underline-offset-4 hover:underline">
+                operator sign-in
               </Link>
               .
             </p>

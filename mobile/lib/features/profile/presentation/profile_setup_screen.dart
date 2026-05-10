@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,6 +6,20 @@ import 'package:intl/intl.dart';
 
 import '../../../core/bootstrap/global_store.dart';
 import '../../../core/navigation/routes.dart';
+import '../../../core/network/dio_provider.dart';
+import '../../auth/data/barangays_repository.dart';
+
+const _bloodTypeValues = <String>[
+  'UNKNOWN',
+  'A_POS',
+  'A_NEG',
+  'B_POS',
+  'B_NEG',
+  'O_POS',
+  'O_NEG',
+  'AB_POS',
+  'AB_NEG',
+];
 
 /// Medical readiness profile — required before home dashboard per spec.
 class ProfileSetupScreen extends ConsumerStatefulWidget {
@@ -17,7 +32,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final fullName = TextEditingController();
   final address = TextEditingController();
-  final barangay = TextEditingController();
+  final streetPurok = TextEditingController();
   final allergies = TextEditingController();
   final medical = TextEditingController();
   final disabilities = TextEditingController();
@@ -34,12 +49,48 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   String? idPath;
   String? photoPath;
   bool saving = false;
+  List<PublicBarangay> barangays = [];
+  String barangayId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBarangays());
+  }
+
+  Future<void> _loadBarangays() async {
+    try {
+      final list = await ref.read(barangaysRepositoryProvider).fetchPublic();
+      if (mounted) setState(() => barangays = list);
+    } catch (_) {
+      if (mounted) setState(() => barangays = []);
+    }
+  }
+
+  String? _barangayNameForId(String id) {
+    for (final b in barangays) {
+      if (b.id == id) return b.name;
+    }
+    return null;
+  }
+
+  String _emergencyNotesForApi() {
+    final parts = <String>[
+      if (disabilities.text.trim().isNotEmpty) 'Disabilities: ${disabilities.text.trim()}',
+      if (maintenanceMeds.text.trim().isNotEmpty) 'Maintenance meds: ${maintenanceMeds.text.trim()}',
+      'Senior: $senior, Pregnant: $pregnant',
+      'EC1: ${ec1Name.text.trim()} ${ec1Phone.text.trim()}',
+      if (ec2Name.text.trim().isNotEmpty) 'EC2: ${ec2Name.text.trim()} ${ec2Phone.text.trim()}',
+    ];
+    final s = parts.join('\n');
+    return s.length > 3800 ? s.substring(0, 3800) : s;
+  }
 
   @override
   void dispose() {
     fullName.dispose();
     address.dispose();
-    barangay.dispose();
+    streetPurok.dispose();
     allergies.dispose();
     medical.dispose();
     disabilities.dispose();
@@ -69,7 +120,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (fullName.text.trim().isEmpty) 'Full name',
       if (birthday == null) 'Birthday',
       if (address.text.trim().isEmpty) 'Address',
-      if (barangay.text.trim().isEmpty) 'Barangay',
+      if (barangayId.isEmpty) 'Barangay',
       if (allergies.text.trim().isEmpty) 'Allergies',
       if (medical.text.trim().isEmpty) 'Medical conditions',
       if (ec1Name.text.trim().isEmpty || ec1Phone.text.trim().isEmpty) 'Emergency contact 1',
@@ -91,7 +142,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       'birthday': birthday!.toIso8601String().split('T').first,
       'gender': gender,
       'address': address.text.trim(),
-      'barangayId': barangay.text.trim(),
+      'barangayId': barangayId,
+      'barangayName': _barangayNameForId(barangayId),
+      'streetPurok': streetPurok.text.trim(),
       'bloodType': blood,
       'allergies': allergies.text.trim(),
       'medicalConditions': medical.text.trim(),
@@ -107,6 +160,39 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       'seniorCitizen': senior,
       'pregnantIndicator': pregnant,
     });
+
+    try {
+      final dio = ref.read(dioProvider);
+      final notes = _emergencyNotesForApi();
+      await dio.patch<dynamic>(
+        '/users/me',
+        data: <String, dynamic>{
+          'fullName': fullName.text.trim(),
+          'gender': gender,
+          'address': address.text.trim(),
+          'barangayId': barangayId,
+          'streetPurok': streetPurok.text.trim().isEmpty ? null : streetPurok.text.trim(),
+          'bloodType': blood,
+          'allergies': allergies.text.trim(),
+          'medicalConditions': medical.text.trim(),
+          if (notes.isNotEmpty) 'emergencyNotes': notes,
+        },
+      );
+    } on DioException catch (e) {
+      if (mounted) {
+        final msg = e.response?.data?.toString() ?? e.message ?? e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Nai-save locally; API sync: $msg')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Nai-save locally; API sync: $e')),
+        );
+      }
+    }
+
     store.profileComplete = true;
     if (mounted) {
       Navigator.of(context).pushReplacementNamed(Routes.home);
@@ -139,34 +225,51 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             },
           ),
           DropdownButtonFormField<String>(
-            value: gender,
+            key: ValueKey<String>('prof_gender_$gender'),
+            initialValue: gender,
             decoration: const InputDecoration(labelText: 'Gender'),
-            items: const [
+            items: const <DropdownMenuItem<String>>[
               DropdownMenuItem(value: 'UNSPECIFIED', child: Text('Unspecified')),
               DropdownMenuItem(value: 'MALE', child: Text('Male')),
               DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
               DropdownMenuItem(value: 'OTHER', child: Text('Other')),
               DropdownMenuItem(value: 'PREFER_NOT_SAY', child: Text('Prefer not to say')),
             ],
-            onChanged: (v) => setState(() => gender = v ?? 'MALE'),
+            onChanged: (String? v) => setState(() => gender = v ?? 'MALE'),
           ),
           TextField(controller: address, decoration: const InputDecoration(labelText: 'Address *')),
-          TextField(controller: barangay, decoration: const InputDecoration(labelText: 'Barangay *')),
+          DropdownButtonFormField<String?>(
+            key: ValueKey<Object>('prof_bg_${barangayId}_${barangays.length}'),
+            initialValue: barangayId.isEmpty ? null : barangayId,
+            decoration: const InputDecoration(labelText: 'Barangay *'),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('— Select barangay —')),
+              ...barangays.map(
+                (b) => DropdownMenuItem<String?>(value: b.id, child: Text(b.name)),
+              ),
+            ],
+            onChanged: (String? v) => setState(() => barangayId = v ?? ''),
+          ),
+          TextField(
+            controller: streetPurok,
+            decoration: const InputDecoration(
+              labelText: 'Street / purok (optional)',
+              hintText: 'e.g. Purok 3, Malamawi Road',
+            ),
+          ),
           DropdownButtonFormField<String>(
-            value: blood,
+            key: ValueKey<String>('prof_blood_$blood'),
+            initialValue: blood,
             decoration: const InputDecoration(labelText: 'Blood type'),
-            items: const [
-              'UNKNOWN',
-              'A_POS',
-              'A_NEG',
-              'B_POS',
-              'B_NEG',
-              'O_POS',
-              'O_NEG',
-              'AB_POS',
-              'AB_NEG',
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e.replaceAll('_', ' ')))).toList(),
-            onChanged: (v) => setState(() => blood = v ?? 'UNKNOWN'),
+            items: _bloodTypeValues
+                .map(
+                  (String e) => DropdownMenuItem<String>(
+                    value: e,
+                    child: Text(e.replaceAll('_', ' ')),
+                  ),
+                )
+                .toList(),
+            onChanged: (String? v) => setState(() => blood = v ?? 'UNKNOWN'),
           ),
           TextField(controller: allergies, decoration: const InputDecoration(labelText: 'Allergies *')),
           TextField(controller: medical, maxLines: 2, decoration: const InputDecoration(labelText: 'Medical conditions *')),
@@ -180,8 +283,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ListTile(title: const Text('Profile photo *'), subtitle: Text(photoPath ?? 'Not set'), trailing: IconButton(icon: const Icon(Icons.face), onPressed: () => _pick(false))),
           TextField(controller: disabilities, decoration: const InputDecoration(labelText: 'Disabilities (optional)')),
           TextField(controller: maintenanceMeds, decoration: const InputDecoration(labelText: 'Maintenance medicines')),
-          CheckboxListTile(value: senior, title: const Text('Senior citizen'), onChanged: (v) => setState(() => senior = v ?? false)),
-          CheckboxListTile(value: pregnant, title: const Text('Pregnant indicator'), onChanged: (v) => setState(() => pregnant = v ?? false)),
+          CheckboxListTile(
+            value: senior,
+            title: const Text('Senior citizen'),
+            onChanged: (bool? v) => setState(() => senior = v ?? false),
+          ),
+          CheckboxListTile(
+            value: pregnant,
+            title: const Text('Pregnant indicator'),
+            onChanged: (bool? v) => setState(() => pregnant = v ?? false),
+          ),
           const SizedBox(height: 20),
           FilledButton(onPressed: saving ? null : _save, child: Text(saving ? 'Saving…' : 'Complete & enter dashboard')),
         ],

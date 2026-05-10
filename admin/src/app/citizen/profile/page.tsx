@@ -31,6 +31,7 @@ type MeUser = {
     fullName: string;
     barangayId: string | null;
     address: string | null;
+    streetPurok: string | null;
     bloodType: string;
     allergies: string | null;
     medicalConditions: string | null;
@@ -74,6 +75,7 @@ export default function CitizenProfilePage(): ReactElement {
   const [bloodType, setBloodType] = useState("UNKNOWN");
   const [allergies, setAllergies] = useState("");
   const [medicalConditions, setMedicalConditions] = useState("");
+  const [streetPurok, setStreetPurok] = useState("");
 
   const load = useCallback(async () => {
     const t = loadTokens();
@@ -93,6 +95,7 @@ export default function CitizenProfilePage(): ReactElement {
         setBloodType(u.profile.bloodType ?? "UNKNOWN");
         setAllergies(u.profile.allergies ?? "");
         setMedicalConditions(u.profile.medicalConditions ?? "");
+        setStreetPurok(u.profile.streetPurok ?? "");
       }
       const ev = await opsFetchJson<EvacRow[]>(`/evacuation-centers/nearest`, t.accessToken);
       setNearest(Array.isArray(ev) ? ev : []);
@@ -141,6 +144,7 @@ export default function CitizenProfilePage(): ReactElement {
           fullName,
           phone: phone.trim() || null,
           barangayId: barangayId || null,
+          streetPurok: streetPurok.trim() || null,
           bloodType,
           allergies: allergies.trim() || null,
           medicalConditions: medicalConditions.trim() || null,
@@ -214,6 +218,15 @@ export default function CitizenProfilePage(): ReactElement {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="block space-y-1 text-xs">
+                <span className="text-zinc-500">Street / purok</span>
+                <input
+                  value={streetPurok}
+                  onChange={(e) => setStreetPurok(e.target.value)}
+                  placeholder="Hal. Purok 3, Malamawi Road"
+                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2.5 text-sm placeholder:text-zinc-600"
+                />
               </label>
               <label className="block space-y-1 text-xs">
                 <span className="text-zinc-500">Blood type</span>

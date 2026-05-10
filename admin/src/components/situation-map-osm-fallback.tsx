@@ -107,7 +107,7 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
   }, []);
 
   return (
-    <div className="relative flex min-h-[min(52vh,560px)] w-full flex-col">
+    <div className="relative flex h-full min-h-[min(52vh,560px)] min-h-[320px] w-full flex-1 flex-col">
       <div ref={containerRef} className="absolute inset-0 min-h-[280px] z-0" />
       <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-[500] flex flex-wrap items-end justify-between gap-2">
         <div className="max-w-[min(100%,420px)] rounded-lg border border-white/10 bg-black/70 px-2.5 py-2 text-[10px] leading-snug text-zinc-200 backdrop-blur-sm">

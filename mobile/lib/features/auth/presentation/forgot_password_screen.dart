@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/navigation/routes.dart';
+
 /// Password-reset API pending — ICS operations desk fallback.
 class ForgotPasswordScreen extends StatelessWidget {
   const ForgotPasswordScreen({super.key});
@@ -7,7 +9,13 @@ class ForgotPasswordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Forgot password')),
+      appBar: AppBar(
+        title: const Text('Forgot password'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pushReplacementNamed(Routes.gateway),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

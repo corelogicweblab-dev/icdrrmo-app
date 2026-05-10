@@ -4,6 +4,18 @@ import 'package:flutter/material.dart';
 import '../../core/bootstrap/global_store.dart';
 import '../../core/firestore/citizen_firestore_sync.dart';
 
+String _localBarangayLine(Map<String, dynamic> m) {
+  final name = '${m['barangayName'] ?? ''}'.trim();
+  if (name.isNotEmpty) return name;
+  final id = '${m['barangayId'] ?? ''}'.trim();
+  return id.isEmpty ? '—' : id;
+}
+
+String _localStreetLine(Map<String, dynamic> m) {
+  final s = '${m['streetPurok'] ?? ''}'.trim();
+  return s.isEmpty ? '—' : s;
+}
+
 /// Profile summary: local Hive + live Firestore row when Firebase is configured and signed in.
 class ProfileOverviewTab extends StatelessWidget {
   const ProfileOverviewTab({super.key, required this.onOpenSettings});
@@ -12,7 +24,8 @@ class ProfileOverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final m = gCitizenStore?.profileMap() ?? {};
+    final Map<String, dynamic> m =
+        Map<String, dynamic>.from(gCitizenStore?.profileMap() ?? const <String, dynamic>{});
     final ref = CitizenFirestoreSync.profileDocRef();
 
     return ListView(
@@ -21,7 +34,10 @@ class ProfileOverviewTab extends StatelessWidget {
         if (ref != null)
           StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: ref.snapshots(),
-            builder: (context, snap) {
+            builder: (
+              BuildContext context,
+              AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snap,
+            ) {
               if (snap.hasError) {
                 return ListTile(
                   title: const Text('Cloud profile'),
@@ -40,6 +56,8 @@ class ProfileOverviewTab extends StatelessWidget {
               if (prof is Map) {
                 p = Map<String, dynamic>.from(prof);
               }
+              final streetRaw = p?['streetPurok']?.toString().trim() ?? '';
+              final streetCloud = streetRaw.isEmpty ? '—' : streetRaw;
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
@@ -51,6 +69,7 @@ class ProfileOverviewTab extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text('Name: ${p?['fullName'] ?? d['email'] ?? '—'}', style: const TextStyle(fontSize: 13)),
                       Text('Barangay: ${p?['barangayName'] ?? p?['barangayId'] ?? '—'}', style: const TextStyle(fontSize: 13)),
+                      Text('Street / purok: $streetCloud', style: const TextStyle(fontSize: 13)),
                       Text('Blood: ${p?['bloodType'] ?? '—'}', style: const TextStyle(fontSize: 13)),
                       Text('Status: ${p?['availabilityStatus'] ?? '—'}', style: const TextStyle(fontSize: 13)),
                     ],
@@ -73,7 +92,14 @@ class ProfileOverviewTab extends StatelessWidget {
         Text('On this device', style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
         ListTile(title: Text(m['fullName']?.toString() ?? '—'), subtitle: const Text('Full name (local)')),
-        ListTile(title: Text(m['barangayId']?.toString() ?? '—'), subtitle: const Text('Barangay (local)')),
+        ListTile(
+          title: Text(_localBarangayLine(m)),
+          subtitle: const Text('Barangay (local)'),
+        ),
+        ListTile(
+          title: Text(_localStreetLine(m)),
+          subtitle: const Text('Street / purok (local)'),
+        ),
         ListTile(title: Text(m['bloodType']?.toString() ?? '—'), subtitle: const Text('Blood (local)')),
         ElevatedButton.icon(
           icon: const Icon(Icons.settings_outlined),

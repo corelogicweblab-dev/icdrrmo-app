@@ -22,8 +22,8 @@ export default function SigninCitizenPage(): ReactElement {
           Go to citizen portal
         </Link>
         <p className="text-[10px] text-zinc-600 pt-4">
-          <Link href="/signin/admin" className="text-zinc-500 hover:text-zinc-300">
-            Admin / desk
+          <Link href="/signin/operator" className="text-zinc-500 hover:text-zinc-300">
+            Operator / desk
           </Link>
           {" · "}
           <Link href="/signin/responder" className="text-zinc-500 hover:text-zinc-300">

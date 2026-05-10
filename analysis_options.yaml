@@ -1,0 +1,7 @@
+# Monorepo root: the Flutter/Dart package is only under `mobile/`.
+# Run: cd mobile && flutter pub get && flutter analyze
+# Analyzing from this folder without `mobile/pubspec.yaml` as context yields bogus "uri_does_not_exist" errors.
+analyzer:
+  exclude:
+    - admin/**
+    - backend/**

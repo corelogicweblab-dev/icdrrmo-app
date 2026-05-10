@@ -52,7 +52,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign in')),
+      appBar: AppBar(
+        title: const Text('Citizen sign-in'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pushReplacementNamed(Routes.gateway),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [

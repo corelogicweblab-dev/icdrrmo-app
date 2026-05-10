@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   ServiceUnavailableException,
@@ -34,6 +35,14 @@ export class AuthService {
     if (existing) {
       throw new ConflictException('Email or phone already registered');
     }
+    if (dto.barangayId) {
+      const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
+      if (!b) throw new BadRequestException('Invalid barangay');
+    }
+    const street =
+      dto.streetPurok != null && String(dto.streetPurok).trim() !== ''
+        ? String(dto.streetPurok).trim()
+        : undefined;
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const user = await this.prisma.user.create({
       data: {
@@ -45,6 +54,8 @@ export class AuthService {
           create: {
             fullName: dto.fullName,
             setupCompleted: false,
+            ...(dto.barangayId ? { barangayId: dto.barangayId } : {}),
+            ...(street !== undefined ? { streetPurok: street } : {}),
           },
         },
       },

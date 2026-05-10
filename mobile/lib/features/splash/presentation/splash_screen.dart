@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/bootstrap/global_store.dart';
+import '../../../core/navigation/app_navigator_key.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/health/health_check.dart';
 import '../../../core/navigation/routes.dart';
@@ -66,12 +67,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       });
     }
 
-    await Future.delayed(const Duration(milliseconds: 900));
+    await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
     final store = gCitizenStore;
     if (store == null) {
-      Navigator.of(context).pushReplacementNamed(Routes.login);
+      appNavigatorKey.currentState?.pushReplacementNamed(Routes.gateway);
       return;
     }
 
@@ -80,15 +81,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       await ref.read(authRepositoryProvider).syncFirebaseAfterRestore();
     }
 
+    if (!mounted) return;
+
+    final String nextRoute;
     if (!store.onboardingDone) {
-      Navigator.of(context).pushReplacementNamed(Routes.onboarding);
+      nextRoute = Routes.onboarding;
     } else if (!authed) {
-      Navigator.of(context).pushReplacementNamed(Routes.login);
+      nextRoute = Routes.gateway;
     } else if (!store.profileComplete) {
-      Navigator.of(context).pushReplacementNamed(Routes.profileSetup);
+      nextRoute = Routes.profileSetup;
     } else {
-      Navigator.of(context).pushReplacementNamed(Routes.home);
+      nextRoute = Routes.home;
     }
+    appNavigatorKey.currentState?.pushReplacementNamed(nextRoute);
   }
 
   @override
@@ -110,15 +115,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
               children: [
                 const Spacer(),
                 ScaleTransition(
-                  scale: Tween(begin: 0.97, end: 1.03).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      IcdrrmoBranding.logoAsset,
-                      width: 96,
-                      height: 96,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Icon(Icons.shield_rounded, size: 96, color: scheme.primary),
+                  scale: Tween(begin: 0.985, end: 1.015).animate(
+                    CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+                  ),
+                  child: Align(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 88, maxHeight: 88),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            child: Image.asset(
+                              IcdrrmoBranding.logoAsset,
+                              width: 256,
+                              height: 256,
+                              errorBuilder: (_, __, ___) =>
+                                  Icon(Icons.shield_rounded, size: 72, color: scheme.primary),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

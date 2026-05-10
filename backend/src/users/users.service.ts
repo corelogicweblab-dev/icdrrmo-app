@@ -103,6 +103,7 @@ export class UsersService {
             ...(dto.barangayId !== undefined ? { barangayId: dto.barangayId } : {}),
             ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
             ...(dto.address !== undefined ? { address: dto.address } : {}),
+            ...(dto.streetPurok !== undefined ? { streetPurok: dto.streetPurok } : {}),
             ...(dto.bloodType !== undefined ? { bloodType: dto.bloodType } : {}),
             ...(dto.allergies !== undefined ? { allergies: dto.allergies } : {}),
             ...(dto.medicalConditions !== undefined
@@ -309,6 +310,7 @@ export class UsersService {
             ...(dto.barangayId !== undefined ? { barangayId: dto.barangayId } : {}),
             ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
             ...(dto.address !== undefined ? { address: dto.address } : {}),
+            ...(dto.streetPurok !== undefined ? { streetPurok: dto.streetPurok } : {}),
             ...(dto.bloodType !== undefined ? { bloodType: dto.bloodType } : {}),
             ...(dto.allergies !== undefined ? { allergies: dto.allergies } : {}),
             ...(dto.medicalConditions !== undefined

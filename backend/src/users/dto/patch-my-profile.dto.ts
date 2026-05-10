@@ -33,6 +33,11 @@ export class PatchMyProfileDto {
   address?: string | null;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  streetPurok?: string | null;
+
+  @IsOptional()
   @IsEnum(BloodType)
   bloodType?: BloodType;
 

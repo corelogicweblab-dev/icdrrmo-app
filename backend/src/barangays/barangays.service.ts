@@ -11,6 +11,14 @@ export class BarangaysService {
     });
   }
 
+  /** Public list for registration (no secrets). */
+  listPublic() {
+    return this.prisma.barangay.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, code: true },
+    });
+  }
+
   async userCountsByBarangay() {
     const grouped = await this.prisma.userProfile.groupBy({
       by: ['barangayId'],

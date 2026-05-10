@@ -8,6 +8,7 @@ import {
   Battery,
   Binoculars,
   Camera,
+  Copy,
   Crosshair,
   Gauge,
   History,
@@ -22,6 +23,7 @@ import { TARGET_INCIDENT_LIFECYCLE } from "@/components/ops/ops-nav";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { formatOpsSync, incidentBorderClass, statusBadgeClass } from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
+import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -90,6 +92,14 @@ export default function OpsIncidentsPage(): ReactElement {
       setSelectedId(queue[0].id);
     }
   }, [queue, selectedId]);
+
+  /** Deep link: /ops/incidents?focus=<incidentId> (notifications, shared links). */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("focus");
+    if (!id) return;
+    if (queue.some((q) => q.id === id)) setSelectedId(id);
+  }, [queue]);
 
   const selected = useMemo(() => queue.find((q) => q.id === selectedId) ?? null, [queue, selectedId]);
 
@@ -183,6 +193,43 @@ export default function OpsIncidentsPage(): ReactElement {
     refreshQueue,
   ]);
 
+  const copyDispatchBrief = useCallback(async () => {
+    if (!selected) return;
+    setPatchError(null);
+    const lat = toNum(selected.latitude);
+    const lng = toNum(selected.longitude);
+    const gmaps =
+      lat != null && lng != null
+        ? `https://www.google.com/maps/dir/${ISABELA_EOC_LAT},${ISABELA_EOC_LNG}/${lat},${lng}`
+        : "";
+    const waze =
+      lat != null && lng != null
+        ? `https://waze.com/ul?ll=${encodeURIComponent(String(lat))},${encodeURIComponent(String(lng))}&navigate=yes`
+        : "";
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const assignEmail =
+      selected.assigned?.user?.email ??
+      (assignDraft ? responders.find((r) => r.id === assignDraft)?.email : undefined);
+    const text = [
+      "ICDRRMO DISPATCH BRIEF",
+      `Incident: ${selected.id}`,
+      `Type: ${selected.type}`,
+      `Status: ${selected.status}`,
+      `Reporter: ${selected.reporter?.email ?? "—"}`,
+      `Phone: ${selected.reporter?.phone ?? "—"}`,
+      `GPS: ${lat ?? "—"}, ${lng ?? "—"}`,
+      `Responder (assignment draft): ${assignEmail ?? (assignDraft || "unassigned")}`,
+      `Google Maps (EOC→scene): ${gmaps || "—"}`,
+      `Waze (navigate): ${waze || "—"}`,
+      `Ops deep link: ${origin}/ops/incidents?focus=${encodeURIComponent(selected.id)}`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      setPatchError("Could not copy to clipboard (HTTPS / permission).");
+    }
+  }, [selected, assignDraft, responders]);
+
   const patchIncident = useCallback(
     async (body: Record<string, unknown>): Promise<boolean> => {
       if (!tokens?.accessToken || !selected) return false;
@@ -231,10 +278,17 @@ export default function OpsIncidentsPage(): ReactElement {
           <ul className="scroll-ops max-h-[520px] overflow-auto space-y-2 -m-1 p-1">
             {queue.map((row: OpsIncident) => (
               <li key={row.id}>
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedId(row.id)}
-                  className={`w-full text-left rounded-xl border px-3 py-3 transition border-l-[3px] ${
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter" || ev.key === " ") {
+                      ev.preventDefault();
+                      setSelectedId(row.id);
+                    }
+                  }}
+                  className={`w-full text-left rounded-xl border px-3 py-3 transition border-l-[3px] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 ${
                     selectedId === row.id
                       ? "border-white/15 bg-white/[0.06] ring-1 ring-rose-500/30"
                       : "border-white/[0.06] bg-black/25 hover:border-white/10"
@@ -249,7 +303,10 @@ export default function OpsIncidentsPage(): ReactElement {
                     </span>
                   </div>
                   <p className="mt-1 font-mono text-[10px] text-zinc-600 truncate">{row.id}</p>
-                </button>
+                  <span className="mt-2 inline-flex rounded border border-rose-500/35 bg-rose-950/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200 pointer-events-none">
+                    Open detail
+                  </span>
+                </div>
               </li>
             ))}
             {queue.length === 0 ? (
@@ -417,6 +474,19 @@ export default function OpsIncidentsPage(): ReactElement {
                     <p className="text-xs text-zinc-500">{selected.reporter?.phone ?? "No phone on file"}</p>
                   </div>
                 </div>
+                {toNum(selected.latitude) != null && toNum(selected.longitude) != null ? (
+                  <CitizenSosRouteCard
+                    incidentId={selected.id}
+                    deduplicated={false}
+                    userLat={toNum(selected.latitude)!}
+                    userLon={toNum(selected.longitude)!}
+                    emergencyLabel={`${selected.type.replace(/_/g, " ")}${selected.title ? ` · ${selected.title}` : ""}`}
+                  />
+                ) : (
+                  <p className="text-xs text-zinc-500 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                    No GPS fix on this incident — EOC routing unavailable.
+                  </p>
+                )}
                 <div className="rounded-lg border border-dashed border-white/10 p-3 text-[11px] text-zinc-500">
                   <Binoculars className="inline h-4 w-4 mr-1 text-zinc-600 align-text-bottom" aria-hidden />
                   Evidence viewer: attach photos / video / documents (Media & Evidence panel). Document chain via audit
@@ -504,6 +574,15 @@ export default function OpsIncidentsPage(): ReactElement {
                     Queue outbound SMS (<code className="text-[10px] font-mono">sms-retry</code> worker)
                   </label>
                   <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={!selected}
+                      onClick={() => void copyDispatchBrief()}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-950/30 px-3 py-2 text-[11px] font-medium text-sky-100 hover:bg-sky-950/50 disabled:opacity-40"
+                    >
+                      <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Copy dispatch brief
+                    </button>
                     <button
                       type="button"
                       disabled={patchLoading || !selected || statusDraft === selected.status.toUpperCase()}

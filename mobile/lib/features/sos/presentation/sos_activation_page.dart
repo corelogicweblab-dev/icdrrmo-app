@@ -70,10 +70,14 @@ class _SosActivationPageState extends ConsumerState<SosActivationPage> {
     Position? pos;
     try {
       pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: (gCitizenStore?.lowBandwidthMode ?? false) ? LocationAccuracy.medium : LocationAccuracy.high,
+        locationSettings: LocationSettings(
+          accuracy: (gCitizenStore?.lowBandwidthMode ?? false)
+              ? LocationAccuracy.medium
+              : LocationAccuracy.high,
+        ),
       );
     } catch (_) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unable to capture GPS fix — SOS blocked until satellites lock.')),
         );
@@ -138,6 +142,8 @@ class _SosActivationPageState extends ConsumerState<SosActivationPage> {
 
     if (!mounted) return;
     setState(() => sending = false);
+
+    if (!context.mounted) return;
 
     if (incidentId != null) {
       Navigator.of(context).pushReplacementNamed(Routes.track, arguments: incidentId);

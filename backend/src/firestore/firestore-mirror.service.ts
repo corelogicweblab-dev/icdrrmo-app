@@ -51,6 +51,7 @@ export class FirestoreMirrorService {
             gender: p.gender,
             birthday: p.birthday?.toISOString?.() ?? null,
             address: p.address,
+            streetPurok: p.streetPurok,
             barangayId: p.barangayId,
             barangayName: p.barangay?.name ?? null,
             barangayCode: p.barangay?.code ?? null,

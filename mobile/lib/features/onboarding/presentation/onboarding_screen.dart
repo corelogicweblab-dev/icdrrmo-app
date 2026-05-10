@@ -71,7 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       store.smsPermissionFlag = _smsGranted;
       store.backgroundLocationFlag = _bgLoc;
     }
-    if (mounted) Navigator.of(context).pushReplacementNamed(Routes.login);
+    if (mounted) Navigator.of(context).pushReplacementNamed(Routes.gateway);
   }
 
   @override

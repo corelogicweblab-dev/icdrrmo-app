@@ -20,10 +20,25 @@ final class AuthRepository {
     required String password,
     required String fullName,
     required String phone,
+    String? barangayId,
+    String? streetPurok,
   }) async {
+    final body = <String, dynamic>{
+      'email': email,
+      'password': password,
+      'fullName': fullName,
+      'phone': phone,
+    };
+    if (barangayId != null && barangayId.isNotEmpty) {
+      body['barangayId'] = barangayId;
+    }
+    final sp = streetPurok?.trim();
+    if (sp != null && sp.isNotEmpty) {
+      body['streetPurok'] = sp;
+    }
     final res = await _dio.post<Map<String, dynamic>>(
       '/auth/register',
-      data: {'email': email, 'password': password, 'fullName': fullName, 'phone': phone},
+      data: body,
     );
     final data = res.data;
     final access = data?['accessToken'] as String?;

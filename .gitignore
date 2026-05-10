@@ -22,6 +22,9 @@ coverage/
 # Prisma (generated client lives under node_modules; keep local artifacts out)
 backend/generated/
 
+# Local Flutter SDK checkouts (never commit)
+admin/src/flutter/
+
 # Flutter / Dart
 mobile/.dart_tool/
 mobile/build/
