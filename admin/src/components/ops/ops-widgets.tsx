@@ -80,6 +80,7 @@ export function OpsKpiCard(props: {
 
 /** Section card for secondary panels */
 export function OpsPanelCard(props: {
+  id?: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -87,6 +88,7 @@ export function OpsPanelCard(props: {
 }): ReactElement {
   return (
     <section
+      id={props.id}
       className={`rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel overflow-hidden ${props.className ?? ""}`}
     >
       <div className="border-b border-white/[0.06] px-4 py-3.5 bg-black/25">

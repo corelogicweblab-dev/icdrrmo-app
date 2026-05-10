@@ -3,6 +3,7 @@
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ChevronRight,
@@ -16,7 +17,8 @@ import {
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { PasswordInput } from "@/components/password-input";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
-import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
+import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
+import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string; refreshToken?: string };
@@ -79,6 +81,7 @@ type SosPanelState = {
 };
 
 export default function CitizenPage(): ReactElement {
+  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [tokens, setTokens] = useState<Tokens | null>(null);
 
@@ -260,17 +263,46 @@ export default function CitizenPage(): ReactElement {
     );
   }, []);
 
+  const acquireFreshPosition = useCallback((): Promise<{ lat: number; lon: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation is not available in this browser."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          resolve({
+            lat: Number(p.coords.latitude.toFixed(7)),
+            lon: Number(p.coords.longitude.toFixed(7)),
+          });
+        },
+        () => reject(new Error("Location denied or unavailable.")),
+        { enableHighAccuracy: true, timeout: 25_000, maximumAge: 0 },
+      );
+    });
+  }, []);
+
   async function sendSos(e: React.FormEvent): Promise<void> {
     e.preventDefault();
-    if (lat == null || lon == null) {
-      setMsg("Capture GPS first — coordinates are required.");
-      return;
-    }
     if (!tokens) return;
     setSosBusy(true);
     setSosPanel(null);
     setMsg(null);
     try {
+      let useLat = lat;
+      let useLon = lon;
+      if (useLat == null || useLon == null) {
+        setGeoBusy(true);
+        try {
+          const pos = await acquireFreshPosition();
+          useLat = pos.lat;
+          useLon = pos.lon;
+          setLat(pos.lat);
+          setLon(pos.lon);
+        } finally {
+          setGeoBusy(false);
+        }
+      }
       const res = await fetch(`${getApiBaseUrl()}/incidents/sos`, {
         method: "POST",
         headers: {
@@ -279,8 +311,8 @@ export default function CitizenPage(): ReactElement {
         },
         body: JSON.stringify({
           type: kind,
-          latitude: lat,
-          longitude: lon,
+          latitude: useLat,
+          longitude: useLon,
         }),
       });
       const body = (await res.json().catch(() => ({}))) as {
@@ -300,12 +332,16 @@ export default function CitizenPage(): ReactElement {
       setSosPanel({
         incidentId: id,
         deduplicated: !!body.deduplicated,
-        userLat: lat,
-        userLon: lon,
+        userLat: useLat!,
+        userLon: useLon!,
         emergencyLabel,
       });
-    } catch {
-      setMsg("Could not deliver SOS — verify API connectivity.");
+    } catch (err) {
+      setMsg(
+        err instanceof Error
+          ? err.message
+          : "Could not deliver SOS — verify API connectivity and GPS permission.",
+      );
     } finally {
       setSosBusy(false);
     }
@@ -318,6 +354,7 @@ export default function CitizenPage(): ReactElement {
     setMsg(null);
     setLat(null);
     setLon(null);
+    router.replace("/");
   }
 
   return (
@@ -633,9 +670,13 @@ export default function CitizenPage(): ReactElement {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-zinc-500">
                   One-touch activation
                 </p>
+                <p className="mx-auto mt-2 max-w-xs text-[10px] leading-relaxed text-zinc-500">
+                  GPS is captured when you press Emergency (fresh fix). Ops sees your location in real time with your
+                  signed-in account to reduce false reports.
+                </p>
                 <button
                   type="submit"
-                  disabled={sosBusy || geoBusy || lat == null}
+                  disabled={sosBusy || geoBusy}
                   className="mt-6 flex min-h-[7.5rem] w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-rose-500 to-rose-700 py-8 text-xl font-black uppercase tracking-[0.12em] text-white shadow-[0_24px_60px_-20px_rgba(225,29,72,0.75)] ring-1 ring-white/15 transition active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {sosBusy ? (
@@ -675,8 +716,8 @@ export default function CitizenPage(): ReactElement {
               </div>
             </form>
 
-            {sosPanel ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-4 py-4 text-sm text-emerald-100">
+            {sosPanel && tokens ? (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-4 py-4 text-sm text-emerald-100 space-y-1">
                 <CitizenSosRouteCard
                   incidentId={sosPanel.incidentId}
                   deduplicated={sosPanel.deduplicated}
@@ -684,6 +725,15 @@ export default function CitizenPage(): ReactElement {
                   userLon={sosPanel.userLon}
                   emergencyLabel={sosPanel.emergencyLabel}
                 />
+                <CitizenSosVoiceLive incidentId={sosPanel.incidentId} accessToken={tokens.accessToken} />
+                {getOpsVoiceHotline() ? (
+                  <p className="text-[10px] text-zinc-500 pt-2 border-t border-white/[0.06]">
+                    Phone fallback:{" "}
+                    <a className="text-rose-400 underline-offset-2 hover:underline" href={`tel:${getOpsVoiceHotline()}`}>
+                      call ops hotline
+                    </a>
+                  </p>
+                ) : null}
               </div>
             ) : null}
 

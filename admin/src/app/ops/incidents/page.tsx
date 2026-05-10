@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlarmClock,
   ArrowUpCircle,
@@ -21,9 +22,15 @@ import {
 } from "lucide-react";
 import { TARGET_INCIDENT_LIFECYCLE } from "@/components/ops/ops-nav";
 import { useOpsSession } from "@/components/ops/ops-session-context";
-import { formatOpsSync, incidentBorderClass, statusBadgeClass } from "@/components/ops/ops-format";
+import {
+  formatOpsSync,
+  humanIncidentStatus,
+  incidentBorderClass,
+  statusBadgeClass,
+} from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
+import { OpsIncidentVoicePanel } from "@/components/ops-incident-voice-panel";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -63,7 +70,8 @@ function toNum(v: unknown): number | null {
 }
 
 export default function OpsIncidentsPage(): ReactElement {
-  const { queue, lastQueueSync, tokens, refreshQueue } = useOpsSession();
+  const router = useRouter();
+  const { queue, lastQueueSync, tokens, refreshQueue, realtimeSocket, socketState } = useOpsSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [responders, setResponders] = useState<AssignableResponder[]>([]);
   const [statusDraft, setStatusDraft] = useState<string>("OPEN");
@@ -82,6 +90,7 @@ export default function OpsIncidentsPage(): ReactElement {
   const [cStatus, setCStatus] = useState("OPEN");
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
+  const lastFocusScrollRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (queue.length === 0) {
@@ -97,9 +106,31 @@ export default function OpsIncidentsPage(): ReactElement {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const id = new URLSearchParams(window.location.search).get("focus");
-    if (!id) return;
-    if (queue.some((q) => q.id === id)) setSelectedId(id);
+    if (!id || !queue.some((q) => q.id === id)) return;
+    setSelectedId(id);
+    if (lastFocusScrollRef.current === id) return;
+    lastFocusScrollRef.current = id;
+    requestAnimationFrame(() => {
+      document.getElementById("ops-incident-detail")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
   }, [queue]);
+
+  const openIncident = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      router.replace(`/ops/incidents?focus=${encodeURIComponent(id)}`, { scroll: false });
+      requestAnimationFrame(() => {
+        document.getElementById("ops-incident-detail")?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      });
+    },
+    [router],
+  );
 
   const selected = useMemo(() => queue.find((q) => q.id === selectedId) ?? null, [queue, selectedId]);
 
@@ -279,33 +310,36 @@ export default function OpsIncidentsPage(): ReactElement {
             {queue.map((row: OpsIncident) => (
               <li key={row.id}>
                 <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedId(row.id)}
-                  onKeyDown={(ev) => {
-                    if (ev.key === "Enter" || ev.key === " ") {
-                      ev.preventDefault();
-                      setSelectedId(row.id);
-                    }
-                  }}
-                  className={`w-full text-left rounded-xl border px-3 py-3 transition border-l-[3px] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 ${
+                  className={`w-full text-left rounded-xl border px-3 py-3 transition border-l-[3px] ${
                     selectedId === row.id
                       ? "border-white/15 bg-white/[0.06] ring-1 ring-rose-500/30"
-                      : "border-white/[0.06] bg-black/25 hover:border-white/10"
+                      : "border-white/[0.06] bg-black/25"
                   } ${incidentBorderClass(row.type)}`}
                 >
-                  <div className="flex justify-between gap-2">
+                  <div className="flex justify-between gap-2 items-start">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-rose-200/90">
                       {(row.title ?? row.type.replace(/_/g, " ")).slice(0, 48)}
                     </span>
-                    <span className={`shrink-0 text-[9px] uppercase px-1.5 py-0.5 rounded ${statusBadgeClass(row.status)}`}>
-                      {row.status.replace(/_/g, " ")}
-                    </span>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <span className="text-[8px] font-semibold uppercase tracking-wider text-zinc-500">Status</span>
+                      <span
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded ${statusBadgeClass(row.status)}`}
+                        title="Incident workflow status (not an action button)"
+                      >
+                        {humanIncidentStatus(row.status)}
+                      </span>
+                    </div>
                   </div>
-                  <p className="mt-1 font-mono text-[10px] text-zinc-600 truncate">{row.id}</p>
-                  <span className="mt-2 inline-flex rounded border border-rose-500/35 bg-rose-950/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200 pointer-events-none">
-                    Open detail
-                  </span>
+                  <p className="mt-2 font-mono text-[10px] text-zinc-600 truncate" title={row.id}>
+                    {row.id}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openIncident(row.id)}
+                    className="mt-3 w-full rounded-lg bg-rose-600/90 px-3 py-2.5 text-center text-[11px] font-semibold text-white hover:bg-rose-500 focus-visible:outline focus-visible:ring-2 focus-visible:ring-rose-400/60"
+                  >
+                    View detail, reporter & EOC route
+                  </button>
                 </div>
               </li>
             ))}
@@ -413,7 +447,7 @@ export default function OpsIncidentsPage(): ReactElement {
             ["Assignment", "PATCH /incidents/:id + responders-assignable list", Navigation],
             ["Escalate", "Multi-agency escalation path", ArrowUpCircle],
             ["Alerts", "Barangay + city broadcasts", AlarmClock],
-            ["Voice bridge", "WebRTC dial-out (planned)", PhoneForwarded],
+            ["Voice bridge", "Browser WebRTC room per incident (Join live voice)", PhoneForwarded],
             ["Evidence locker", "Chain-of-custody uploads", Camera],
           ].map(([title, sub, Icon]) => (
             <div
@@ -429,7 +463,11 @@ export default function OpsIncidentsPage(): ReactElement {
           ))}
         </div>
 
-        <OpsPanelCard title="Incident detail & citizen context" subtitle="Battery / signal from mobile SOS payload">
+        <OpsPanelCard
+          id="ops-incident-detail"
+          title="Incident detail & citizen context"
+          subtitle="Battery / signal from mobile SOS payload"
+        >
           {!selected ? (
             <p className="text-sm text-zinc-500 py-16 text-center">Select an incident card from the queue.</p>
           ) : (
@@ -487,6 +525,11 @@ export default function OpsIncidentsPage(): ReactElement {
                     No GPS fix on this incident — EOC routing unavailable.
                   </p>
                 )}
+                <OpsIncidentVoicePanel
+                  incidentId={selected.id}
+                  realtimeSocket={realtimeSocket}
+                  socketLive={socketState === "live"}
+                />
                 <div className="rounded-lg border border-dashed border-white/10 p-3 text-[11px] text-zinc-500">
                   <Binoculars className="inline h-4 w-4 mr-1 text-zinc-600 align-text-bottom" aria-hidden />
                   Evidence viewer: attach photos / video / documents (Media & Evidence panel). Document chain via audit

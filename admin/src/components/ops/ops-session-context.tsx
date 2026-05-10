@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { Socket } from "socket.io-client";
+import { useRouter } from "next/navigation";
 import { getApiBaseUrl, getApiConfigWarning, getHealthCheckUrl } from "@/lib/env";
 import { API_INCIDENTS_QUEUE_PATH } from "@/lib/ops-api-paths";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -54,6 +55,8 @@ export type OpsSessionContextValue = {
   password: string;
   setPassword: (v: string) => void;
   logout: () => void;
+  /** Shared Socket.IO client for `/realtime` (incidents feed + incident voice signaling). */
+  realtimeSocket: Socket | null;
   socketState: "off" | "live" | "error";
   wsErrorDetail: string | null;
   feed: string[];
@@ -80,6 +83,7 @@ export function useOpsSession(): OpsSessionContextValue {
 }
 
 export function OpsSessionProvider({ children }: { children: ReactNode }): ReactElement {
+  const router = useRouter();
   const [email, setEmail] = useState("ops.admin@icdrrmo.local");
   const [password, setPassword] = useState("");
   const [tokens, setTokens] = useState<TokenPair | null>(null);
@@ -98,6 +102,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const [soundMuted, setSoundMutedState] = useState(false);
   const [booted, setBooted] = useState(false);
   const [apiConfigWarning, setApiConfigWarning] = useState<string | null>(null);
+  const [realtimeSocket, setRealtimeSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
     setTokens(loadOpsTokens());
@@ -170,7 +175,10 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   }, [tokens?.accessToken]);
 
   useEffect(() => {
-    if (!tokens?.accessToken) return;
+    if (!tokens?.accessToken) {
+      setRealtimeSocket(null);
+      return;
+    }
     void refreshQueue(tokens.accessToken);
     const socket: Socket = connectOpsRealtime(tokens.accessToken, {
       onIncidentCreated: (p: IncidentCreatedPayload) => {
@@ -178,6 +186,25 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
           [`${new Date().toISOString()} · INCIDENT_CREATED · ${p.incidentId}`, ...f].slice(0, 80),
         );
         if (!loadSoundMuted()) playIncidentChime();
+        const lat = p.latitude != null ? Number(p.latitude) : NaN;
+        const lng = p.longitude != null ? Number(p.longitude) : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setQueue((prev) => {
+            if (prev.some((i) => i.id === p.incidentId)) return prev;
+            const optimistic: OpsIncident = {
+              id: p.incidentId,
+              type: p.type ?? "UNKNOWN",
+              status: "OPEN",
+              createdAt: new Date().toISOString(),
+              latitude: lat,
+              longitude: lng,
+              title: p.title ?? undefined,
+              channel: "MOBILE_APP",
+              reporter: null,
+            };
+            return [optimistic, ...prev];
+          });
+        }
         void refreshQueue(tokens.accessToken);
       },
       onIncidentUpdated: (p) => {
@@ -192,6 +219,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
         setWsErrorDetail(err.message || "Connection failed");
       },
     });
+    setRealtimeSocket(socket);
     socket.on("connect", () => {
       setSocketState("live");
       setWsErrorDetail(null);
@@ -199,6 +227,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     });
     socket.on("disconnect", () => setSocketState("off"));
     return () => {
+      setRealtimeSocket(null);
       socket.removeAllListeners();
       socket.close();
     };
@@ -274,7 +303,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     }
   }
 
-  function logout(): void {
+  const logout = useCallback((): void => {
     clearOpsTokens();
     setTokens(null);
     setSocketState("off");
@@ -286,7 +315,9 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     setLastQueueSync(null);
     setLastHealthAt(null);
     setLastSocketAt(null);
-  }
+    setRealtimeSocket(null);
+    router.replace("/");
+  }, [router]);
 
   const ctx = useMemo<OpsSessionContextValue>(
     () => ({
@@ -296,6 +327,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       password,
       setPassword,
       logout,
+      realtimeSocket,
       socketState,
       wsErrorDetail,
       feed,
@@ -316,6 +348,8 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       tokens,
       email,
       password,
+      logout,
+      realtimeSocket,
       socketState,
       wsErrorDetail,
       feed,

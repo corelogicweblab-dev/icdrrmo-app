@@ -85,6 +85,10 @@ export class IncidentsService {
     this.realtime.emitIncidentCreated({
       incidentId: incident.id,
       reporterId: incident.reporterId,
+      latitude: Number(incident.latitude),
+      longitude: Number(incident.longitude),
+      type: incident.type,
+      title: incident.title,
     });
     return { incidentId: incident.id, deduplicated: false };
   }
@@ -119,6 +123,10 @@ export class IncidentsService {
     this.realtime.emitIncidentCreated({
       incidentId: incident.id,
       reporterId: incident.reporterId,
+      latitude: Number(incident.latitude),
+      longitude: Number(incident.longitude),
+      type: incident.type,
+      title: incident.title,
     });
     return { incidentId: incident.id };
   }
@@ -458,6 +466,10 @@ export class IncidentsService {
     this.realtime.emitIncidentCreated({
       incidentId: incident.id,
       reporterId: incident.reporterId,
+      latitude: Number(incident.latitude),
+      longitude: Number(incident.longitude),
+      type: incident.type,
+      title: incident.title,
     });
     return { id: incident.id };
   }

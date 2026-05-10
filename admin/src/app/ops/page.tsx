@@ -2,11 +2,9 @@
 
 import type { ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Activity,
   AlertTriangle,
-  CloudRain,
   Home,
   Map,
   Radar,
@@ -14,107 +12,57 @@ import {
   ShieldAlert,
   Siren,
   Users,
-  Waves,
 } from "lucide-react";
 import { getHealthCheckUrl, hasMapboxToken } from "@/lib/env";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { formatOpsSync, incidentBorderClass, statusBadgeClass } from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
+import Link from "next/link";
 import { OpsKpiCard, OpsPanelCard } from "@/components/ops/ops-widgets";
 import { SituationMap } from "@/components/situation-map";
 import { incidentsToMapPins } from "@/lib/map-pins";
 import { opsFetchJson } from "@/lib/ops-api";
 
-type DashboardSummary = {
-  openIncidents: number;
-  activeResponders: number;
-  activeVehicles: number;
-  evacuationSites: number;
-  barangays: number;
-  activeUsers: number;
-  scoped?: boolean;
-  operatorBarangayMissing?: boolean;
-  message?: string;
-  operatorBarangayId?: string;
+type WeatherSituation = {
+  fetchedAt: string;
+  source: string;
+  upstreamError?: string;
+  hazardDisclaimer: string;
+  current: {
+    temperatureC: number | null;
+    humidityPct: number | null;
+    weatherLabel: string;
+    rainMm: number | null;
+    isDay: boolean | null;
+  };
+  rainOutlook6h: {
+    willRainLikely: boolean;
+    headline: string;
+    maxPrecipProbPct: number;
+    totalRainMm: number;
+  };
+  nextHours: Array<{
+    time: string;
+    precipProbPct: number | null;
+    rainMm: number | null;
+    precipMm: number | null;
+  }>;
+  hazardZones: Array<{
+    type: string;
+    label: string;
+    description: string;
+    barangays: Array<{ code: string; name: string }>;
+  }>;
 };
 
-function DashboardSummaryChart({ accessToken }: { accessToken: string | undefined }): ReactElement {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!accessToken) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const s = await opsFetchJson<DashboardSummary>("/dashboard/summary", accessToken);
-        if (!cancelled) {
-          setSummary(s);
-          setErr(null);
-        }
-      } catch {
-        if (!cancelled) {
-          setSummary(null);
-          setErr("Unable to load /dashboard/summary");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken]);
-
-  const chartData = summary
-    ? [
-        { label: "Incidents", value: summary.openIncidents },
-        { label: "Responders", value: summary.activeResponders },
-        { label: "Vehicles", value: summary.activeVehicles },
-        { label: "Evac sites", value: summary.evacuationSites },
-        { label: "Barangays", value: summary.barangays },
-        { label: "Users", value: summary.activeUsers },
-      ]
-    : [];
-
-  if (!accessToken) {
-    return <p className="text-xs text-zinc-500">Sign in to load API summary.</p>;
-  }
-  if (err) {
-    return <p className="text-xs text-rose-300">{err}</p>;
-  }
-  if (!summary) {
-    return <p className="text-xs text-zinc-500">Loading summary…</p>;
-  }
-
-  return (
-    <div className="space-y-2">
-      {summary.scoped ? (
-        <p className="text-[10px] leading-snug text-amber-200/85">
-          {summary.operatorBarangayMissing && summary.message
-            ? summary.message
-            : "Dashboard figures reflect your barangay assignment only (operator scope)."}
-        </p>
-      ) : null}
-      <div className="h-[200px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-          <Tooltip
-            contentStyle={{
-              background: "#09090b",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-            labelStyle={{ color: "#e4e4e7" }}
-          />
-          <Bar dataKey="value" fill="rgba(244,63,94,0.55)" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
+type EvacCenterRow = {
+  id: string;
+  name: string;
+  capacity: number | null;
+  occupancy: number;
+  isActive?: boolean;
+  barangay?: { name: string; code: string } | null;
+};
 
 function SparkBars(props: { values: number[]; color: string }): ReactElement {
   const max = Math.max(...props.values, 1);
@@ -145,6 +93,72 @@ export default function OpsCommandDashboardPage(): ReactElement {
   const mapPins = useMemo(() => incidentsToMapPins(queue), [queue]);
   const wsLabel =
     socketState === "live" ? "Synchronized" : socketState === "error" ? "Fault" : "Standby";
+
+  const [weather, setWeather] = useState<WeatherSituation | null>(null);
+  const [weatherErr, setWeatherErr] = useState<string | null>(null);
+  const [evacRows, setEvacRows] = useState<EvacCenterRow[]>([]);
+  const [evacErr, setEvacErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = tokens?.accessToken;
+    if (!token) {
+      setWeather(null);
+      setEvacRows([]);
+      setWeatherErr(null);
+      setEvacErr(null);
+      return;
+    }
+    const accessToken = token;
+    let cancelled = false;
+    async function loadSafe(): Promise<void> {
+      setWeatherErr(null);
+      setEvacErr(null);
+      try {
+        const w = await opsFetchJson<WeatherSituation>("/weather/situation", accessToken);
+        if (!cancelled) setWeather(w);
+      } catch {
+        if (!cancelled) {
+          setWeather(null);
+          setWeatherErr("Weather snapshot unavailable (API or role).");
+        }
+      }
+      try {
+        const e = await opsFetchJson<EvacCenterRow[]>("/evacuation-centers", accessToken);
+        if (!cancelled) setEvacRows(Array.isArray(e) ? e : []);
+      } catch {
+        if (!cancelled) {
+          setEvacRows([]);
+          setEvacErr("Evacuation centers unavailable.");
+        }
+      }
+    }
+    void loadSafe();
+    const id = setInterval(() => void loadSafe(), 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [tokens?.accessToken]);
+
+  const shelteredTotal = useMemo(
+    () => evacRows.filter((r) => r.isActive !== false).reduce((a, r) => a + (r.occupancy ?? 0), 0),
+    [evacRows],
+  );
+
+  const proneBarangayCount = useMemo(() => {
+    if (!weather?.hazardZones?.length) return 0;
+    const codes = new Set<string>();
+    for (const z of weather.hazardZones) {
+      for (const b of z.barangays) codes.add(b.code);
+    }
+    return codes.size;
+  }, [weather]);
+
+  const evacDisplay = useMemo(() => {
+    return [...evacRows]
+      .filter((r) => r.isActive !== false)
+      .sort((a, b) => (b.occupancy ?? 0) - (a.occupancy ?? 0) || a.name.localeCompare(b.name));
+  }, [evacRows]);
 
   const mockDispatchLatency = [12, 9, 11, 8, 7, 14, 10, 9, 8, 6, 11, 9];
 
@@ -180,18 +194,22 @@ export default function OpsCommandDashboardPage(): ReactElement {
             {openCount >= 10 ? "CRITICAL · Mass-casualty posture" : openCount >= 3 ? "ELEVATED" : "ROUTINE"}
           </p>
         </div>
-        <div className="ml-auto flex gap-6 text-[11px] text-zinc-400">
+        <div className="ml-auto flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-zinc-400 max-w-3xl justify-end">
           <span>
-            <span className="text-zinc-500">Responders online (sim)</span>
-            <span className="ml-2 font-mono text-emerald-300">{Math.min(42, 28 + openCount * 3)}</span>
+            <span className="text-zinc-500">Sheltered (DB headcount)</span>
+            <span className="ml-2 font-mono text-emerald-300">{shelteredTotal}</span>
+          </span>
+          <span className="min-w-[10rem]">
+            <span className="text-zinc-500">Rain next ~6h (model)</span>
+            <span
+              className={`ml-2 font-semibold ${weather?.rainOutlook6h.willRainLikely ? "text-amber-200" : "text-sky-200"}`}
+            >
+              {weather ? (weather.rainOutlook6h.willRainLikely ? "Likely" : "Unlikely") : "—"}
+            </span>
           </span>
           <span>
-            <span className="text-zinc-500">Weather advisory</span>
-            <span className="ml-2 text-amber-200">TS signal · monitor PAGASA</span>
-          </span>
-          <span>
-            <span className="text-zinc-500">Flood / hazard</span>
-            <span className="ml-2 text-sky-200">{openCount > 5 ? "2 barangays on watch" : "Stable"}</span>
+            <span className="text-zinc-500">Hazard reference barangays</span>
+            <span className="ml-2 text-sky-200">{proneBarangayCount ? `${proneBarangayCount} flagged` : "—"}</span>
           </span>
         </div>
       </div>
@@ -228,66 +246,138 @@ export default function OpsCommandDashboardPage(): ReactElement {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <OpsPanelCard title="Weather alerts" subtitle="PAGASA · OpenWeather · RainViewer (wire API keys)">
-          <ul className="space-y-2 text-xs text-zinc-400">
-            <li className="flex items-center gap-2">
-              <CloudRain className="h-4 w-4 text-sky-400 shrink-0" aria-hidden />
-              Heavy rainfall watch — western Basilan · next 6h
-            </li>
-            <li className="flex items-center gap-2">
-              <Waves className="h-4 w-4 text-cyan-400 shrink-0" aria-hidden />
-              Coastal surge advisory — moderate
-            </li>
-          </ul>
+        <OpsPanelCard
+          title="Weather — Isabela City (live model)"
+          subtitle="Open-Meteo hourly grid · not a PAGASA official warning"
+        >
+          {weatherErr ? (
+            <p className="text-xs text-rose-300">{weatherErr}</p>
+          ) : !weather ? (
+            <p className="text-xs text-zinc-500">Loading forecast…</p>
+          ) : (
+            <div className="space-y-3 text-xs text-zinc-300">
+              {weather.upstreamError ? (
+                <p className="text-[11px] text-amber-200/90">Upstream: {weather.upstreamError}</p>
+              ) : null}
+              <div className="rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-500">Will it rain (next ~6h)?</p>
+                <p
+                  className={`mt-1 text-sm font-bold ${weather.rainOutlook6h.willRainLikely ? "text-amber-200" : "text-sky-200"}`}
+                >
+                  {weather.rainOutlook6h.willRainLikely ? "Yes — plan for wet conditions" : "Probably not — still monitor official advisories"}
+                </p>
+                <p className="mt-2 text-[11px] text-zinc-400 leading-relaxed">{weather.rainOutlook6h.headline}</p>
+                <p className="mt-2 font-mono text-[10px] text-zinc-500">
+                  Max hourly chance {weather.rainOutlook6h.maxPrecipProbPct}% · model rain sum ~{weather.rainOutlook6h.totalRainMm} mm
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 text-[11px] text-zinc-400">
+                <span>
+                  Now:{" "}
+                  <span className="text-zinc-200">
+                    {weather.current.temperatureC != null ? `${weather.current.temperatureC}°C` : "—"} ·{" "}
+                    {weather.current.weatherLabel}
+                  </span>
+                </span>
+                {weather.current.humidityPct != null ? (
+                  <span>
+                    RH: <span className="text-zinc-200">{weather.current.humidityPct}%</span>
+                  </span>
+                ) : null}
+              </div>
+              <ul className="space-y-1.5 border-t border-white/[0.06] pt-2 text-[11px] text-zinc-500">
+                {weather.nextHours.slice(0, 6).map((h) => (
+                  <li key={h.time} className="flex justify-between gap-2 font-mono">
+                    <span>{new Date(h.time).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    <span>
+                      {(h.precipProbPct ?? 0)}% · rain {h.rainMm ?? h.precipMm ?? 0} mm
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-zinc-600">Updated {new Date(weather.fetchedAt).toLocaleString("en-PH")} · {weather.source}</p>
+            </div>
+          )}
         </OpsPanelCard>
-        <OpsPanelCard title="Flood & hazard" subtitle="GIS overlays / PHIVOLCS">
-          <ul className="space-y-2 text-xs text-zinc-400">
-            <li className="flex gap-2">
-              <span className="font-mono text-[10px] text-amber-400">FLOOD</span>
-              Low-lying drain stress — Isabela proper
-            </li>
-            <li className="flex gap-2">
-              <span className="font-mono text-[10px] text-orange-400">LS</span>
-              Landslide watch — eastern upland routes
-            </li>
-          </ul>
+        <OpsPanelCard
+          title="Flood & landslide — Isabela City"
+          subtitle="Barangay-level reference (see disclaimer). Cross-check with official LGU / MGB maps."
+        >
+          <p className="mb-3 text-[11px]">
+            <Link href="/ops/map" className="text-sky-400 hover:underline">
+              Open tactical map (GIS layers)
+            </Link>
+          </p>
+          {!weather ? (
+            <p className="text-xs text-zinc-500">Loading hazard reference…</p>
+          ) : (
+            <div className="space-y-3 text-[11px] text-zinc-400">
+              <p className="text-[10px] leading-relaxed text-amber-200/85 border border-amber-500/20 rounded-lg px-2 py-1.5 bg-amber-950/20">
+                {weather.hazardDisclaimer}
+              </p>
+              {weather.hazardZones.map((z) => (
+                <div key={z.type} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-rose-200/80">{z.label}</p>
+                  <p className="mt-1 text-[11px] text-zinc-500 leading-snug">{z.description}</p>
+                  <p className="mt-2 text-[10px] text-zinc-500">
+                    Barangays ({z.barangays.length}):{" "}
+                    <span className="text-zinc-300">{z.barangays.map((b) => b.name).join(", ")}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </OpsPanelCard>
-        <OpsPanelCard title="Active evacuations" subtitle="Centers + occupancy (integrate DB)">
-          <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-2 text-zinc-300">
-              <Home className="h-4 w-4 text-emerald-400" aria-hidden />
-              Grandstand · Sports complex
-            </span>
-            <span className="font-mono text-zinc-500">142 / 850</span>
-          </div>
-          <div className="mt-3 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
-            <div className="h-full w-[17%] rounded-full bg-emerald-500/60" />
-          </div>
+        <OpsPanelCard title="Active evacuations" subtitle="Live occupancy + capacity from GET /evacuation-centers">
+          {evacErr ? <p className="text-xs text-rose-300">{evacErr}</p> : null}
+          {!evacErr && evacDisplay.length === 0 ? (
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              No evacuation centers on file, or none returned for your role. Headcount stays <span className="font-mono text-zinc-300">0</span> until
+              centers exist and <span className="text-zinc-400">occupancy</span> is updated in the database (Evacuation admin page / API).
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {evacDisplay.slice(0, 8).map((row) => {
+                const cap = row.capacity != null && row.capacity > 0 ? row.capacity : null;
+                const pct = cap ? Math.min(100, Math.round(((row.occupancy ?? 0) / cap) * 100)) : row.occupancy > 0 ? 100 : 0;
+                return (
+                  <li key={row.id} className="text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2 text-zinc-300 min-w-0">
+                        <Home className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden />
+                        <span className="truncate">{row.name}</span>
+                      </span>
+                      <span className="font-mono text-zinc-400 shrink-0">
+                        {row.occupancy ?? 0}
+                        {cap != null ? ` / ${cap}` : " / —"}
+                      </span>
+                    </div>
+                    {row.barangay?.name ? (
+                      <p className="mt-0.5 pl-6 text-[10px] text-zinc-600">{row.barangay.name}</p>
+                    ) : null}
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-500/60 transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {evacDisplay.length > 8 ? (
+            <p className="mt-3 text-[10px] text-zinc-600">
+              +{evacDisplay.length - 8} more — open <Link href="/ops/evacuation" className="text-sky-400 hover:underline">Evacuation</Link>
+            </p>
+          ) : null}
         </OpsPanelCard>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <OpsPanelCard
-          title="Live platform counts"
-          subtitle="Recharts · GET /api/v1/dashboard/summary"
-          className="xl:col-span-4"
+          title="Median dispatch latency (min · sim)"
+          subtitle="Demo spark series until dispatch timestamps are logged for analytics"
+          className="xl:col-span-6"
         >
-          <DashboardSummaryChart accessToken={tokens?.accessToken} />
-        </OpsPanelCard>
-        <OpsPanelCard title="Median dispatch latency (min · sim)" subtitle="Rolling window analytics" className="xl:col-span-4">
           <SparkBars values={mockDispatchLatency.map((x) => 20 - x)} color="bg-sky-500/55" />
-        </OpsPanelCard>
-        <OpsPanelCard
-          title="System health summary"
-          subtitle="Deep dive · System Health panel"
-          className="xl:col-span-4"
-        >
-          <ul className="text-[11px] text-zinc-400 space-y-1.5">
-            <li>API / Nest — {apiReachable ? "responding" : "check"}</li>
-            <li>Redis / BullMQ — workers (confirm env)</li>
-            <li>SMS modem / gateway — see SMS panel</li>
-            <li>WebRTC / voice — standby</li>
-          </ul>
         </OpsPanelCard>
       </div>
 

@@ -51,6 +51,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   bool saving = false;
   List<PublicBarangay> barangays = [];
   String barangayId = '';
+  bool _barangaysLoading = true;
+  String? _barangaysLoadError;
 
   @override
   void initState() {
@@ -59,12 +61,34 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   Future<void> _loadBarangays() async {
+    setState(() {
+      _barangaysLoading = true;
+      _barangaysLoadError = null;
+    });
     try {
       final list = await ref.read(barangaysRepositoryProvider).fetchPublic();
-      if (mounted) setState(() => barangays = list);
-    } catch (_) {
-      if (mounted) setState(() => barangays = []);
+      if (!mounted) return;
+      setState(() {
+        barangays = list;
+        _barangaysLoading = false;
+        if (list.isEmpty) {
+          _barangaysLoadError = 'No barangays returned from the server. Check API_BASE and that the database is seeded.';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        barangays = [];
+        _barangaysLoading = false;
+        _barangaysLoadError = 'Could not load barangays ($e).';
+      });
     }
+  }
+
+  /// Value must exist in [items] or DropdownButton asserts / shows blank.
+  String? _barangayDropdownValue() {
+    if (barangayId.isEmpty) return null;
+    return barangays.any((b) => b.id == barangayId) ? barangayId : null;
   }
 
   String? _barangayNameForId(String id) {
@@ -182,13 +206,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (mounted) {
         final msg = e.response?.data?.toString() ?? e.message ?? e.toString();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Nai-save locally; API sync: $msg')),
+          SnackBar(content: Text('Saved locally; API sync failed: $msg')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Nai-save locally; API sync: $e')),
+          SnackBar(content: Text('Saved locally; API sync failed: $e')),
         );
       }
     }
@@ -226,7 +250,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ),
           DropdownButtonFormField<String>(
             key: ValueKey<String>('prof_gender_$gender'),
-            initialValue: gender,
+            value: gender,
             decoration: const InputDecoration(labelText: 'Gender'),
             items: const <DropdownMenuItem<String>>[
               DropdownMenuItem(value: 'UNSPECIFIED', child: Text('Unspecified')),
@@ -238,17 +262,46 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             onChanged: (String? v) => setState(() => gender = v ?? 'MALE'),
           ),
           TextField(controller: address, decoration: const InputDecoration(labelText: 'Address *')),
+          if (_barangaysLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
+          if (_barangaysLoadError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                _barangaysLoadError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+              ),
+            ),
           DropdownButtonFormField<String?>(
-            key: ValueKey<Object>('prof_bg_${barangayId}_${barangays.length}'),
-            initialValue: barangayId.isEmpty ? null : barangayId,
+            key: const ValueKey<String>('profile_barangay_dropdown'),
+            value: _barangayDropdownValue(),
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Barangay *'),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('— Select barangay —')),
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text(
+                  '— Select barangay —',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                ),
+              ),
               ...barangays.map(
-                (b) => DropdownMenuItem<String?>(value: b.id, child: Text(b.name)),
+                (b) => DropdownMenuItem<String?>(
+                  value: b.id,
+                  child: Text(
+                    b.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                ),
               ),
             ],
-            onChanged: (String? v) => setState(() => barangayId = v ?? ''),
+            onChanged: _barangaysLoading
+                ? null
+                : (String? v) => setState(() => barangayId = v ?? ''),
           ),
           TextField(
             controller: streetPurok,
@@ -259,7 +312,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ),
           DropdownButtonFormField<String>(
             key: ValueKey<String>('prof_blood_$blood'),
-            initialValue: blood,
+            value: blood,
             decoration: const InputDecoration(labelText: 'Blood type'),
             items: _bloodTypeValues
                 .map(

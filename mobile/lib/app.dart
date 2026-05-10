@@ -31,19 +31,10 @@ class IcdrrmoApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB91C1C), brightness: Brightness.dark),
         useMaterial3: true,
         canvasColor: const Color(0xFF18181b),
-        dropdownMenuTheme: DropdownMenuThemeData(
-          menuStyle: MenuStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF27272a)),
-          ),
-        ),
         popupMenuTheme: const PopupMenuThemeData(
           color: Color(0xFF27272a),
           surfaceTintColor: Colors.transparent,
-        ),
-        menuTheme: MenuThemeData(
-          style: MenuStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF27272a)),
-          ),
+          textStyle: TextStyle(color: Color(0xFFfafafa), fontSize: 14),
         ),
       ),
       builder: (context, child) {

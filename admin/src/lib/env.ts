@@ -59,3 +59,15 @@ export function getHealthCheckUrl(): string {
   const base = getApiBaseUrl().replace(/\/$/, "");
   return `${base}/health/ready`;
 }
+
+/**
+ * EOC / ops voice hotline opened after a successful citizen SOS (`tel:` link).
+ * Example: `+639171234567` (E.164, no spaces). Set `NEXT_PUBLIC_OPS_VOICE_HOTLINE` at build time.
+ */
+export function getOpsVoiceHotline(): string | null {
+  const raw = process.env.NEXT_PUBLIC_OPS_VOICE_HOTLINE?.trim();
+  if (!raw) return null;
+  const compact = raw.replace(/\s/g, "");
+  if (!/^\+?\d{8,15}$/.test(compact)) return null;
+  return compact.startsWith("+") ? compact : `+${compact}`;
+}

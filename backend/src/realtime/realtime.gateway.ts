@@ -3,6 +3,9 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -10,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
 import { UserRole } from '@prisma/client';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
+import { PrismaService } from '../prisma/prisma.service';
 
 const OPS_ROLES: ReadonlySet<UserRole> = new Set([
   UserRole.ADMIN,
@@ -30,6 +34,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -64,7 +69,109 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
-  emitIncidentCreated(payload: { incidentId: string; reporterId: string | null }): void {
+  private voiceRoom(incidentId: string): string {
+    return `voice:${incidentId}`;
+  }
+
+  private async assertVoiceRoomAccess(
+    user: JwtPayload,
+    incidentId: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: { reporterId: true },
+    });
+    if (!incident) {
+      return { ok: false, error: 'incident not found' };
+    }
+    const isOps = OPS_ROLES.has(user.role);
+    const isReporter = incident.reporterId != null && incident.reporterId === user.sub;
+    if (!isOps && !isReporter) {
+      return { ok: false, error: 'forbidden' };
+    }
+    return { ok: true };
+  }
+
+  @SubscribeMessage('voice_join')
+  async onVoiceJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { incidentId?: string },
+  ): Promise<{ ok: boolean; error?: string; peersAlreadyPresent?: number }> {
+    const incidentId = typeof body?.incidentId === 'string' ? body.incidentId.trim() : '';
+    if (!incidentId) {
+      return { ok: false, error: 'incidentId required' };
+    }
+    const user = client.data['user'] as JwtPayload | undefined;
+    if (!user) {
+      return { ok: false, error: 'unauthorized' };
+    }
+    const gate = await this.assertVoiceRoomAccess(user, incidentId);
+    if (!gate.ok) {
+      return { ok: false, error: gate.error };
+    }
+    const room = this.voiceRoom(incidentId);
+    const before = await this.server.in(room).fetchSockets();
+    const peersAlreadyPresent = before.filter((s) => s.id !== client.id).length;
+    await client.join(room);
+    client.to(room).emit('voice_peer_joined', {
+      incidentId,
+      userId: user.sub,
+      role: OPS_ROLES.has(user.role) ? 'ops' : 'citizen',
+    });
+    this.logger.log(`voice_join incident=${incidentId} user=${user.sub} peersAlready=${peersAlreadyPresent}`);
+    return { ok: true, peersAlreadyPresent };
+  }
+
+  @SubscribeMessage('voice_leave')
+  async onVoiceLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { incidentId?: string },
+  ): Promise<{ ok: boolean; error?: string }> {
+    const incidentId = typeof body?.incidentId === 'string' ? body.incidentId.trim() : '';
+    if (!incidentId) {
+      return { ok: false, error: 'incidentId required' };
+    }
+    await client.leave(this.voiceRoom(incidentId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('voice_signal')
+  onVoiceSignal(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    body: {
+      incidentId?: string;
+      type?: string;
+      sdp?: Record<string, unknown>;
+      candidate?: Record<string, unknown>;
+    },
+  ): { ok: boolean; error?: string } {
+    const incidentId = typeof body?.incidentId === 'string' ? body.incidentId.trim() : '';
+    const type = typeof body?.type === 'string' ? body.type : '';
+    if (!incidentId || !['offer', 'answer', 'candidate'].includes(type)) {
+      return { ok: false, error: 'bad payload' };
+    }
+    const room = this.voiceRoom(incidentId);
+    if (!client.rooms.has(room)) {
+      return { ok: false, error: 'not in voice room' };
+    }
+    client.to(room).emit('voice_signal', {
+      incidentId,
+      type,
+      sdp: body.sdp,
+      candidate: body.candidate,
+    });
+    return { ok: true };
+  }
+
+  emitIncidentCreated(payload: {
+    incidentId: string;
+    reporterId: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    type?: string;
+    title?: string | null;
+  }): void {
     this.server.to('ops').emit('incident_created', payload);
     if (payload.reporterId) {
       this.server.to(`user:${payload.reporterId}`).emit('incident_created', payload);

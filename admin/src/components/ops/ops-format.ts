@@ -29,6 +29,21 @@ export function incidentBorderClass(type: string): string {
   return "border-l-rose-500";
 }
 
+/** Human-readable status for badges (avoid "OPEN" looking like a verb / button). */
+export function humanIncidentStatus(status: string): string {
+  const s = status.toUpperCase();
+  const map: Record<string, string> = {
+    OPEN: "Open",
+    ACKNOWLEDGED: "Acknowledged",
+    DISPATCHED: "Dispatched",
+    IN_PROGRESS: "In progress",
+    RESOLVED: "Resolved",
+    CLOSED: "Closed",
+    FALSE_ALARM: "False alarm",
+  };
+  return map[s] ?? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function statusBadgeClass(status: string): string {
   const s = status.toUpperCase();
   if (s === "OPEN" || s === "ACKNOWLEDGED")

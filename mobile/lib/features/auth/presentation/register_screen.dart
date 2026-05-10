@@ -24,6 +24,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool loading = false;
   List<PublicBarangay> barangays = [];
   String barangayId = '';
+  bool _barangaysLoading = true;
+  String? _barangaysLoadError;
 
   @override
   void initState() {
@@ -32,12 +34,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _loadBarangays() async {
+    setState(() {
+      _barangaysLoading = true;
+      _barangaysLoadError = null;
+    });
     try {
       final list = await ref.read(barangaysRepositoryProvider).fetchPublic();
-      if (mounted) setState(() => barangays = list);
-    } catch (_) {
-      if (mounted) setState(() => barangays = []);
+      if (!mounted) return;
+      setState(() {
+        barangays = list;
+        _barangaysLoading = false;
+        if (list.isEmpty) {
+          _barangaysLoadError =
+              'No barangays from server. Check API_BASE and database seed.';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        barangays = [];
+        _barangaysLoading = false;
+        _barangaysLoadError = 'Could not load barangays ($e).';
+      });
     }
+  }
+
+  String? _barangayDropdownValue() {
+    if (barangayId.isEmpty) return null;
+    return barangays.any((b) => b.id == barangayId) ? barangayId : null;
   }
 
   @override
@@ -107,17 +131,44 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           TextFormField(controller: fullName, decoration: const InputDecoration(labelText: 'Full name')),
           TextFormField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
           TextFormField(controller: phone, decoration: const InputDecoration(labelText: 'Phone (+63…)')),
+          if (_barangaysLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
+          if (_barangaysLoadError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                _barangaysLoadError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+              ),
+            ),
           DropdownButtonFormField<String?>(
-            key: ValueKey<Object>('reg_br_${barangayId}_${barangays.length}'),
-            initialValue: barangayId.isEmpty ? null : barangayId,
+            key: const ValueKey<String>('register_barangay_dropdown'),
+            value: _barangayDropdownValue(),
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Barangay (optional)'),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('— Select —')),
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text(
+                  '— Select —',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                ),
+              ),
               ...barangays.map(
-                (b) => DropdownMenuItem<String?>(value: b.id, child: Text(b.name)),
+                (b) => DropdownMenuItem<String?>(
+                  value: b.id,
+                  child: Text(
+                    b.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                ),
               ),
             ],
-            onChanged: (String? v) => setState(() => barangayId = v ?? ''),
+            onChanged: _barangaysLoading ? null : (String? v) => setState(() => barangayId = v ?? ''),
           ),
           TextFormField(
             controller: streetPurok,

@@ -32,9 +32,9 @@ final class BarangaysRepository {
   Future<List<PublicBarangay>> fetchPublic() async {
     final res = await _dio.get<dynamic>('/barangays/public');
     final data = res.data;
-    if (data is! List) return [];
+    final List<dynamic> list = _unwrapList(data);
     final out = <PublicBarangay>[];
-    for (final raw in data) {
+    for (final raw in list) {
       if (raw is Map<String, dynamic>) {
         final b = PublicBarangay.fromJson(raw);
         if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
@@ -44,5 +44,21 @@ final class BarangaysRepository {
       }
     }
     return out;
+  }
+
+  /// Nest returns a raw JSON array; tolerate `{ "data": [...] }` if a wrapper is added later.
+  static List<dynamic> _unwrapList(dynamic data) {
+    if (data is List<dynamic>) return data;
+    if (data is List) return List<dynamic>.from(data);
+    if (data is Map<String, dynamic>) {
+      final inner = data['data'];
+      if (inner is List<dynamic>) return inner;
+      if (inner is List) return List<dynamic>.from(inner);
+    }
+    if (data is Map) {
+      final inner = data['data'];
+      if (inner is List) return List<dynamic>.from(inner);
+    }
+    return const [];
   }
 }

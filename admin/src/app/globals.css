@@ -41,3 +41,30 @@ body {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 3px;
 }
+
+/* Route change — logo pulse (see RouteLogoTransition) */
+@keyframes icdrrmo-logo-route-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+    filter: blur(6px);
+  }
+  42% {
+    opacity: 1;
+    transform: scale(1.06);
+    filter: blur(0);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(2px);
+  }
+}
+
+.icdrrmo-route-logo-overlay {
+  animation: icdrrmo-logo-route-flash 0.52s ease-out forwards;
+}
