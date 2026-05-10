@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   description:
     "Isabela City Disaster Risk Reduction and Management Office — live incidents, SOS coordination, and hazard operations dashboard.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/icdrrmologo.png", type: "image/png" }],
+    apple: [{ url: "/icdrrmologo.png", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -18,6 +18,7 @@ import {
   Settings,
   Shield,
   Truck,
+  UserCircle,
   Users,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export const OPS_NAV_SECTIONS: OpsNavSection[] = [
     title: "Operations",
     items: [
       { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/ops/profile", label: "My profile", icon: UserCircle },
       { href: "/ops/incidents", label: "Live incidents", icon: Activity },
       { href: "/ops/map", label: "Realtime map", icon: Map },
       { href: "/ops/dispatch", label: "Dispatch", icon: Send },
@@ -59,6 +61,7 @@ export const OPS_NAV_SECTIONS: OpsNavSection[] = [
 
 export const OPS_PAGE_TITLES: Record<string, string> = {
   "/ops": "Command center dashboard",
+  "/ops/profile": "EOC user profile",
   "/ops/incidents": "Live incident management",
   "/ops/map": "Realtime GIS map",
   "/ops/dispatch": "Emergency dispatch",

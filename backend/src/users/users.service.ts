@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,6 +12,9 @@ import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
+import { PatchMyProfileDto } from './dto/patch-my-profile.dto';
+import { getOperatorBarangayId } from '../common/ops-operator-scope';
+import { FirestoreMirrorService } from '../firestore/firestore-mirror.service';
 
 const BCRYPT_ROUNDS = 12;
 const ONLINE_WINDOW_MS = 120_000;
@@ -20,9 +24,110 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogService,
+    private readonly firestoreMirror: FirestoreMirrorService,
   ) {}
 
-  async list(dto: ListUsersQueryDto): Promise<{
+  async getMe(userId: string): Promise<unknown> {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: { include: { barangay: true } },
+        responder: {
+          include: {
+            vehicle: true,
+            locations: { orderBy: { recordedAt: 'desc' }, take: 1 },
+            assignments: {
+              orderBy: { createdAt: 'desc' },
+              take: 12,
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                type: true,
+                latitude: true,
+                longitude: true,
+                createdAt: true,
+              },
+            },
+            dispatchAssignments: {
+              orderBy: { createdAt: 'desc' },
+              take: 12,
+              include: {
+                incident: {
+                  select: {
+                    id: true,
+                    title: true,
+                    status: true,
+                    latitude: true,
+                    longitude: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        notifications: {
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 25,
+        },
+      },
+    });
+    if (!u) throw new NotFoundException('User not found');
+    return u;
+  }
+
+  async patchMe(userId: string, dto: PatchMyProfileDto): Promise<unknown> {
+    const existing = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+    if (!existing?.profile) throw new NotFoundException('User not found');
+    if (dto.phone !== undefined && dto.phone !== null) {
+      const clash = await this.prisma.user.findFirst({
+        where: { phone: dto.phone, NOT: { id: userId } },
+      });
+      if (clash) throw new ConflictException('Phone already in use');
+    }
+    if (dto.barangayId) {
+      const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
+      if (!b) throw new ConflictException('Invalid barangayId');
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+        profile: {
+          update: {
+            ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
+            ...(dto.barangayId !== undefined ? { barangayId: dto.barangayId } : {}),
+            ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
+            ...(dto.address !== undefined ? { address: dto.address } : {}),
+            ...(dto.bloodType !== undefined ? { bloodType: dto.bloodType } : {}),
+            ...(dto.allergies !== undefined ? { allergies: dto.allergies } : {}),
+            ...(dto.medicalConditions !== undefined
+              ? { medicalConditions: dto.medicalConditions }
+              : {}),
+            ...(dto.emergencyNotes !== undefined ? { emergencyNotes: dto.emergencyNotes } : {}),
+            ...(dto.profilePhotoUrl !== undefined
+              ? { profilePhotoUrl: dto.profilePhotoUrl }
+              : {}),
+            ...(dto.availabilityStatus !== undefined
+              ? { availabilityStatus: dto.availabilityStatus }
+              : {}),
+          },
+        },
+      },
+      include: { profile: { include: { barangay: true } }, responder: { include: { vehicle: true } } },
+    });
+    void this.firestoreMirror.syncUserProfile(userId);
+    return updated;
+  }
+
+  async list(
+    actor: JwtPayload,
+    dto: ListUsersQueryDto,
+  ): Promise<{
     items: unknown[];
     total: number;
     page: number;
@@ -30,6 +135,15 @@ export class UsersService {
   }> {
     const page = dto.page ?? 1;
     const limit = dto.limit ?? 20;
+    let operatorBarangay: string | null = null;
+    if (actor.role === UserRole.OPERATOR) {
+      operatorBarangay = await getOperatorBarangayId(this.prisma, actor);
+      if (!operatorBarangay) {
+        throw new ForbiddenException(
+          'Operator accounts must have a barangay on their profile to list users.',
+        );
+      }
+    }
     const where: Prisma.UserWhereInput = {
       ...(dto.search
         ? {
@@ -37,6 +151,9 @@ export class UsersService {
           }
         : {}),
       ...(dto.role ? { role: dto.role } : {}),
+      ...(operatorBarangay
+        ? { profile: { is: { barangayId: operatorBarangay } } }
+        : {}),
     };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.user.count({ where }),
@@ -76,7 +193,7 @@ export class UsersService {
     return { items, total, page, limit };
   }
 
-  async getById(id: string): Promise<unknown> {
+  async getById(actor: JwtPayload, id: string): Promise<unknown> {
     const u = await this.prisma.user.findUnique({
       where: { id },
       include: {
@@ -85,6 +202,12 @@ export class UsersService {
       },
     });
     if (!u) throw new NotFoundException('User not found');
+    if (actor.role === UserRole.OPERATOR) {
+      const bg = await getOperatorBarangayId(this.prisma, actor);
+      if (!bg || u.profile?.barangayId !== bg) {
+        throw new ForbiddenException('This user is outside your barangay scope.');
+      }
+    }
     return u;
   }
 
@@ -126,6 +249,7 @@ export class UsersService {
       ipAddress: meta.ip,
       userAgent: meta.ua,
     });
+    void this.firestoreMirror.syncUserProfile(user.id);
     return user;
   }
 
@@ -140,6 +264,17 @@ export class UsersService {
       include: { profile: true },
     });
     if (!existing) throw new NotFoundException('User not found');
+
+    if (actor.role === UserRole.OPERATOR) {
+      if (dto.role !== undefined || dto.isActive !== undefined || dto.password !== undefined) {
+        throw new ForbiddenException('Operators may only update profile fields for users in their barangay.');
+      }
+      const bg = await getOperatorBarangayId(this.prisma, actor);
+      if (!bg || existing.profile?.barangayId !== bg) {
+        throw new ForbiddenException('This user is outside your barangay scope.');
+      }
+    }
+
     if (dto.phone !== undefined && dto.phone !== null) {
       const clash = await this.prisma.user.findFirst({
         where: { phone: dto.phone, NOT: { id } },
@@ -150,6 +285,13 @@ export class UsersService {
       const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
       if (!b) throw new ConflictException('Invalid barangayId');
     }
+    if (actor.role === UserRole.OPERATOR && dto.barangayId !== undefined && dto.barangayId !== null) {
+      const bg = await getOperatorBarangayId(this.prisma, actor);
+      if (dto.barangayId !== bg) {
+        throw new ForbiddenException('Operators cannot move a user to another barangay.');
+      }
+    }
+
     const passwordHash =
       dto.password !== undefined
         ? await bcrypt.hash(dto.password, BCRYPT_ROUNDS)
@@ -165,6 +307,20 @@ export class UsersService {
           update: {
             ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
             ...(dto.barangayId !== undefined ? { barangayId: dto.barangayId } : {}),
+            ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
+            ...(dto.address !== undefined ? { address: dto.address } : {}),
+            ...(dto.bloodType !== undefined ? { bloodType: dto.bloodType } : {}),
+            ...(dto.allergies !== undefined ? { allergies: dto.allergies } : {}),
+            ...(dto.medicalConditions !== undefined
+              ? { medicalConditions: dto.medicalConditions }
+              : {}),
+            ...(dto.emergencyNotes !== undefined ? { emergencyNotes: dto.emergencyNotes } : {}),
+            ...(dto.profilePhotoUrl !== undefined
+              ? { profilePhotoUrl: dto.profilePhotoUrl }
+              : {}),
+            ...(dto.availabilityStatus !== undefined
+              ? { availabilityStatus: dto.availabilityStatus }
+              : {}),
           },
         },
       },
@@ -179,6 +335,7 @@ export class UsersService {
       ipAddress: meta.ip,
       userAgent: meta.ua,
     });
+    void this.firestoreMirror.syncUserProfile(id);
     return user;
   }
 
@@ -199,6 +356,7 @@ export class UsersService {
       ipAddress: meta.ip,
       userAgent: meta.ua,
     });
+    void this.firestoreMirror.syncUserProfile(id);
     return user;
   }
 }

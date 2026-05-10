@@ -17,13 +17,15 @@ import { SituationMap } from "@/components/situation-map";
 import { formatOpsSync } from "@/components/ops/ops-format";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { hasMapboxToken } from "@/lib/env";
+import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 import { defaultOpsMapLayerToggles, OPS_MAP_LAYER_GROUPS } from "@/lib/ops-map-layer-groups";
 import { incidentsToMapPins } from "@/lib/map-pins";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EocLeafletMap } from "@/components/ops/eoc-leaflet-map";
+import { MapDispatchPanel } from "@/components/ops/map-dispatch-panel";
 
 export default function OpsMapPage(): ReactElement {
-  const { queue, lastQueueSync, socketState } = useOpsSession();
+  const { queue, lastQueueSync, socketState, tokens } = useOpsSession();
   const [layers, setLayers] = useState<Record<string, boolean>>(defaultOpsMapLayerToggles);
 
   const mapPins = useMemo(() => incidentsToMapPins(queue), [queue]);
@@ -71,11 +73,10 @@ export default function OpsMapPage(): ReactElement {
               </div>
             ))}
             <p className="border-t border-white/[0.06] px-1 pt-2 text-[10px] leading-relaxed text-zinc-600">
-              Toggles update the Mapbox style in real time. Incident heatmap / clusters use the same ops queue as the
-              command dashboard. Positions and hazard overlays are wired (visibility + GeoJSON sources); populate feeds
-              from the API when ready.
+              AOI: {ISABELA_EOC_ADDRESS}. Toggles update the Mapbox style when a token is set; without a token the main
+              panel uses OpenStreetMap with the same incident pins. Heatmap / clusters need Mapbox.
               {!hasMapboxToken()
-                ? " Add NEXT_PUBLIC_MAPBOX_TOKEN in .env.local and restart the dev server."
+                ? " Optional: NEXT_PUBLIC_MAPBOX_TOKEN in .env.local for full GIS styling."
                 : null}
             </p>
           </div>
@@ -117,7 +118,7 @@ export default function OpsMapPage(): ReactElement {
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-black/30 px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
             <Radar className="h-4 w-4 text-rose-400" aria-hidden />
-            Realtime GIS — Isabela City AOI
+            Realtime GIS — Isabela City AOI (CDRRMO EOC)
           </div>
           <Layers className="h-5 w-5 text-zinc-600" aria-hidden />
         </div>
@@ -126,18 +127,21 @@ export default function OpsMapPage(): ReactElement {
         </div>
       </section>
     </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <OpsPanelCard title="Leaflet EOC (live REST)" subtitle="OSM tiles · EOC reference · incidents · responders · shelters">
-          <EocLeafletMap />
-        </OpsPanelCard>
-        <OpsPanelCard title="Weather radar (RainViewer)" subtitle="Composite viewport — embed">
-          <iframe
-            title="RainViewer radar"
-            className="h-[420px] w-full rounded-lg border border-white/10 bg-black/40"
-            src="https://www.rainviewer.com/map.html?loc=6.7048,121.9715,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&rmt=1&c=1&o=83&lm=0&th=0&sm=0&sn=1"
-            loading="lazy"
-          />
-        </OpsPanelCard>
+      <div className="flex flex-col gap-4">
+        <MapDispatchPanel />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <OpsPanelCard title="Leaflet EOC (live REST)" subtitle="OSM tiles · EOC reference · incidents · responders · vehicles · shelters">
+            <EocLeafletMap accessToken={tokens?.accessToken} />
+          </OpsPanelCard>
+          <OpsPanelCard title="Weather radar (RainViewer)" subtitle="Composite viewport — embed">
+            <iframe
+              title="RainViewer radar"
+              className="h-[420px] w-full rounded-lg border border-white/10 bg-black/40"
+              src={`https://www.rainviewer.com/map.html?loc=${ISABELA_EOC_LAT},${ISABELA_EOC_LNG},8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&rmt=1&c=1&o=83&lm=0&th=0&sm=0&sn=1`}
+              loading="lazy"
+            />
+          </OpsPanelCard>
+        </div>
       </div>
     </div>
   );

@@ -1,11 +1,11 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useOpsSession } from "@/components/ops/ops-session-context";
 import { opsFetchJson } from "@/lib/ops-api";
+import { ISABELA_EOC_ADDRESS } from "@/lib/isabela-eoc";
 
 type OpsLive = {
   eoc: { label: string; latitude: number; longitude: number };
@@ -21,7 +21,13 @@ type OpsLive = {
     locations: Array<{ latitude: unknown; longitude: unknown }>;
     user: { email: string };
   }>;
-  vehicles: Array<{ id: string; plateNumber: string; fleetStatus?: string }>;
+  vehicles: Array<{
+    id: string;
+    plateNumber: string;
+    fleetStatus?: string;
+    latitude?: unknown;
+    longitude?: unknown;
+  }>;
   evacuationCenters: Array<{
     id: string;
     name: string;
@@ -38,20 +44,27 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function EocLeafletMap(): ReactElement {
-  const { tokens } = useOpsSession();
+type Props = {
+  /** JWT for `GET /map/ops-live` (ops console or responder token with map access). */
+  accessToken: string | undefined | null;
+};
+
+export function EocLeafletMap({ accessToken }: Props): ReactElement {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const routeRef = useRef<import("leaflet").Layer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<OpsLive | null>(null);
+  const [routeEtaMin, setRouteEtaMin] = useState<number | null>(null);
+  const [routeBusy, setRouteBusy] = useState(false);
 
   useEffect(() => {
-    if (!tokens?.accessToken) return;
+    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       try {
-        const j = await opsFetchJson<OpsLive>("/map/ops-live", tokens.accessToken);
+        const j = await opsFetchJson<OpsLive>("/map/ops-live", accessToken);
         if (!cancelled) setData(j);
         setError(null);
       } catch (e: unknown) {
@@ -63,7 +76,7 @@ export function EocLeafletMap(): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [tokens?.accessToken]);
+  }, [accessToken]);
 
   useEffect(() => {
     if (!mapEl.current || !data) return;
@@ -84,6 +97,11 @@ export function EocLeafletMap(): ReactElement {
       const layer = layerRef.current;
       if (!map || !layer) return;
       layer.clearLayers();
+      if (routeRef.current) {
+        map.removeLayer(routeRef.current);
+        routeRef.current = null;
+      }
+      setRouteEtaMin(null);
       const iconEoc = L.divIcon({
         className: "eoc-marker",
         html: `<div style="width:14px;height:14px;border-radius:9999px;background:#f43f5e;border:2px solid #fff;box-shadow:0 0 12px rgba(244,63,94,.7)"></div>`,
@@ -110,8 +128,12 @@ export function EocLeafletMap(): ReactElement {
           .bindPopup(`<b>Responder</b><br/>${r.user.email}`);
       }
       for (const v of data.vehicles) {
-        /* vehicles without live GPS — skip until telemetry endpoint exists */
-        void v;
+        const la = num(v.latitude);
+        const lo = num(v.longitude);
+        if (la == null || lo == null) continue;
+        L.circleMarker([la, lo], { radius: 5, color: "#4ade80", weight: 2, fillOpacity: 0.45 })
+          .addTo(layer)
+          .bindPopup(`<b>Vehicle</b><br/>${v.plateNumber}<br/><span style="opacity:.8">${v.fleetStatus ?? ""}</span>`);
       }
       for (const e of data.evacuationCenters) {
         const la = num(e.latitude);
@@ -134,22 +156,88 @@ export function EocLeafletMap(): ReactElement {
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
+      routeRef.current = null;
     };
   }, []);
 
-  if (!tokens?.accessToken) {
+  const drawRouteToIncident = useCallback(async () => {
+    if (!data || !accessToken || !mapRef.current) return;
+    const target = data.incidents.find((i) => {
+      const la = num(i.latitude);
+      const lo = num(i.longitude);
+      return la != null && lo != null;
+    });
+    if (!target) {
+      setError("No incident with coordinates to route to.");
+      return;
+    }
+    const tLat = num(target.latitude);
+    const tLon = num(target.longitude);
+    if (tLat == null || tLon == null) return;
+    setRouteBusy(true);
+    setError(null);
+    try {
+      const lo0 = data.eoc.longitude;
+      const la0 = data.eoc.latitude;
+      const url = `https://router.project-osrm.org/route/v1/driving/${lo0},${la0};${tLon},${tLat}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const j = (await res.json()) as {
+        routes?: Array<{ duration: number; geometry: { coordinates: [number, number][] } }>;
+        code?: string;
+      };
+      const route = j.routes?.[0];
+      if (!route?.geometry?.coordinates?.length) {
+        setError("Routing service returned no path.");
+        setRouteBusy(false);
+        return;
+      }
+      const L = await import("leaflet");
+      const map = mapRef.current;
+      if (routeRef.current) {
+        map.removeLayer(routeRef.current);
+        routeRef.current = null;
+      }
+      const latLngs: LatLngExpression[] = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      const line = L.polyline(latLngs, { color: "#fbbf24", weight: 4, opacity: 0.92 }).addTo(map);
+      routeRef.current = line;
+      line.bindPopup(`<b>ETA</b> ${Math.max(1, Math.round(route.duration / 60))} min (driving)`).openPopup();
+      map.fitBounds(line.getBounds(), { padding: [36, 36] });
+      setRouteEtaMin(Math.max(1, Math.round(route.duration / 60)));
+    } catch {
+      setError("Could not fetch route from OSRM.");
+    } finally {
+      setRouteBusy(false);
+    }
+  }, [data, accessToken]);
+
+  if (!accessToken) {
     return <p className="text-xs text-zinc-500">Sign in to load the Leaflet EOC map.</p>;
   }
-  if (error) {
+  if (error && !data) {
     return <p className="text-xs text-rose-300">{error}</p>;
   }
 
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={routeBusy || !data}
+          onClick={() => void drawRouteToIncident()}
+          className="rounded-lg border border-amber-500/35 bg-amber-950/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 hover:bg-amber-900/35 disabled:opacity-40 transition-colors"
+        >
+          {routeBusy ? "Routing…" : "Route + ETA to first incident"}
+        </button>
+        {routeEtaMin != null ? (
+          <span className="text-[11px] text-amber-200/90 tabular-nums">~{routeEtaMin} min</span>
+        ) : null}
+      </div>
+      {error && data ? <p className="text-[10px] text-rose-300/90">{error}</p> : null}
       <div ref={mapEl} className="h-[420px] w-full overflow-hidden rounded-xl border border-white/[0.08] bg-black/40" />
       <p className="text-[10px] text-zinc-500">
-        Leaflet + OSM tiles · EOC reference marker · incidents, last-known responder positions, evacuation sites from{" "}
-        <code className="text-zinc-400">GET /api/v1/map/ops-live</code>.
+        Leaflet + OSM · EOC: {ISABELA_EOC_ADDRESS} · Live layers from{" "}
+        <code className="text-zinc-400">GET /api/v1/map/ops-live</code>
+        . Roads: OSM tiles. ETA via public OSRM (configure a private router for production).
       </p>
     </div>
   );

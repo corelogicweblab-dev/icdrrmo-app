@@ -29,7 +29,7 @@ export class VehiclesController {
     return this.vehicles.list();
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Post()
   create(
     @CurrentUser() actor: JwtPayload,
@@ -39,7 +39,7 @@ export class VehiclesController {
     return this.vehicles.create(actor, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Patch(':id')
   update(
     @CurrentUser() actor: JwtPayload,
@@ -50,7 +50,7 @@ export class VehiclesController {
     return this.vehicles.update(actor, id, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Delete(':id')
   remove(@CurrentUser() actor: JwtPayload, @Param('id') id: string, @Req() req: Request) {
     return this.vehicles.remove(actor, id, clientMeta(req));

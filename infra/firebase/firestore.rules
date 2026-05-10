@@ -24,5 +24,13 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Profile mirror: doc id = Nest `users.id`. Admin SDK writes; clients read after `signInWithCustomToken(uid)`.
+    // Custom tokens are minted by Nest (`POST /auth/firebase-custom-token`) with uid == userId.
+    match /citizen_profiles/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Keep writes on Nest/Postgres so data stays consistent; Admin SDK bypasses these rules.
+      allow write: if false;
+    }
   }
 }

@@ -22,6 +22,11 @@ function clientMeta(req: Request): { ip?: string; ua?: string } {
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
+  @Get('me')
+  listMine(@CurrentUser() user: JwtPayload) {
+    return this.notifications.listForUser(user.sub);
+  }
+
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Get()
   list() {

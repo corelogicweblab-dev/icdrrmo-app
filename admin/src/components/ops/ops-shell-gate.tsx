@@ -2,7 +2,7 @@
 
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { ShieldOff } from "lucide-react";
+import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { canAccessOpsConsole } from "@/lib/decode-jwt-role";
 
@@ -24,7 +24,9 @@ export function OpsShellGate({ children }: { children: ReactNode }): ReactElemen
   if (allowed === false) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
-        <ShieldOff className="h-14 w-14 text-rose-400" aria-hidden />
+        <div className="rounded-2xl bg-black/40 p-2 ring-1 ring-rose-500/25">
+          <IcdrrmoLogo size={80} className="rounded-xl opacity-90" />
+        </div>
         <div className="max-w-md space-y-2">
           <h1 className="text-lg font-semibold text-white">Operations console restricted</h1>
           <p className="text-sm text-zinc-400 leading-relaxed">

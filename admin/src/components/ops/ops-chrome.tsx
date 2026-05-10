@@ -3,7 +3,7 @@
 import type { ReactElement, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Database,
   Download,
@@ -14,7 +14,6 @@ import {
   Radio,
   RefreshCw,
   Server,
-  Shield,
   Volume2,
   VolumeX,
   Wifi,
@@ -22,8 +21,10 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl, getHealthCheckUrl } from "@/lib/env";
 import { OPS_NAV_SECTIONS, OPS_PAGE_TITLES } from "@/components/ops/ops-nav";
+import { isOpsGlobalAdmin } from "@/lib/decode-jwt-role";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { decodeJwtEmail, formatOpsClock, formatOpsSync } from "@/components/ops/ops-format";
+import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { OpsStatusCapsule } from "@/components/ops/ops-widgets";
 
 type BeforeInstallPromptEvent = Event & {
@@ -52,6 +53,16 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
   const [fullscreen, setFullscreen] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const title = OPS_PAGE_TITLES[pathname] ?? "Operation center";
+
+  const navSections = useMemo(() => {
+    const admin = isOpsGlobalAdmin(tokens?.accessToken);
+    return OPS_NAV_SECTIONS.map((sec) => ({
+      ...sec,
+      items: sec.items.filter((it) => (it.href === "/ops/system" ? admin : true)),
+    }));
+  }, [tokens?.accessToken]);
+
+  const showInfraHealthRow = isOpsGlobalAdmin(tokens?.accessToken);
 
   const sessionLabel = tokens?.accessToken
     ? decodeJwtEmail(tokens.accessToken) ?? "Ops session"
@@ -106,8 +117,8 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
     >
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-white/[0.06] bg-[#080809]">
         <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 shadow-glow ring-1 ring-white/10">
-            <Shield className="h-5 w-5 text-white" strokeWidth={1.5} aria-hidden />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10 overflow-hidden p-0.5">
+            <IcdrrmoLogo size={36} className="rounded-lg" />
           </div>
           <div className="min-w-0">
             <p className="truncate text-[10px] font-bold uppercase tracking-[0.22em] text-rose-300/95">
@@ -117,7 +128,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto scroll-ops px-2 py-3 space-y-5">
-          {OPS_NAV_SECTIONS.map((sec) => (
+          {navSections.map((sec) => (
             <div key={sec.title}>
               <p className="px-2 pb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">
                 {sec.title}
@@ -149,6 +160,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
         </div>
         <div className="border-t border-white/[0.06] p-3 text-[9px] leading-relaxed text-zinc-600">
           Isabela City DRRMO · Multi-module EOC
+          <span className="mt-1 block text-zinc-500">Powered by: CoreLogic</span>
         </div>
       </aside>
 
@@ -269,32 +281,34 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                 </button>
               </div>
             </div>
-            <div className="hidden sm:flex flex-wrap items-center gap-2 border-t border-white/[0.04] pt-2">
-              <OpsStatusCapsule
-                icon={Database}
-                label="PostgreSQL"
-                state={apiReachable === false ? "bad" : apiReachable ? "good" : "idle"}
-                detail={lastHealthAt ? `Ready · ${formatOpsSync(lastHealthAt)}` : `GET ${getHealthCheckUrl()}`}
-              />
-              <OpsStatusCapsule
-                icon={Server}
-                label="Socket.IO"
-                state={socketState === "live" ? "good" : socketState === "error" ? "bad" : "idle"}
-                detail={
-                  socketState === "live"
-                    ? `Ops · ${formatOpsSync(lastSocketAt)}`
-                    : socketState === "error"
-                      ? wsErrorDetail ?? "Fault"
-                      : "Standby"
-                }
-              />
-              <OpsStatusCapsule
-                icon={Headphones}
-                label="Voice bridge"
-                state="idle"
-                detail="WebRTC / Agora — configure in Voice panel"
-              />
-            </div>
+            {showInfraHealthRow ? (
+              <div className="hidden sm:flex flex-wrap items-center gap-2 border-t border-white/[0.04] pt-2">
+                <OpsStatusCapsule
+                  icon={Database}
+                  label="PostgreSQL"
+                  state={apiReachable === false ? "bad" : apiReachable ? "good" : "idle"}
+                  detail={lastHealthAt ? `Ready · ${formatOpsSync(lastHealthAt)}` : `GET ${getHealthCheckUrl()}`}
+                />
+                <OpsStatusCapsule
+                  icon={Server}
+                  label="Socket.IO"
+                  state={socketState === "live" ? "good" : socketState === "error" ? "bad" : "idle"}
+                  detail={
+                    socketState === "live"
+                      ? `Ops · ${formatOpsSync(lastSocketAt)}`
+                      : socketState === "error"
+                        ? wsErrorDetail ?? "Fault"
+                        : "Standby"
+                  }
+                />
+                <OpsStatusCapsule
+                  icon={Headphones}
+                  label="Voice bridge"
+                  state="idle"
+                  detail="WebRTC / Agora — configure in Voice panel"
+                />
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -303,7 +317,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
           className="lg:hidden shrink-0 border-b border-white/[0.06] bg-[#09090c] overflow-x-auto scroll-ops"
         >
           <ul className="flex gap-px px-1 py-2 min-w-max">
-            {OPS_NAV_SECTIONS.flatMap((sec) => sec.items).map((item) => {
+            {navSections.flatMap((sec) => sec.items).map((item) => {
               const Icon = item.icon;
               const active =
                 pathname === item.href || (item.href !== "/ops" && pathname.startsWith(item.href));

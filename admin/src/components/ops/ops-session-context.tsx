@@ -11,6 +11,8 @@ import {
 } from "react";
 import type { Socket } from "socket.io-client";
 import { getApiBaseUrl, getApiConfigWarning, getHealthCheckUrl } from "@/lib/env";
+import { API_INCIDENTS_QUEUE_PATH } from "@/lib/ops-api-paths";
+import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 import { connectOpsRealtime, type IncidentCreatedPayload } from "@/lib/realtime";
 import { OpsChrome } from "@/components/ops/ops-chrome";
 import { OpsLoginView } from "@/components/ops/ops-login";
@@ -120,27 +122,26 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const refreshQueue = useCallback(async (access: string) => {
     setQueueLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/incidents/queue`, {
-        headers: { Authorization: `Bearer ${access}` },
-      });
-      if (res.status === 401) {
-        setQueueError("Session expired. Sign in again.");
-        return;
-      }
-      if (res.status === 403) {
-        setQueueError("Insufficient permissions. Operations queue requires Admin or Operator role.");
-        return;
-      }
-      if (!res.ok) {
-        setQueueError(`Queue service returned HTTP ${res.status}. Verify API availability.`);
-        return;
-      }
+      const data = await opsFetchJson<OpsIncident[]>(API_INCIDENTS_QUEUE_PATH, access);
       setQueueError(null);
-      const data = (await res.json()) as OpsIncident[];
       setQueue(Array.isArray(data) ? data : []);
       setLastQueueSync(new Date());
-    } catch {
-      setQueueError("Unable to reach the incident queue. Confirm the API is online and URL rewrites are configured.");
+    } catch (e: unknown) {
+      if (e instanceof OpsApiError) {
+        if (e.status === 401) {
+          setQueueError("Session expired. Sign in again.");
+          return;
+        }
+        if (e.status === 403) {
+          setQueueError("Insufficient permissions. Operations queue requires Admin or Operator role.");
+          return;
+        }
+        setQueueError(
+          `Queue service returned HTTP ${e.status}. Verify Nest is up and NEXT_PUBLIC_API_URL points at /api/v1 on your API host (not static Hosting).`,
+        );
+        return;
+      }
+      setQueueError("Unable to reach the incident queue. Confirm the API is online.");
     } finally {
       setQueueLoading(false);
     }
@@ -246,7 +247,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       const raw = (await res.json()) as { accessToken?: string; refreshToken?: string };
       const pair: TokenPair = {
         accessToken: raw.accessToken ?? "",
-        refreshToken: raw.refreshToken ?? "",
+        ...(raw.refreshToken ? { refreshToken: raw.refreshToken } : {}),
       };
       if (!pair.accessToken) {
         setLoginError("Login response missing accessToken.");

@@ -8,6 +8,15 @@ export type MapIncidentPin = {
   type: string;
 };
 
+export function markerColorForIncidentType(type: string): string {
+  const t = type.toUpperCase();
+  if (t.includes("FIRE")) return "#f97316";
+  if (t.includes("FLOOD") || t.includes("TYPHOON") || t.includes("LANDSLIDE")) return "#38bdf8";
+  if (t.includes("MEDICAL")) return "#34d399";
+  if (t.includes("EARTHQUAKE")) return "#fbbf24";
+  return "#f43f5e";
+}
+
 export function incidentsToMapPins(rows: OpsIncident[]): MapIncidentPin[] {
   return rows
     .filter((r) => r.latitude != null && r.longitude != null && r.id)

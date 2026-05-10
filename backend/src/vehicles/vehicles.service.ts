@@ -34,6 +34,10 @@ export class VehiclesService {
         type: dto.type,
         fleetStatus: dto.fleetStatus,
         isActive: dto.isActive ?? true,
+        latitude: dto.latitude ?? undefined,
+        longitude: dto.longitude ?? undefined,
+        lastLocationAt:
+          dto.latitude != null && dto.longitude != null ? new Date() : undefined,
       },
     });
     await this.audit.write({
@@ -62,6 +66,15 @@ export class VehiclesService {
       });
       if (clash) throw new ConflictException('Plate number already in use');
     }
+    const locUpdate =
+      dto.latitude !== undefined || dto.longitude !== undefined
+        ? {
+            latitude: dto.latitude ?? null,
+            longitude: dto.longitude ?? null,
+            lastLocationAt:
+              dto.latitude != null && dto.longitude != null ? new Date() : null,
+          }
+        : {};
     const v = await this.prisma.vehicle.update({
       where: { id },
       data: {
@@ -72,6 +85,7 @@ export class VehiclesService {
         ...(dto.type !== undefined ? { type: dto.type } : {}),
         ...(dto.fleetStatus !== undefined ? { fleetStatus: dto.fleetStatus } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        ...locUpdate,
       },
     });
     await this.audit.write({

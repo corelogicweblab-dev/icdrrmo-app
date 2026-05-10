@@ -17,10 +17,16 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSosDto } from './dto/create-sos.dto';
+import { CreateOpsIncidentDto } from './dto/create-ops-incident.dto';
 import { PatchIncidentDto } from './dto/patch-incident.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { JobsService } from '../jobs/jobs.service';
+import {
+  getOperatorBarangayId,
+  isGlobalOpsRole,
+  OPERATOR_BARANGAY_REQUIRED,
+} from '../common/ops-operator-scope';
 
 const DEDUPE_WINDOW_MS = 120_000;
 
@@ -125,8 +131,27 @@ export class IncidentsService {
     ) {
       throw new ForbiddenException('Operations role required');
     }
+    const baseWhere = { status: { notIn: [IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM] } };
+    if (isGlobalOpsRole(user)) {
+      return this.prisma.incident.findMany({
+        where: baseWhere,
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+        include: {
+          reporter: { select: { id: true, email: true, phone: true, profile: true } },
+          assigned: { include: { user: { select: { id: true, email: true } } } },
+        },
+      });
+    }
+    const bg = await getOperatorBarangayId(this.prisma, user);
+    if (!bg) {
+      throw new ForbiddenException(OPERATOR_BARANGAY_REQUIRED);
+    }
     return this.prisma.incident.findMany({
-      where: { status: { notIn: [IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM] } },
+      where: {
+        ...baseWhere,
+        OR: [{ barangayId: bg }, { reporter: { profile: { barangayId: bg } } }],
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
       include: {
@@ -151,20 +176,29 @@ export class IncidentsService {
     ) {
       throw new ForbiddenException('Operations role required');
     }
-    const rows = await this.prisma.responder.findMany({
-      where: {
-        status: {
-          in: [
-            ResponderStatus.AVAILABLE,
-            ResponderStatus.DISPATCHED,
-            ResponderStatus.EN_ROUTE,
-            ResponderStatus.ON_SCENE,
-            ResponderStatus.TRANSPORTING,
-            ResponderStatus.COMPLETED,
-            ResponderStatus.OFF_DUTY,
-          ],
-        },
+    const statusWhere: Prisma.ResponderWhereInput = {
+      status: {
+        in: [
+          ResponderStatus.AVAILABLE,
+          ResponderStatus.DISPATCHED,
+          ResponderStatus.EN_ROUTE,
+          ResponderStatus.ON_SCENE,
+          ResponderStatus.TRANSPORTING,
+          ResponderStatus.COMPLETED,
+          ResponderStatus.OFF_DUTY,
+        ],
       },
+    };
+    let whereResponder: Prisma.ResponderWhereInput = statusWhere;
+    if (user.role === UserRole.OPERATOR) {
+      const bg = await getOperatorBarangayId(this.prisma, user);
+      if (!bg) {
+        throw new ForbiddenException(OPERATOR_BARANGAY_REQUIRED);
+      }
+      whereResponder = { ...statusWhere, user: { profile: { barangayId: bg } } };
+    }
+    const rows = await this.prisma.responder.findMany({
+      where: whereResponder,
       include: { user: { select: { email: true } } },
       orderBy: { badgeNumber: 'asc' },
     });
@@ -194,6 +228,17 @@ export class IncidentsService {
       throw new NotFoundException('Incident not found');
     }
 
+    if (user.role === UserRole.OPERATOR) {
+      const bg = await getOperatorBarangayId(this.prisma, user);
+      if (!bg) {
+        throw new ForbiddenException(OPERATOR_BARANGAY_REQUIRED);
+      }
+      const allowed = await this.incidentVisibleToOperatorBarangay(existing, bg);
+      if (!allowed) {
+        throw new ForbiddenException('Incident is outside your barangay scope.');
+      }
+    }
+
     if (dto.status === undefined && dto.assignedResponderId === undefined && !dto.notifyReporterSms) {
       throw new BadRequestException('No mutable fields supplied');
     }
@@ -204,9 +249,25 @@ export class IncidentsService {
     ) {
       const responder = await this.prisma.responder.findUnique({
         where: { id: dto.assignedResponderId },
+        include: {
+          user: {
+            include: {
+              profile: { select: { barangayId: true } },
+            },
+          },
+        },
       });
       if (!responder) {
         throw new BadRequestException('assignedResponderId not found');
+      }
+      if (user.role === UserRole.OPERATOR) {
+        const bg = await getOperatorBarangayId(this.prisma, user);
+        if (!bg) {
+          throw new ForbiddenException(OPERATOR_BARANGAY_REQUIRED);
+        }
+        if (responder.user.profile?.barangayId !== bg) {
+          throw new ForbiddenException('You may only assign responders from your barangay.');
+        }
       }
     }
 
@@ -345,6 +406,73 @@ export class IncidentsService {
     }
 
     return updatedRow;
+  }
+
+  async createByOps(
+    user: JwtPayload,
+    dto: CreateOpsIncidentDto,
+  ): Promise<{ id: string }> {
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.role !== UserRole.SUPER_ADMIN &&
+      user.role !== UserRole.OPERATOR
+    ) {
+      throw new ForbiddenException('Operations role required');
+    }
+    let barangayId = dto.barangayId;
+    if (user.role === UserRole.OPERATOR) {
+      const bg = await getOperatorBarangayId(this.prisma, user);
+      if (!bg) {
+        throw new ForbiddenException(OPERATOR_BARANGAY_REQUIRED);
+      }
+      if (barangayId != null && barangayId !== bg) {
+        throw new ForbiddenException('Operators may only file incidents for their assigned barangay.');
+      }
+      barangayId = bg;
+    }
+    if (barangayId) {
+      const b = await this.prisma.barangay.findUnique({ where: { id: barangayId } });
+      if (!b) throw new BadRequestException('Invalid barangayId');
+    }
+    const incident = await this.prisma.incident.create({
+      data: {
+        reporterId: user.sub,
+        type: dto.type,
+        status: dto.status ?? IncidentStatus.OPEN,
+        channel: IncidentChannel.ADMIN,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        title: dto.title?.trim() || `EOC — ${dto.type}`,
+        description: dto.description?.trim(),
+        barangayId,
+      },
+    });
+    await this.prisma.incidentLog.create({
+      data: {
+        incidentId: incident.id,
+        action: 'incident_created',
+        details: { source: 'ops_console', type: dto.type },
+        createdById: user.sub,
+      },
+    });
+    this.realtime.emitIncidentCreated({
+      incidentId: incident.id,
+      reporterId: incident.reporterId,
+    });
+    return { id: incident.id };
+  }
+
+  private async incidentVisibleToOperatorBarangay(
+    incident: { barangayId: string | null; reporterId: string | null },
+    barangayId: string,
+  ): Promise<boolean> {
+    if (incident.barangayId === barangayId) return true;
+    if (!incident.reporterId) return false;
+    const p = await this.prisma.userProfile.findUnique({
+      where: { userId: incident.reporterId },
+      select: { barangayId: true },
+    });
+    return p?.barangayId === barangayId;
   }
 
   private async assertSosRateLimit(userId: string): Promise<void> {

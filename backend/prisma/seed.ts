@@ -116,6 +116,48 @@ async function main(): Promise<void> {
     });
     console.log(`Linked responder row to ${demoResponderEmail}`);
   }
+
+  const binuangan = await prisma.barangay.findUnique({ where: { code: 'IC-005' } });
+  if (binuangan) {
+    const opEmail = process.env.SEED_OPERATOR_EMAIL ?? 'operator.binuangan@icdrrmo.local';
+    const opPasswordHash = await bcrypt.hash(
+      process.env.SEED_OPERATOR_PASSWORD ?? 'ChangeMe!Operator12',
+      12,
+    );
+    const opUser = await prisma.user.upsert({
+      where: { email: opEmail },
+      create: {
+        email: opEmail,
+        phone: '+639170000002',
+        passwordHash: opPasswordHash,
+        role: UserRole.OPERATOR,
+        profile: {
+          create: {
+            fullName: 'Barangay Desk Operator (Binuangan)',
+            setupCompleted: true,
+            barangayId: binuangan.id,
+          },
+        },
+      },
+      update: {
+        passwordHash: opPasswordHash,
+        role: UserRole.OPERATOR,
+      },
+    });
+    await prisma.userProfile.upsert({
+      where: { userId: opUser.id },
+      create: {
+        userId: opUser.id,
+        fullName: 'Barangay Desk Operator (Binuangan)',
+        setupCompleted: true,
+        barangayId: binuangan.id,
+      },
+      update: { barangayId: binuangan.id },
+    });
+    console.log(
+      `Seeded operator (barangay Binuangan): ${opEmail} — set SEED_OPERATOR_PASSWORD on first deploy`,
+    );
+  }
 }
 
 main()

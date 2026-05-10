@@ -20,10 +20,14 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { MapModule } from './map/map.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AlertsModule } from './alerts/alerts.module';
+import { SystemModule } from './system/system.module';
+import { FirestoreModule } from './firestore/firestore.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    FirestoreModule,
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
     }),
@@ -45,6 +49,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AuditLogsModule,
     MapModule,
     DashboardModule,
+    AlertsModule,
+    SystemModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

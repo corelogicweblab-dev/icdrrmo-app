@@ -5,6 +5,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { CreateSosDto } from './dto/create-sos.dto';
 import { PatchIncidentDto } from './dto/patch-incident.dto';
+import { CreateOpsIncidentDto } from './dto/create-ops-incident.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { UserRole } from '@prisma/client';
@@ -22,13 +23,15 @@ export class IncidentsController {
         sos: 'POST /api/v1/incidents/sos (JWT: citizen or app user)',
         queue: 'GET /api/v1/incidents/queue (JWT: admin | super_admin | operator)',
         patch: 'PATCH /api/v1/incidents/:id (ops roles)',
+        opsCreate: 'POST /api/v1/incidents/ops (ops roles)',
         responders:
           'GET /api/v1/incidents/responders-assignable (ops roles)',
         users: 'CRUD /api/v1/users (ADMIN | SUPER_ADMIN)',
         vehicles: 'CRUD /api/v1/vehicles',
         respondersAdmin: 'CRUD /api/v1/responders',
         barangays: 'GET /api/v1/barangays + /barangays/stats/user-counts',
-        evacuationCenters: 'CRUD /api/v1/evacuation-centers',
+        evacuationCenters:
+          'CRUD /api/v1/evacuation-centers (ADMIN | SUPER_ADMIN | OPERATOR; operators scoped to profile barangay)',
         notifications: 'GET /api/v1/notifications + POST /notifications/broadcast',
         auditLogs: 'GET /api/v1/audit-logs',
         map: 'GET /api/v1/map/ops-live',
@@ -44,6 +47,16 @@ export class IncidentsController {
     @Body() dto: CreateSosDto,
   ): Promise<{ incidentId: string; deduplicated: boolean }> {
     return this.incidents.createSosFromApp(user, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
+  @Post('ops')
+  createOps(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateOpsIncidentDto,
+  ): Promise<{ id: string }> {
+    return this.incidents.createByOps(user, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

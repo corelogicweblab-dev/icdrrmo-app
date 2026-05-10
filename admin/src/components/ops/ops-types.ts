@@ -1,4 +1,5 @@
-export type TokenPair = { accessToken: string; refreshToken: string };
+/** API issues `accessToken` only (JWT_ACCESS_SECRET). `refreshToken` is optional for older stored sessions. */
+export type TokenPair = { accessToken: string; refreshToken?: string };
 
 export type OpsIncident = {
   id: string;

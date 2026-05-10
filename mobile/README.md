@@ -12,6 +12,12 @@ flutter create --org ph.gov.isabela.icdrrmo --project-name icdrrmo_mobile .
 
 Then merge `lib/` from this repo.
 
+## Branding
+
+Official mark: **`icdrrmologo.png`** (same file as repo root). Flutter loads it from `assets/images/icdrrmologo.png` (splash, login, register). After `flutter create`, copy the repo’s `icdrrmologo.png` into `assets/images/` or run from repo where it already exists.
+
+For **launcher icons** on Android/iOS, replace the default mipmaps / `AppIcon.appiconset` with exports derived from `icdrrmologo.png` (e.g. [appicon.co](https://www.appicon.co) or Flutter’s `flutter_launcher_icons`).
+
 ## Run
 
 ```bash

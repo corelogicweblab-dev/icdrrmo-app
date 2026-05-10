@@ -77,8 +77,7 @@ Base URL: `/api/v1` (behind Nginx: `http://localhost/api/v1`).
 | Method | Path | Auth | Purpose |
 |--------|------|------|----------|
 | POST | `/auth/register` | — | Citizen registration |
-| POST | `/auth/login` | — | Login; returns `accessToken`, `refreshToken` |
-| POST | `/auth/refresh` | — | Rotate refresh token |
+| POST | `/auth/login` | — | Login; returns `accessToken` (JWT_ACCESS_SECRET only) |
 | POST | `/incidents/sos` | JWT | One-tap SOS from mobile app |
 | GET | `/incidents/queue` | JWT + ops role | Open incident queue |
 | POST | `/sms/inbound` | `X-ICDRRMO-Signature` | GSM/Android relay → create incident from SMS |

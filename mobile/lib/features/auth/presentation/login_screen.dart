@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/branding.dart';
 import '../../../core/bootstrap/global_store.dart';
 import '../../../core/navigation/routes.dart';
 import '../data/auth_repository.dart';
@@ -55,6 +56,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                IcdrrmoBranding.logoAsset,
+                width: 88,
+                height: 88,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(Icons.shield_outlined, size: 72, color: Theme.of(context).colorScheme.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
           Text('Session persistence', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.tertiary)),
           TextFormField(controller: email, decoration: const InputDecoration(labelText: 'Email'), keyboardType: TextInputType.emailAddress),
           TextFormField(controller: password, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),

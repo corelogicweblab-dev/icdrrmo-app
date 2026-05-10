@@ -5,16 +5,19 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ChevronRight,
   LocateFixed,
   Loader2,
   Lock,
   LogOut,
-  Radar,
+  UserCircle,
   UserPlus,
 } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/env";
+import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
+import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
+import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
-type Tokens = { accessToken: string; refreshToken: string };
+type Tokens = { accessToken: string; refreshToken?: string };
 
 const STORAGE = "icdrrmo_citizen_tokens";
 
@@ -46,6 +49,21 @@ function loadTokens(): Tokens | null {
   }
 }
 
+type CitizenMe = {
+  email: string;
+  phone: string | null;
+  role: string;
+  profile: null | {
+    fullName: string;
+    barangayId: string | null;
+    bloodType: string;
+    allergies: string | null;
+    medicalConditions: string | null;
+    availabilityStatus: string;
+    barangay: { name: string } | null;
+  };
+};
+
 export default function CitizenPage(): ReactElement {
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [tokens, setTokens] = useState<Tokens | null>(null);
@@ -65,9 +83,47 @@ export default function CitizenPage(): ReactElement {
   const [sosBusy, setSosBusy] = useState(false);
   const [sosResult, setSosResult] = useState<string | null>(null);
 
+  const [me, setMe] = useState<CitizenMe | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileErr, setProfileErr] = useState<string | null>(null);
+
   useEffect(() => {
     setTokens(loadTokens());
   }, []);
+
+  useEffect(() => {
+    const t = tokens?.accessToken;
+    if (!t) {
+      setMe(null);
+      setProfileErr(null);
+      return;
+    }
+    let cancelled = false;
+    setProfileLoading(true);
+    setProfileErr(null);
+    (async () => {
+      try {
+        const u = await opsFetchJson<CitizenMe>("/users/me", t);
+        if (!cancelled) setMe(u);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          const hint =
+            e instanceof OpsApiError && e.status === 404
+              ? " (API path not found — set NEXT_PUBLIC_API_URL sa build para sa tamang Nest server.)"
+              : "";
+          setProfileErr(
+            e instanceof OpsApiError ? `${e.message}${hint}` : "Hindi ma-load ang profile. Suriin ang API URL.",
+          );
+          setMe(null);
+        }
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tokens?.accessToken]);
 
   async function login(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -84,11 +140,14 @@ export default function CitizenPage(): ReactElement {
         setMsg(data.message ?? `Cannot sign in (${res.status}).`);
         return;
       }
-      if (!data.accessToken || !data.refreshToken) {
+      if (!data.accessToken) {
         setMsg("Invalid response from server.");
         return;
       }
-      const pair: Tokens = { accessToken: data.accessToken, refreshToken: data.refreshToken };
+      const pair: Tokens = {
+        accessToken: data.accessToken,
+        ...(typeof data.refreshToken === "string" ? { refreshToken: data.refreshToken } : {}),
+      };
       saveTokens(pair);
       setTokens(pair);
     } catch {
@@ -116,11 +175,14 @@ export default function CitizenPage(): ReactElement {
         setMsg(m);
         return;
       }
-      if (!data.accessToken || !data.refreshToken) {
+      if (!data.accessToken) {
         setMsg("Registration succeeded but tokens were not returned.");
         return;
       }
-      const pair: Tokens = { accessToken: data.accessToken, refreshToken: data.refreshToken };
+      const pair: Tokens = {
+        accessToken: data.accessToken,
+        ...(typeof data.refreshToken === "string" ? { refreshToken: data.refreshToken } : {}),
+      };
       saveTokens(pair);
       setTokens(pair);
     } catch {
@@ -223,14 +285,23 @@ export default function CitizenPage(): ReactElement {
             Citizen
           </div>
           {tokens ? (
-            <button
-              type="button"
-              onClick={logout}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.06]"
-            >
-              <LogOut className="h-3.5 w-3.5" aria-hidden />
-              Sign out
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Link
+                href="/citizen/profile"
+                className="inline-flex items-center gap-1 rounded-lg border border-rose-500/35 bg-rose-950/40 px-2.5 py-1.5 text-[11px] font-semibold text-rose-100 hover:bg-rose-900/35"
+              >
+                <UserCircle className="h-3.5 w-3.5" aria-hidden />
+                Profile
+              </Link>
+              <button
+                type="button"
+                onClick={logout}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.06]"
+              >
+                <LogOut className="h-3.5 w-3.5" aria-hidden />
+                Sign out
+              </button>
+            </div>
           ) : (
             <span className="text-[10px] text-zinc-600">Not signed in</span>
           )}
@@ -239,8 +310,8 @@ export default function CitizenPage(): ReactElement {
 
       <main className="mx-auto max-w-lg space-y-6 px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-600/25 ring-1 ring-rose-500/30">
-            <Radar className="h-8 w-8 text-rose-300" strokeWidth={1.15} aria-hidden />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/35 ring-1 ring-rose-500/25 p-1">
+            <IcdrrmoLogo size={56} priority className="rounded-xl" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight">Citizen Emergency</h1>
           <p className="mt-2 text-sm text-zinc-500">
@@ -363,6 +434,87 @@ export default function CitizenPage(): ReactElement {
           </section>
         ) : (
           <section className="space-y-4">
+            {getApiConfigWarning() ? (
+              <div
+                className="rounded-xl border border-amber-500/35 bg-amber-950/25 px-4 py-3 text-[11px] leading-relaxed text-amber-100/95"
+                role="status"
+              >
+                {getApiConfigWarning()}
+              </div>
+            ) : null}
+
+            <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-4 shadow-panel">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/90">
+                    Account &amp; medical
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
+                    Dito mo i-edit ang pangalan, barangay, dugo, allergy, at evacuation centers na malapit sa&apos;yo.
+                  </p>
+                </div>
+                <UserCircle className="h-8 w-8 shrink-0 text-zinc-600" aria-hidden />
+              </div>
+
+              {profileLoading ? (
+                <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Kinukuha ang profile…
+                </div>
+              ) : profileErr ? (
+                <p className="mt-3 text-xs text-rose-300/95 leading-relaxed">{profileErr}</p>
+              ) : me?.profile ? (
+                <dl className="mt-4 grid gap-2 text-xs text-zinc-300">
+                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                    <dt className="text-zinc-500">Pangalan</dt>
+                    <dd className="font-medium text-white text-right">{me.profile.fullName}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                    <dt className="text-zinc-500">Barangay</dt>
+                    <dd className="text-right">{me.profile.barangay?.name ?? "— (i-set sa profile)"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                    <dt className="text-zinc-500">Phone</dt>
+                    <dd className="font-mono text-right">{me.phone ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
+                    <dt className="text-zinc-500">Blood type</dt>
+                    <dd className="text-right">{me.profile.bloodType.replace(/_/g, " ")}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3 pb-1">
+                    <dt className="text-zinc-500">Status</dt>
+                    <dd className="text-right text-emerald-200/90">{me.profile.availabilityStatus}</dd>
+                  </div>
+                  {(me.profile.allergies || me.profile.medicalConditions) && (
+                    <div className="rounded-lg bg-black/30 p-2.5 text-[11px] text-zinc-400 leading-snug">
+                      {me.profile.allergies ? (
+                        <p>
+                          <span className="text-zinc-500">Allergies: </span>
+                          {me.profile.allergies}
+                        </p>
+                      ) : null}
+                      {me.profile.medicalConditions ? (
+                        <p className={me.profile.allergies ? "mt-1.5" : ""}>
+                          <span className="text-zinc-500">Medical: </span>
+                          {me.profile.medicalConditions}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </dl>
+              ) : (
+                <p className="mt-3 text-xs text-zinc-500">Walang profile record.</p>
+              )}
+
+              <Link
+                href="/citizen/profile"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-900/35 transition-colors"
+              >
+                Buksan ang buong profile &amp; evacuation
+                <ChevronRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </div>
+
             <form
               onSubmit={sendSos}
               className="overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-b from-rose-950/40 to-black/55 shadow-panel"
@@ -445,6 +597,9 @@ export default function CitizenPage(): ReactElement {
           </section>
         )}
       </main>
+      <footer className="mx-auto max-w-lg px-4 py-6 text-center text-[10px] text-zinc-600 border-t border-white/[0.04]">
+        Powered by: CoreLogic
+      </footer>
     </div>
   );
 }

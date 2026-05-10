@@ -1,10 +1,12 @@
-import { Body, Controller, Ip, Post, Req, Headers } from '@nestjs/common';
+import { Body, Controller, Ip, Post, Req, Headers, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { RefreshDto } from './dto/refresh.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from './types/jwt-payload.type';
 
 @Controller('auth')
 export class AuthController {
@@ -12,8 +14,16 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
-  register(@Body() dto: RegisterDto): Promise<{ accessToken: string; refreshToken?: string }> {
+  register(@Body() dto: RegisterDto): Promise<{ accessToken: string }> {
     return this.auth.register(dto);
+  }
+
+  /** Exchange Nest JWT for Firebase custom token (uid = user id) → Firestore client reads `citizen_profiles/{uid}`. */
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post('firebase-custom-token')
+  firebaseCustomToken(@CurrentUser() user: JwtPayload): Promise<{ customToken: string }> {
+    return this.auth.issueFirebaseCustomToken(user);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -23,24 +33,10 @@ export class AuthController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string | undefined,
     @Req() req: Request,
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
+  ): Promise<{ accessToken: string }> {
     const forwarded = req.headers['x-forwarded-for'];
     const clientIp =
       typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : ip;
     return this.auth.login(dto, { ip: clientIp, userAgent });
-  }
-
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
-  @Post('refresh')
-  refresh(
-    @Body() dto: RefreshDto,
-    @Ip() ip: string,
-    @Headers('user-agent') userAgent: string | undefined,
-    @Req() req: Request,
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
-    const forwarded = req.headers['x-forwarded-for'];
-    const clientIp =
-      typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : ip;
-    return this.auth.refresh(dto.refreshToken, { ip: clientIp, userAgent });
   }
 }

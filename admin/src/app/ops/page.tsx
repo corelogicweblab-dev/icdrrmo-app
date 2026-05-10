@@ -32,6 +32,10 @@ type DashboardSummary = {
   evacuationSites: number;
   barangays: number;
   activeUsers: number;
+  scoped?: boolean;
+  operatorBarangayMissing?: boolean;
+  message?: string;
+  operatorBarangayId?: string;
 };
 
 function DashboardSummaryChart({ accessToken }: { accessToken: string | undefined }): ReactElement {
@@ -82,7 +86,15 @@ function DashboardSummaryChart({ accessToken }: { accessToken: string | undefine
   }
 
   return (
-    <div className="h-[200px] w-full">
+    <div className="space-y-2">
+      {summary.scoped ? (
+        <p className="text-[10px] leading-snug text-amber-200/85">
+          {summary.operatorBarangayMissing && summary.message
+            ? summary.message
+            : "Dashboard figures reflect your barangay assignment only (operator scope)."}
+        </p>
+      ) : null}
+      <div className="h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -99,6 +111,7 @@ function DashboardSummaryChart({ accessToken }: { accessToken: string | undefine
           <Bar dataKey="value" fill="rgba(244,63,94,0.55)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

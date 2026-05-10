@@ -20,6 +20,14 @@ export class NotificationsService {
     });
   }
 
+  listForUser(userId: string, take = 50) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+  }
+
   async broadcast(
     actor: JwtPayload,
     dto: CreateAdminNotificationDto,

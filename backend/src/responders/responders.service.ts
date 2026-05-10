@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +8,11 @@ import { Prisma, ResponderStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
+import {
+  getOperatorBarangayId,
+  isGlobalOpsRole,
+  OPERATOR_BARANGAY_REQUIRED,
+} from '../common/ops-operator-scope';
 import { CreateResponderDto } from './dto/create-responder.dto';
 import { UpdateResponderDto } from './dto/update-responder.dto';
 
@@ -17,14 +23,26 @@ export class RespondersService {
     private readonly audit: AuditLogService,
   ) {}
 
-  list() {
+  async list(actor: JwtPayload) {
+    const include = {
+      user: { select: { id: true, email: true, phone: true, isActive: true } },
+      vehicle: true,
+      locations: { orderBy: { recordedAt: 'desc' as const }, take: 1 },
+    } as const;
+    if (isGlobalOpsRole(actor)) {
+      return this.prisma.responder.findMany({
+        orderBy: { updatedAt: 'desc' },
+        include,
+      });
+    }
+    const bg = await getOperatorBarangayId(this.prisma, actor);
+    if (!bg) {
+      throw new ForbiddenException(OPERATOR_BARANGAY_REQUIRED);
+    }
     return this.prisma.responder.findMany({
+      where: { user: { profile: { barangayId: bg } } },
       orderBy: { updatedAt: 'desc' },
-      include: {
-        user: { select: { id: true, email: true, phone: true, isActive: true } },
-        vehicle: true,
-        locations: { orderBy: { recordedAt: 'desc' }, take: 1 },
-      },
+      include,
     });
   }
 

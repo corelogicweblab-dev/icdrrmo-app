@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import Link from "next/link";
-import { ArrowRight, Radio, Smartphone, Shield } from "lucide-react";
+import { ArrowRight, Radio, Smartphone } from "lucide-react";
+import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 
 export const metadata: Metadata = {
   title: "ICDRRMO — SMART Emergency Response",
@@ -14,8 +15,8 @@ export default function GatewayPage(): ReactElement {
     <div className="min-h-[100dvh] flex flex-col bg-[#040406] text-zinc-100">
       <header className="border-b border-white/[0.06] bg-black/35 backdrop-blur-md">
         <div className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 text-center md:py-14">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-600 to-rose-800 shadow-[0_20px_50px_-20px_rgba(225,29,72,0.7)] ring-1 ring-white/15">
-            <Shield className="h-9 w-9 text-white" strokeWidth={1.25} aria-hidden />
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-black/30 shadow-[0_20px_50px_-20px_rgba(225,29,72,0.45)] ring-1 ring-white/12 p-1">
+            <IcdrrmoLogo size={72} priority className="drop-shadow-[0_4px_20px_rgba(225,29,72,0.35)]" />
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-rose-300/95">

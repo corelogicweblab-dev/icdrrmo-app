@@ -74,6 +74,13 @@ enum ResponderStatus {
   UNAVAILABLE
 }
 
+/// EOC roster availability (separate from ResponderStatus when user is not on dispatch).
+enum ProfileAvailabilityStatus {
+  ACTIVE
+  STANDBY
+  UNAVAILABLE
+}
+
 enum DispatchAssignmentStatus {
   PENDING
   ACCEPTED
@@ -154,6 +161,7 @@ model UserProfile {
   birthday           DateTime? @db.Date
   address            String?
   barangayId         String?   @map("barangay_id")
+  availabilityStatus ProfileAvailabilityStatus @default(ACTIVE) @map("availability_status")
   bloodType          BloodType @default(UNKNOWN) @map("blood_type")
   allergies          String?
   medicalConditions  String?   @map("medical_conditions")
@@ -206,13 +214,16 @@ model Barangay {
 }
 
 model Vehicle {
-  id          String             @id @default(cuid())
-  plateNumber String             @unique @map("plate_number")
-  name        String?
-  type        String?
-  fleetStatus VehicleFleetStatus @default(AVAILABLE) @map("fleet_status")
-  isActive    Boolean            @default(true) @map("is_active")
-  createdAt   DateTime           @default(now()) @map("created_at")
+  id               String             @id @default(cuid())
+  plateNumber      String             @unique @map("plate_number")
+  name             String?
+  type             String?
+  fleetStatus      VehicleFleetStatus @default(AVAILABLE) @map("fleet_status")
+  latitude         Decimal?           @db.Decimal(10, 7)
+  longitude        Decimal?           @db.Decimal(10, 7)
+  lastLocationAt   DateTime?          @map("last_location_at")
+  isActive         Boolean            @default(true) @map("is_active")
+  createdAt        DateTime           @default(now()) @map("created_at")
 
   responders           Responder[]
   dispatchAssignments DispatchAssignment[]

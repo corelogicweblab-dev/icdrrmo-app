@@ -8,6 +8,7 @@ import '../../../core/bootstrap/global_store.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/health/health_check.dart';
 import '../../../core/navigation/routes.dart';
+import '../../../core/branding.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/sos/data/offline_sos_queue.dart';
 
@@ -75,6 +76,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     }
 
     final authed = await ref.read(authRepositoryProvider).restoreSession();
+    if (authed) {
+      await ref.read(authRepositoryProvider).syncFirebaseAfterRestore();
+    }
 
     if (!store.onboardingDone) {
       Navigator.of(context).pushReplacementNamed(Routes.onboarding);
@@ -107,7 +111,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                 const Spacer(),
                 ScaleTransition(
                   scale: Tween(begin: 0.97, end: 1.03).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-                  child: Icon(Icons.shield_rounded, size: 96, color: scheme.primary),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      IcdrrmoBranding.logoAsset,
+                      width: 96,
+                      height: 96,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(Icons.shield_rounded, size: 96, color: scheme.primary),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Text('ICDRRMO', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),

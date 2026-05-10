@@ -28,6 +28,7 @@ if (isStaticExport) {
 const nextConfig: NextConfig = {
   ...(isDocker ? { output: "standalone" as const } : {}),
   ...(isStaticExport ? { output: "export" as const } : {}),
+  productionBrowserSourceMaps: false,
   transpilePackages: ["mapbox-gl", "leaflet"],
   ...(!isStaticExport
     ? {

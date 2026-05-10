@@ -16,7 +16,13 @@ export class BarangaysController {
     return this.barangays.userCountsByBarangay();
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.OPERATOR,
+    UserRole.RESPONDER,
+    UserRole.CITIZEN,
+  )
   @Get()
   list() {
     return this.barangays.list();

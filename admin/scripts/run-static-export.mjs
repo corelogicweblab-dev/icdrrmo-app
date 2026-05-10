@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -70,4 +70,23 @@ const r = spawnSync(process.execPath, [nextBin, "build"], {
   env: childEnv,
   stdio: "inherit",
 });
-process.exit(r.status ?? 1);
+if (r.status !== 0) {
+  process.exit(r.status ?? 1);
+}
+
+/** Remove source maps from `out/` so Firebase Hosting never uploads them. */
+function stripSensitiveArtifacts(dir) {
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    try {
+      const st = statSync(p);
+      if (st.isDirectory()) stripSensitiveArtifacts(p);
+      else if (name.endsWith(".map")) unlinkSync(p);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+stripSensitiveArtifacts(join(adminRoot, "out"));
+process.exit(0);

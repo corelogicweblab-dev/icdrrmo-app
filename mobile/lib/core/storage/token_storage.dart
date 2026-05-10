@@ -1,6 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// JWT access + refresh — Flutter Secure Storage (Keychain / Keystore).
+/// JWT access token; optional refresh (API may return access-only).
 final class TokenStorage {
   TokenStorage({FlutterSecureStorage? storage})
       : _s = storage ?? const FlutterSecureStorage();
@@ -11,9 +11,13 @@ final class TokenStorage {
 
   final FlutterSecureStorage _s;
 
-  Future<void> saveSession({required String access, required String refresh}) async {
+  Future<void> saveSession({required String access, String? refresh}) async {
     await _s.write(key: _access, value: access);
-    await _s.write(key: _refresh, value: refresh);
+    if (refresh != null && refresh.isNotEmpty) {
+      await _s.write(key: _refresh, value: refresh);
+    } else {
+      await _s.delete(key: _refresh);
+    }
   }
 
   Future<(String?, String?)> loadTokens() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/branding.dart';
 import '../../../core/bootstrap/global_store.dart';
 import '../../../core/navigation/routes.dart';
 import '../data/auth_repository.dart';
@@ -58,6 +59,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                IcdrrmoBranding.logoAsset,
+                width: 88,
+                height: 88,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(Icons.shield_outlined, size: 72, color: Theme.of(context).colorScheme.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             'Backend requires strong password (12+ chars) and E.164-like phone.',
             style: Theme.of(context).textTheme.bodySmall,

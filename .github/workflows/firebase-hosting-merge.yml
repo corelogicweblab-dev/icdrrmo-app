@@ -71,6 +71,17 @@ jobs:
           grep -q 'SMART Emergency Response' admin/out/index.html
           ! grep -q 'Firebase Hosting Setup Complete' admin/out/index.html
 
+      - name: Strip source maps from Hosting output (not publicly served)
+        run: find admin/out -name '*.map' -type f -delete 2>/dev/null || true
+
+      - name: Verify no source maps remain in admin/out
+        run: |
+          set -euo pipefail
+          if find admin/out -name '*.map' -type f | grep -q .; then
+            echo "::error::Source maps still present under admin/out — adjust Next export or strip step."
+            exit 1
+          fi
+
       - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E }}

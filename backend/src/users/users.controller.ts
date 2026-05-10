@@ -21,6 +21,7 @@ import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
+import { PatchMyProfileDto } from './dto/patch-my-profile.dto';
 
 function clientMeta(req: Request): { ip?: string; ua?: string } {
   const forwarded = req.headers['x-forwarded-for'];
@@ -35,16 +36,26 @@ function clientMeta(req: Request): { ip?: string; ua?: string } {
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
+  @Get('me')
+  getMe(@CurrentUser() user: JwtPayload) {
+    return this.users.getMe(user.sub);
+  }
+
+  @Patch('me')
+  patchMe(@CurrentUser() user: JwtPayload, @Body() dto: PatchMyProfileDto) {
+    return this.users.patchMe(user.sub, dto);
+  }
+
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Get()
-  list(@Query() q: ListUsersQueryDto) {
-    return this.users.list(q);
+  list(@CurrentUser() actor: JwtPayload, @Query() q: ListUsersQueryDto) {
+    return this.users.list(actor, q);
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Get(':id')
-  getOne(@Param('id') id: string) {
-    return this.users.getById(id);
+  getOne(@CurrentUser() actor: JwtPayload, @Param('id') id: string) {
+    return this.users.getById(actor, id);
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
@@ -57,7 +68,7 @@ export class UsersController {
     return this.users.create(actor, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Patch(':id')
   update(
     @CurrentUser() actor: JwtPayload,

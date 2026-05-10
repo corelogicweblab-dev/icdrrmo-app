@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/firestore/citizen_firestore_sync.dart';
 import '../../../core/network/dio_provider.dart';
 import '../../../core/storage/token_storage.dart';
 
@@ -26,11 +27,12 @@ final class AuthRepository {
     );
     final data = res.data;
     final access = data?['accessToken'] as String?;
-    final refresh = data?['refreshToken'] as String?;
-    if (access == null || refresh == null) {
+    if (access == null) {
       throw StateError('Invalid register response');
     }
+    final refresh = data?['refreshToken'] as String?;
     await _tokens.saveSession(access: access, refresh: refresh);
+    await CitizenFirestoreSync.signInWithBackend(_dio);
   }
 
   Future<void> login({
@@ -43,14 +45,21 @@ final class AuthRepository {
     );
     final data = res.data;
     final access = data?['accessToken'] as String?;
-    final refresh = data?['refreshToken'] as String?;
-    if (access == null || refresh == null) {
+    if (access == null) {
       throw StateError('Invalid login response');
     }
+    final refresh = data?['refreshToken'] as String?;
     await _tokens.saveSession(access: access, refresh: refresh);
+    await CitizenFirestoreSync.signInWithBackend(_dio);
   }
 
-  Future<void> logout() => _tokens.clearSession();
+  Future<void> logout() async {
+    await CitizenFirestoreSync.signOut();
+    await _tokens.clearSession();
+  }
+
+  /// After cold start with stored Nest JWT, attach Firebase session for Firestore reads.
+  Future<void> syncFirebaseAfterRestore() => CitizenFirestoreSync.signInWithBackend(_dio);
 
   Future<bool> restoreSession() async {
     final (a, _) = await _tokens.loadTokens();

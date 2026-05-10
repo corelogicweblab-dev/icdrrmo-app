@@ -25,11 +25,11 @@ export class RespondersController {
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Get()
-  list() {
-    return this.responders.list();
+  list(@CurrentUser() actor: JwtPayload) {
+    return this.responders.list(actor);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Post()
   create(
     @CurrentUser() actor: JwtPayload,
@@ -39,7 +39,7 @@ export class RespondersController {
     return this.responders.create(actor, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Patch(':id')
   update(
     @CurrentUser() actor: JwtPayload,
@@ -50,7 +50,7 @@ export class RespondersController {
     return this.responders.update(actor, id, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Delete(':id')
   remove(@CurrentUser() actor: JwtPayload, @Param('id') id: string, @Req() req: Request) {
     return this.responders.remove(actor, id, clientMeta(req));

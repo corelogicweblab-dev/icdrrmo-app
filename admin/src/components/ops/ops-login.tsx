@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { Shield } from "lucide-react";
+import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 
 type OpsLoginProps = {
   email: string;
@@ -22,8 +22,8 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
         <div className="absolute inset-0 ops-grid-bg opacity-40 mix-blend-overlay" aria-hidden />
         <div className="relative z-10 flex flex-col gap-10">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 shadow-[0_16px_40px_-12px_rgba(225,29,72,0.55)] ring-1 ring-white/10">
-              <Shield className="h-8 w-8 text-white" strokeWidth={1.5} aria-hidden />
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-black/40 ring-1 ring-white/10 p-1">
+              <IcdrrmoLogo size={56} priority className="rounded-xl" />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-rose-300/95">

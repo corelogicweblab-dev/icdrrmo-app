@@ -23,7 +23,10 @@ import { useOpsSession } from "@/components/ops/ops-session-context";
 import { formatOpsSync, incidentBorderClass, statusBadgeClass } from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import { getApiBaseUrl } from "@/lib/env";
+import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
+import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
+import { API_INCIDENTS_QUEUE_PATH, API_INCIDENTS_RESPONDERS_ASSIGNABLE_PATH } from "@/lib/ops-api-paths";
+import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 
 const BACKEND_TO_TARGET: Record<string, string> = {
   OPEN: "pending",
@@ -67,6 +70,17 @@ export default function OpsIncidentsPage(): ReactElement {
   const [patchError, setPatchError] = useState<string | null>(null);
   const [patchLoading, setPatchLoading] = useState(false);
 
+  const [barangays, setBarangays] = useState<Array<{ id: string; name: string; code: string }>>([]);
+  const [cType, setCType] = useState<string>("MEDICAL_EMERGENCY");
+  const [cLat, setCLat] = useState(String(ISABELA_EOC_LAT));
+  const [cLng, setCLng] = useState(String(ISABELA_EOC_LNG));
+  const [cTitle, setCTitle] = useState("");
+  const [cDesc, setCDesc] = useState("");
+  const [cBarangay, setCBarangay] = useState("");
+  const [cStatus, setCStatus] = useState("OPEN");
+  const [createErr, setCreateErr] = useState<string | null>(null);
+  const [createBusy, setCreateBusy] = useState(false);
+
   useEffect(() => {
     if (queue.length === 0) {
       setSelectedId(null);
@@ -90,14 +104,12 @@ export default function OpsIncidentsPage(): ReactElement {
     if (!access) return;
     let cancelled = false;
     async function load(): Promise<void> {
+      const token = access;
+      if (!token) return;
       try {
-        const r = await fetch(`${getApiBaseUrl()}/incidents/responders-assignable`, {
-          headers: { Authorization: `Bearer ${access}` },
-        });
-        if (!r.ok || cancelled) return;
-        const json = (await r.json()) as unknown;
+        const json = await opsFetchJson<AssignableResponder[]>(API_INCIDENTS_RESPONDERS_ASSIGNABLE_PATH, token);
         if (cancelled) return;
-        setResponders(Array.isArray(json) ? (json as AssignableResponder[]) : []);
+        setResponders(Array.isArray(json) ? json : []);
       } catch {
         /* ignore — panel still usable for status-only */
       }
@@ -108,37 +120,85 @@ export default function OpsIncidentsPage(): ReactElement {
     };
   }, [tokens?.accessToken]);
 
+  useEffect(() => {
+    const access = tokens?.accessToken;
+    if (!access) return;
+    let cancelled = false;
+    (async () => {
+      const token = access;
+      if (!token) return;
+      try {
+        const json = await opsFetchJson<Array<{ id: string; name: string; code: string }>>("/barangays", token);
+        if (!cancelled) setBarangays(Array.isArray(json) ? json : []);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tokens?.accessToken]);
+
+  const createIncident = useCallback(async () => {
+    if (!tokens?.accessToken) return;
+    setCreateBusy(true);
+    setCreateErr(null);
+    const lat = Number(cLat);
+    const lng = Number(cLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setCreateErr("Latitude and longitude must be valid numbers.");
+      setCreateBusy(false);
+      return;
+    }
+    try {
+      await opsFetchJson("/incidents/ops", tokens.accessToken, {
+        method: "POST",
+        body: JSON.stringify({
+          type: cType,
+          latitude: lat,
+          longitude: lng,
+          title: cTitle.trim() || undefined,
+          description: cDesc.trim() || undefined,
+          barangayId: cBarangay || undefined,
+          status: cStatus,
+        }),
+      });
+      await refreshQueue(tokens.accessToken);
+      setCTitle("");
+      setCDesc("");
+    } catch (e: unknown) {
+      setCreateErr(e instanceof OpsApiError ? e.body?.slice(0, 240) ?? e.message : "Network error creating incident.");
+    } finally {
+      setCreateBusy(false);
+    }
+  }, [
+    tokens?.accessToken,
+    cType,
+    cLat,
+    cLng,
+    cTitle,
+    cDesc,
+    cBarangay,
+    cStatus,
+    refreshQueue,
+  ]);
+
   const patchIncident = useCallback(
     async (body: Record<string, unknown>): Promise<boolean> => {
       if (!tokens?.accessToken || !selected) return false;
       setPatchLoading(true);
       setPatchError(null);
       try {
-        const res = await fetch(`${getApiBaseUrl()}/incidents/${selected.id}`, {
+        await opsFetchJson(`/incidents/${selected.id}`, tokens.accessToken, {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${tokens.accessToken}`,
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify(body),
         });
-        const text = await res.text();
-        if (!res.ok) {
-          let msg = `HTTP ${res.status}`;
-          try {
-            const j = JSON.parse(text) as { message?: string | string[] };
-            const m = j.message;
-            msg = Array.isArray(m) ? m.join("; ") : (m ?? msg);
-          } catch {
-            if (text) msg = text.slice(0, 200);
-          }
-          setPatchError(msg);
-          return false;
-        }
         await refreshQueue(tokens.accessToken);
         return true;
-      } catch {
-        setPatchError("Network error patching incident.");
+      } catch (e: unknown) {
+        setPatchError(
+          e instanceof OpsApiError ? e.body?.slice(0, 240) ?? e.message : "Network error patching incident.",
+        );
         return false;
       } finally {
         setPatchLoading(false);
@@ -164,7 +224,10 @@ export default function OpsIncidentsPage(): ReactElement {
   return (
     <div className="p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-12 gap-4 min-h-full">
       <aside className="xl:col-span-4 space-y-3">
-        <OpsPanelCard title="Incoming SOS queue" subtitle="REST · GET /incidents/queue">
+        <OpsPanelCard
+          title="Incoming SOS queue"
+          subtitle={`Nest JSON · GET ${API_INCIDENTS_QUEUE_PATH} (under /api/v1/incidents — not static files)`}
+        >
           <ul className="scroll-ops max-h-[520px] overflow-auto space-y-2 -m-1 p-1">
             {queue.map((row: OpsIncident) => (
               <li key={row.id}>
@@ -197,6 +260,96 @@ export default function OpsIncidentsPage(): ReactElement {
       </aside>
 
       <div className="xl:col-span-8 space-y-4">
+        <OpsPanelCard title="Create incident (EOC)" subtitle="POST /incidents/ops · ADMIN channel">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="block text-[10px] uppercase text-zinc-500">
+              Type
+              <select
+                value={cType}
+                onChange={(e) => setCType(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+              >
+                {EMERGENCY_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[10px] uppercase text-zinc-500">
+              Latitude
+              <input
+                value={cLat}
+                onChange={(e) => setCLat(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+              />
+            </label>
+            <label className="block text-[10px] uppercase text-zinc-500">
+              Longitude
+              <input
+                value={cLng}
+                onChange={(e) => setCLng(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+              />
+            </label>
+            <label className="block text-[10px] uppercase text-zinc-500 sm:col-span-2">
+              Title (optional)
+              <input
+                value={cTitle}
+                onChange={(e) => setCTitle(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+              />
+            </label>
+            <label className="block text-[10px] uppercase text-zinc-500">
+              Initial status
+              <select
+                value={cStatus}
+                onChange={(e) => setCStatus(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+              >
+                {["OPEN", "ACKNOWLEDGED", "DISPATCHED", "IN_PROGRESS"].map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[10px] uppercase text-zinc-500 sm:col-span-2">
+              Barangay (optional)
+              <select
+                value={cBarangay}
+                onChange={(e) => setCBarangay(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+              >
+                <option value="">—</option>
+                {barangays.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[10px] uppercase text-zinc-500 sm:col-span-3">
+              Description
+              <textarea
+                value={cDesc}
+                onChange={(e) => setCDesc(e.target.value)}
+                rows={2}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+              />
+            </label>
+          </div>
+          {createErr ? <p className="mt-2 text-xs text-rose-300">{createErr}</p> : null}
+          <button
+            type="button"
+            disabled={createBusy}
+            onClick={() => void createIncident()}
+            className="mt-3 rounded-lg bg-rose-600/90 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-40"
+          >
+            {createBusy ? "Creating…" : "Create incident"}
+          </button>
+        </OpsPanelCard>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {[
             ["Prioritization", "Drag-rank queue + ML risk score (planned)", Gauge],

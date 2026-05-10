@@ -1,22 +1,21 @@
 import {
   ConflictException,
-  GoneException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomBytes } from 'crypto';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { FirestoreMirrorService } from '../firestore/firestore-mirror.service';
+import { FirebaseAdminService } from '../firestore/firebase-admin.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './types/jwt-payload.type';
 
 const BCRYPT_ROUNDS = 12;
-const REFRESH_BYTES = 48;
-const REFRESH_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -24,11 +23,11 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly firestoreMirror: FirestoreMirrorService,
+    private readonly firebaseAdmin: FirebaseAdminService,
   ) {}
 
-  async register(
-    dto: RegisterDto,
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
+  async register(dto: RegisterDto): Promise<{ accessToken: string }> {
     const existing = await this.prisma.user.findFirst({
       where: { OR: [{ email: dto.email }, { phone: dto.phone }] },
     });
@@ -50,13 +49,32 @@ export class AuthService {
         },
       },
     });
-    return this.issueAuthResponse(user.id, user.email, user.role, null, null);
+    void this.firestoreMirror.syncUserProfile(user.id);
+    return this.issueAccessToken(user.id, user.email, user.role);
+  }
+
+  /**
+   * Firebase Auth custom token: `uid` == PostgreSQL user id so the mobile/web SDK can read
+   * `citizen_profiles/{uid}` under Firestore security rules.
+   */
+  async issueFirebaseCustomToken(user: JwtPayload): Promise<{ customToken: string }> {
+    if (!this.firebaseAdmin.isEnabled()) {
+      throw new ServiceUnavailableException(
+        'Firebase Admin is not configured (set FIREBASE_SERVICE_ACCOUNT_JSON or equivalent on the API).',
+      );
+    }
+    await this.firestoreMirror.syncUserProfile(user.sub);
+    const customToken = await this.firebaseAdmin.createCustomToken(user.sub, {
+      role: String(user.role),
+      email: user.email,
+    });
+    return { customToken };
   }
 
   async login(
     dto: LoginDto,
-    meta: { ip?: string; userAgent?: string },
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
+    _meta: { ip?: string; userAgent?: string },
+  ): Promise<{ accessToken: string }> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -67,77 +85,16 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.issueAuthResponse(
-      user.id,
-      user.email,
-      user.role,
-      meta.ip ?? null,
-      meta.userAgent ?? null,
-    );
+    return this.issueAccessToken(user.id, user.email, user.role);
   }
 
-  async refresh(
-    refreshToken: string,
-    meta: { ip?: string; userAgent?: string },
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
-    if (!this.refreshEnabled()) {
-      throw new GoneException(
-        'Refresh tokens are disabled (set AUTH_REFRESH_TOKENS=false). Sign in again with POST /auth/login.',
-      );
-    }
-    const hash = this.hashToken(refreshToken);
-    const session = await this.prisma.session.findFirst({
-      where: {
-        refreshHash: hash,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      include: { user: true },
-    });
-    if (!session?.user.isActive) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-    await this.prisma.session.update({
-      where: { id: session.id },
-      data: { revokedAt: new Date() },
-    });
-    return this.issueAuthResponse(
-      session.userId,
-      session.user.email,
-      session.user.role,
-      meta.ip ?? session.ipAddress,
-      meta.userAgent ?? session.userAgent,
-    );
-  }
-
-  private refreshEnabled(): boolean {
-    return this.config.get<string>('AUTH_REFRESH_TOKENS', 'true') !== 'false';
-  }
-
-  private async issueAuthResponse(
+  private async issueAccessToken(
     userId: string,
     email: string,
     role: UserRole,
-    ip: string | null,
-    userAgent: string | null,
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
+  ): Promise<{ accessToken: string }> {
     const accessToken = await this.signAccessToken(userId, email, role);
-    if (!this.refreshEnabled()) {
-      return { accessToken };
-    }
-    const refreshRaw = randomBytes(REFRESH_BYTES).toString('base64url');
-    const refreshHash = this.hashToken(refreshRaw);
-    const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
-    await this.prisma.session.create({
-      data: {
-        userId,
-        refreshHash,
-        ipAddress: ip,
-        userAgent,
-        expiresAt,
-      },
-    });
-    return { accessToken, refreshToken: refreshRaw };
+    return { accessToken };
   }
 
   private async signAccessToken(userId: string, email: string, role: UserRole): Promise<string> {
@@ -147,9 +104,5 @@ export class AuthService {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: Number.isFinite(expiresSec) && expiresSec > 0 ? expiresSec : 900,
     });
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 }

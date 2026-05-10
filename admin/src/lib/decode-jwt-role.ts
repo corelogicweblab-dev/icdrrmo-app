@@ -17,3 +17,12 @@ export function canAccessOpsConsole(accessToken: string | undefined): boolean {
   const p = decodeJwtPayload(accessToken);
   return !!(p?.role && OPS_CONSOLE_ROLES.has(p.role));
 }
+
+const OPS_GLOBAL_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN"]);
+
+/** Full EOC admin (system health row, unrestricted ops nav). Operators excluded. */
+export function isOpsGlobalAdmin(accessToken: string | undefined): boolean {
+  if (!accessToken) return false;
+  const p = decodeJwtPayload(accessToken);
+  return !!(p?.role && OPS_GLOBAL_ADMIN_ROLES.has(p.role));
+}

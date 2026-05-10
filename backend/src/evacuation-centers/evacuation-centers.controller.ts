@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { EvacuationCentersService } from './evacuation-centers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,13 +34,24 @@ function clientMeta(req: Request): { ip?: string; ua?: string } {
 export class EvacuationCentersController {
   constructor(private readonly centers: EvacuationCentersService) {}
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
-  @Get()
-  list() {
-    return this.centers.list();
+  @Get('nearest')
+  nearest(
+    @CurrentUser() actor: JwtPayload,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+  ) {
+    const la = lat !== undefined ? Number(lat) : undefined;
+    const lo = lng !== undefined ? Number(lng) : undefined;
+    return this.centers.nearest(actor, la, lo);
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
+  @Get()
+  list(@CurrentUser() actor: JwtPayload) {
+    return this.centers.list(actor);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Post()
   create(
     @CurrentUser() actor: JwtPayload,
@@ -39,7 +61,7 @@ export class EvacuationCentersController {
     return this.centers.create(actor, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Patch(':id')
   update(
     @CurrentUser() actor: JwtPayload,
@@ -50,7 +72,7 @@ export class EvacuationCentersController {
     return this.centers.update(actor, id, dto, clientMeta(req));
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Delete(':id')
   remove(@CurrentUser() actor: JwtPayload, @Param('id') id: string, @Req() req: Request) {
     return this.centers.remove(actor, id, clientMeta(req));
