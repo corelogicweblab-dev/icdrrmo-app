@@ -35,9 +35,19 @@ export class AuthService {
     if (existing) {
       throw new ConflictException('Email or phone already registered');
     }
+    if (dto.barangayId && dto.barangayCode) {
+      throw new BadRequestException('Send either barangayId or barangayCode, not both');
+    }
+    let barangayId: string | undefined;
     if (dto.barangayId) {
       const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
       if (!b) throw new BadRequestException('Invalid barangay');
+      barangayId = b.id;
+    } else if (dto.barangayCode) {
+      const code = dto.barangayCode.trim();
+      const b = await this.prisma.barangay.findUnique({ where: { code } });
+      if (!b) throw new BadRequestException('Invalid barangay code');
+      barangayId = b.id;
     }
     const street =
       dto.streetPurok != null && String(dto.streetPurok).trim() !== ''
@@ -54,7 +64,7 @@ export class AuthService {
           create: {
             fullName: dto.fullName,
             setupCompleted: false,
-            ...(dto.barangayId ? { barangayId: dto.barangayId } : {}),
+            ...(barangayId ? { barangayId } : {}),
             ...(street !== undefined ? { streetPurok: street } : {}),
           },
         },

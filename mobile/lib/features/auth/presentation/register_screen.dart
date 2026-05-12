@@ -44,17 +44,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       setState(() {
         barangays = list;
         _barangaysLoading = false;
-        if (list.isEmpty) {
-          _barangaysLoadError =
-              'No barangays from server. Check API_BASE and database seed.';
-        }
+        _barangaysLoadError = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        barangays = [];
+        barangays = isabelaOfflineBarangays();
         _barangaysLoading = false;
-        _barangaysLoadError = 'Could not load barangays ($e).';
+        _barangaysLoadError =
+            'Could not reach barangay API — using offline Isabela list. Check API_BASE / network. ($e)';
       });
     }
   }

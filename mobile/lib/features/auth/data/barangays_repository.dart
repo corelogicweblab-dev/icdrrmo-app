@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/data/isabela_seed_barangays.dart';
 import '../../../core/network/dio_provider.dart';
 
 final barangaysRepositoryProvider = Provider<BarangaysRepository>((ref) {
@@ -24,26 +25,63 @@ final class PublicBarangay {
   }
 }
 
+/// Offline list when the API is empty or unreachable (`id` == seed `code` until server returns CUIDs).
+List<PublicBarangay> isabelaOfflineBarangays() {
+  return kIsabelaSeedBarangayPairs
+      .map((e) => PublicBarangay(id: e.$1, name: e.$2, code: e.$1))
+      .toList(growable: false);
+}
+
+bool looksLikeSeedBarangayCode(String? s) {
+  if (s == null || s.isEmpty) return false;
+  return RegExp(r'^IC-\d{3}$', caseSensitive: false).hasMatch(s.trim());
+}
+
+/// `POST /auth/register` — never send both keys.
+Map<String, String> barangayRegisterFields(String? selection) {
+  final v = selection?.trim();
+  if (v == null || v.isEmpty) return {};
+  if (looksLikeSeedBarangayCode(v)) {
+    return {'barangayCode': v.toUpperCase()};
+  }
+  return {'barangayId': v};
+}
+
+/// `PATCH /users/me` — never send both keys.
+Map<String, String> barangayProfilePatchFields(String? selection) {
+  final v = selection?.trim();
+  if (v == null || v.isEmpty) return {};
+  if (looksLikeSeedBarangayCode(v)) {
+    return {'barangayCode': v.toUpperCase()};
+  }
+  return {'barangayId': v};
+}
+
 final class BarangaysRepository {
   BarangaysRepository(this._dio);
 
   final Dio _dio;
 
   Future<List<PublicBarangay>> fetchPublic() async {
-    final res = await _dio.get<dynamic>('/barangays/public');
-    final data = res.data;
-    final List<dynamic> list = _unwrapList(data);
-    final out = <PublicBarangay>[];
-    for (final raw in list) {
-      if (raw is Map<String, dynamic>) {
-        final b = PublicBarangay.fromJson(raw);
-        if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
-      } else if (raw is Map) {
-        final b = PublicBarangay.fromJson(Map<String, dynamic>.from(raw));
-        if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
+    try {
+      final res = await _dio.get<dynamic>('/barangays/public');
+      final data = res.data;
+      final List<dynamic> list = _unwrapList(data);
+      final out = <PublicBarangay>[];
+      for (final raw in list) {
+        if (raw is Map<String, dynamic>) {
+          final b = PublicBarangay.fromJson(raw);
+          if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
+        } else if (raw is Map) {
+          final b = PublicBarangay.fromJson(Map<String, dynamic>.from(raw));
+          if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
+        }
       }
+      if (out.isNotEmpty) return out;
+    } catch (_) {
+      /* use seed list */
     }
-    return out;
+    return isabelaOfflineBarangays();
   }
 
   /// Nest returns a raw JSON array; tolerate `{ "data": [...] }` if a wrapper is added later.

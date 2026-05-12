@@ -2,6 +2,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -22,6 +23,11 @@ export class PatchMyProfileDto {
   @IsString()
   @MaxLength(64)
   barangayId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^IC-\d{3}$/i, { message: 'barangayCode must look like IC-001' })
+  barangayCode?: string;
 
   @IsOptional()
   @IsEnum(Gender)

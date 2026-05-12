@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -89,9 +90,20 @@ export class UsersService {
       });
       if (clash) throw new ConflictException('Phone already in use');
     }
-    if (dto.barangayId) {
-      const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
-      if (!b) throw new ConflictException('Invalid barangayId');
+    if (dto.barangayId != null && dto.barangayId !== '' && dto.barangayCode) {
+      throw new BadRequestException('Send either barangayId or barangayCode, not both');
+    }
+    let resolvedBarangayId: string | null | undefined = undefined;
+    if (dto.barangayCode != null && dto.barangayCode.trim() !== '') {
+      const b = await this.prisma.barangay.findUnique({ where: { code: dto.barangayCode.trim() } });
+      if (!b) throw new ConflictException('Invalid barangay code');
+      resolvedBarangayId = b.id;
+    } else if (dto.barangayId !== undefined) {
+      resolvedBarangayId = dto.barangayId;
+      if (dto.barangayId) {
+        const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
+        if (!b) throw new ConflictException('Invalid barangayId');
+      }
     }
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -100,7 +112,7 @@ export class UsersService {
         profile: {
           update: {
             ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
-            ...(dto.barangayId !== undefined ? { barangayId: dto.barangayId } : {}),
+            ...(resolvedBarangayId !== undefined ? { barangayId: resolvedBarangayId } : {}),
             ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
             ...(dto.address !== undefined ? { address: dto.address } : {}),
             ...(dto.streetPurok !== undefined ? { streetPurok: dto.streetPurok } : {}),

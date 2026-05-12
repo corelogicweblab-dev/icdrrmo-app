@@ -26,6 +26,12 @@ export class RegisterDto {
   @MaxLength(64)
   barangayId?: string;
 
+  /** Stable seed code when the client could not load barangay UUIDs from `GET /barangays/public`. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^IC-\d{3}$/i, { message: 'barangayCode must look like IC-001' })
+  barangayCode?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(500)

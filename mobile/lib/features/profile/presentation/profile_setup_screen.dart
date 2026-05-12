@@ -71,16 +71,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       setState(() {
         barangays = list;
         _barangaysLoading = false;
-        if (list.isEmpty) {
-          _barangaysLoadError = 'No barangays returned from the server. Check API_BASE and that the database is seeded.';
-        }
+        _barangaysLoadError = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        barangays = [];
+        barangays = isabelaOfflineBarangays();
         _barangaysLoading = false;
-        _barangaysLoadError = 'Could not load barangays ($e).';
+        _barangaysLoadError =
+            'Could not reach barangay API — using offline Isabela list. Check API_BASE / network. ($e)';
       });
     }
   }
@@ -194,7 +193,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           'fullName': fullName.text.trim(),
           'gender': gender,
           'address': address.text.trim(),
-          'barangayId': barangayId,
+          ...barangayProfilePatchFields(barangayId),
           'streetPurok': streetPurok.text.trim().isEmpty ? null : streetPurok.text.trim(),
           'bloodType': blood,
           'allergies': allergies.text.trim(),

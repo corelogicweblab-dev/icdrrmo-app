@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/firestore/citizen_firestore_sync.dart';
 import '../../../core/network/dio_provider.dart';
 import '../../../core/storage/token_storage.dart';
+import 'barangays_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(dioProvider), ref.watch(tokenStorageProvider));
@@ -30,7 +31,7 @@ final class AuthRepository {
       'phone': phone,
     };
     if (barangayId != null && barangayId.isNotEmpty) {
-      body['barangayId'] = barangayId;
+      body.addAll(barangayRegisterFields(barangayId));
     }
     final sp = streetPurok?.trim();
     if (sp != null && sp.isNotEmpty) {
