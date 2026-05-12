@@ -19,7 +19,12 @@ export const OPS_MAP_LAYER_GROUPS = [
 ] as const;
 
 export function defaultOpsMapLayerToggles(): Record<string, boolean> {
+  const onByDefault = new Set([
+    "Incident markers",
+    "Flood-prone zones",
+    "Landslide polygons",
+  ]);
   return Object.fromEntries(
-    OPS_MAP_LAYER_GROUPS.flatMap((g) => g.items.map((i) => [i, i === "Incident markers"])),
+    OPS_MAP_LAYER_GROUPS.flatMap((g) => g.items.map((i) => [i, onByDefault.has(i)])),
   );
 }

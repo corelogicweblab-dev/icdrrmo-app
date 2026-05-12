@@ -7,18 +7,21 @@ import "leaflet/dist/leaflet.css";
 import { MapPin } from "lucide-react";
 import type { MapIncidentPin } from "@/lib/map-pins";
 import { markerColorForIncidentType } from "@/lib/map-pins";
+import { hazardPinsForLayers } from "@/lib/isabela-hazard-barangay-locations";
 import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 
 export type SituationMapOsmFallbackProps = {
   pins: MapIncidentPin[];
   showMarkers: boolean;
+  /** When set (GIS page), flood / landslide reference dots follow layer checkboxes. When omitted, show all hazard pins. */
+  layerToggles?: Record<string, boolean>;
 };
 
 /**
  * OpenStreetMap basemap when `NEXT_PUBLIC_MAPBOX_TOKEN` is unset — same AOI and incident pins as Mapbox build.
  */
 export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): ReactElement {
-  const { pins, showMarkers } = props;
+  const { pins, showMarkers, layerToggles } = props;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
@@ -82,9 +85,30 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
         }
       }
 
+      const hazardPins = hazardPinsForLayers(layerToggles);
+      for (const h of hazardPins) {
+        L.circleMarker([h.latitude, h.longitude], {
+          radius: 6,
+          color: "#7f1d1d",
+          weight: 2,
+          fillColor: "#dc2626",
+          fillOpacity: 0.92,
+        })
+          .addTo(layer)
+          .bindPopup(
+            `<div style="font-size:12px"><strong style="color:#450a0a">${escapeHtml(h.name)}</strong><br/>` +
+              `<span style="font-size:10px">${escapeHtml(h.code)} · ${h.hazardKind === "flood" ? "Flood reference" : "Landslide reference"}</span></div>`,
+          );
+      }
+
       if (!alive) return;
+const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
+      allPoints.push(...hazardPins.map((h) => [h.latitude, h.longitude] as [number, number]));
       if (pins.length > 0 && showMarkers) {
-        const b = L.latLngBounds(pins.map((p) => [p.lat, p.lng] as [number, number]));
+        pins.forEach((p) => allPoints.push([p.lat, p.lng]));
+      }
+      if (allPoints.length > 0) {
+        const b = L.latLngBounds(allPoints);
         map.fitBounds(b, { padding: [48, 48], maxZoom: 14 });
       } else {
         map.setView(center, 12.2);
@@ -94,7 +118,7 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
     return () => {
       alive = false;
     };
-  }, [pins, showMarkers]);
+  }, [pins, showMarkers, layerToggles]);
 
   useEffect(() => {
     return () => {
@@ -115,7 +139,10 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
           <p className="mt-0.5 text-zinc-300">{ISABELA_EOC_ADDRESS}</p>
           <p className="mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] text-zinc-500">
             <MapPin className="h-3 w-3 shrink-0 text-rose-400/80" aria-hidden />
-            {ISABELA_EOC_LAT.toFixed(4)}°N · {ISABELA_EOC_LNG.toFixed(4)}°E
+            {ISABELA_EOC_LAT.toFixed(5)}°N · {ISABELA_EOC_LNG.toFixed(5)}°E
+          </p>
+          <p className="mt-1.5 text-[9px] text-zinc-500">
+            Red dots: flood / landslide barangay reference (OSM-based centroids — validate with LGU / MGB).
           </p>
         </div>
         <div className="rounded-lg border border-amber-500/25 bg-amber-950/40 px-2 py-1.5 text-[9px] text-amber-100/90 backdrop-blur-sm">

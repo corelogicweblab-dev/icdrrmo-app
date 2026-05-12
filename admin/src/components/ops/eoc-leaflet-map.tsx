@@ -9,6 +9,13 @@ import { ISABELA_EOC_ADDRESS } from "@/lib/isabela-eoc";
 
 type OpsLive = {
   eoc: { label: string; latitude: number; longitude: number };
+  hazardBarangayPins: Array<{
+    code: string;
+    name: string;
+    hazardKind: "flood" | "landslide";
+    latitude: number;
+    longitude: number;
+  }>;
   incidents: Array<{
     id: string;
     title?: string | null;
@@ -109,6 +116,20 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
         iconAnchor: [7, 7],
       });
       L.marker(center, { icon: iconEoc }).addTo(layer).bindPopup(`<b>${data.eoc.label}</b>`);
+      const hz = data.hazardBarangayPins ?? [];
+      for (const h of hz) {
+        L.circleMarker([h.latitude, h.longitude], {
+          radius: 6,
+          color: "#7f1d1d",
+          weight: 2,
+          fillColor: "#dc2626",
+          fillOpacity: 0.9,
+        })
+          .addTo(layer)
+          .bindPopup(
+            `<b>${h.name}</b><br/><span style="opacity:.85;font-size:11px">${h.code} · ${h.hazardKind === "flood" ? "Flood ref." : "Landslide ref."}</span>`,
+          );
+      }
       for (const inc of data.incidents) {
         const la = num(inc.latitude);
         const lo = num(inc.longitude);

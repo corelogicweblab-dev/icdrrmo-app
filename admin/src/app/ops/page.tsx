@@ -307,6 +307,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
             <Link href="/ops/map" className="text-sky-400 hover:underline">
               Open tactical map (GIS layers)
             </Link>
+            <span className="text-zinc-500"> — flood / landslide barangays plot as red reference dots (OSM centroids; validate with LGU).</span>
           </p>
           {!weather ? (
             <p className="text-xs text-zinc-500">Loading hazard reference…</p>

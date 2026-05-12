@@ -7,6 +7,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapIncidentPin } from "@/lib/map-pins";
 import { markerColorForIncidentType, pinsToFeatureCollection } from "@/lib/map-pins";
 import { ISABELA_MAP_CENTER_LNGLAT } from "@/lib/isabela-eoc";
+import { hazardPinsForLayers } from "@/lib/isabela-hazard-barangay-locations";
 import { SituationMapOsmFallback } from "@/components/situation-map-osm-fallback";
 import {
   bindClusterExpansionClick,
@@ -39,6 +40,8 @@ export function SituationMap(props: SituationMapProps): ReactElement {
   const token = readMapboxToken();
 
   const showHtmlMarkers = layerToggles === undefined ? true : Boolean(layerToggles["Incident markers"]);
+  const showFloodHazard = layerToggles === undefined ? true : Boolean(layerToggles["Flood-prone zones"]);
+  const showLandslideHazard = layerToggles === undefined ? true : Boolean(layerToggles["Landslide polygons"]);
 
   useEffect(() => {
     if (!token || !containerRef.current) return;
@@ -111,6 +114,8 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
+    const hazardPins = hazardPinsForLayers(layerToggles);
+
     if (showHtmlMarkers) {
       for (const p of pins) {
         const el = document.createElement("div");
@@ -132,17 +137,47 @@ export function SituationMap(props: SituationMapProps): ReactElement {
       }
     }
 
-    if (pins.length > 0) {
+    for (const h of hazardPins) {
+      if (h.hazardKind === "flood" && !showFloodHazard) continue;
+      if (h.hazardKind === "landslide" && !showLandslideHazard) continue;
+      const el = document.createElement("div");
+      el.style.width = "12px";
+      el.style.height = "12px";
+      el.style.borderRadius = "9999px";
+      el.style.border = "2px solid rgba(127,29,29,0.95)";
+      el.style.background = "#dc2626";
+      el.style.boxShadow = "0 0 8px rgba(220,38,38,0.65)";
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([h.longitude, h.latitude])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 12, maxWidth: "220px" }).setHTML(
+            `<div class="text-xs font-sans text-zinc-800"><strong>${escapeHtml(h.name)}</strong><br/><span class="text-[10px]">${escapeHtml(h.code)} · ${h.hazardKind === "flood" ? "Flood reference" : "Landslide reference"}</span></div>`,
+          ),
+        )
+        .addTo(map);
+      markersRef.current.push(marker);
+    }
+
+    const bboxPoints: [number, number][] = [
+      ...hazardPins
+        .filter((h) => (h.hazardKind === "flood" ? showFloodHazard : showLandslideHazard))
+        .map((h) => [h.longitude, h.latitude] as [number, number]),
+    ];
+    if (showHtmlMarkers) {
+      pins.forEach((p) => bboxPoints.push([p.lng, p.lat]));
+    }
+    bboxPoints.push(ISABELA_MAP_CENTER_LNGLAT);
+    if (bboxPoints.length > 1) {
       const b = new mapboxgl.LngLatBounds();
-      pins.forEach((p) => b.extend([p.lng, p.lat]));
+      bboxPoints.forEach((c) => b.extend(c));
       map.fitBounds(b, { padding: 56, maxZoom: 14.5, duration: 600 });
     } else {
       map.flyTo({ center: ISABELA_MAP_CENTER_LNGLAT, zoom: 12.2, duration: 400 });
     }
-  }, [pins, mapReady, token, showHtmlMarkers]);
+  }, [pins, mapReady, token, showHtmlMarkers, layerToggles, showFloodHazard, showLandslideHazard]);
 
   if (!token) {
-    return <SituationMapOsmFallback pins={pins} showMarkers={showHtmlMarkers} />;
+    return <SituationMapOsmFallback pins={pins} showMarkers={showHtmlMarkers} layerToggles={layerToggles} />;
   }
 
   const gisHud =

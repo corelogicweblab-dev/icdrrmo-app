@@ -7,12 +7,17 @@ import {
   isGlobalOpsRole,
   OPERATOR_BARANGAY_REQUIRED,
 } from '../common/ops-operator-scope';
+import { getIsabelaHazardBarangayPins } from './isabela-hazard-barangay-locations';
 
-/** CDRRMO Operations Center — Binuangan, Isabela City, Basilan (WGS84 reference for EOC maps). */
+/**
+ * CDRRMO / ICDRRMO EOC field reference — west of Basilan Circumferential Rd (near Kasinnahan),
+ * Isabela City, Basilan (WGS84). Validate with LGU GPS / survey monument.
+ */
 export const EOC_REFERENCE = {
-  label: 'ISABELA, CDRRMO Operations Center, Binuangan, Isabela City, Basilan 7300',
-  latitude: 6.7048,
-  longitude: 121.9715,
+  label:
+    'ICDRRMO / CDRRMO EOC — west of Basilan Circumferential Road, Menzi / Sunrise Village area, Isabela City, Basilan 7300',
+  latitude: 6.70325,
+  longitude: 121.98235,
 } as const;
 
 @Injectable()
@@ -85,6 +90,7 @@ export class MapService {
 
     return {
       eoc: EOC_REFERENCE,
+      hazardBarangayPins: getIsabelaHazardBarangayPins(),
       incidents,
       responders,
       vehicles,

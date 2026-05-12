@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ISABELA_HAZARD_DISCLAIMER, ISABELA_HAZARD_ZONES } from './isabela-hazard-reference';
 
 /** CDRRMO reference point — Isabela City proper (WGS84). */
-const ISABELA_LAT = 6.7048;
-const ISABELA_LON = 121.9715;
+const ISABELA_LAT = 6.70325;
+const ISABELA_LON = 121.98235;
 
 type OpenMeteoHourly = {
   time?: string[];
