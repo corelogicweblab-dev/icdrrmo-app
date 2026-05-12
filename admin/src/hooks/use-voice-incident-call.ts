@@ -231,8 +231,8 @@ export function useVoiceIncidentCall(opts: {
       const failVoice = (): void => {
         if (disposed) return;
         const hint = turnConfigured
-          ? "Voice link failed (network or firewall). Try another network or verify TURN_URLS on the API."
-          : "Voice link failed — strict NAT usually needs TURN. Set TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL on the Nest API (see backend .env.example).";
+          ? "Voice link failed — check network path, firewall, and TURN service health on the API host."
+          : "Voice link failed — configure TURN on the API (TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL). STUN-only paths do not work on most mobile networks.";
         setError(hint);
         setStatus("error");
       };

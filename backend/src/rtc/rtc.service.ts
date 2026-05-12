@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 const DEFAULT_STUN: { urls: string }[] = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -9,33 +9,23 @@ export type IceServerDto = {
   credential?: string;
 };
 
-const OPENRELAY_DEMO: IceServerDto = {
-  urls: [
-    'turn:openrelay.metered.ca:80',
-    'turn:openrelay.metered.ca:443',
-    'turn:openrelay.metered.ca:443?transport=tcp',
-  ],
-  username: 'openrelayproject',
-  credential: 'openrelayproject',
-};
-
 @Injectable()
 export class RtcService {
+  private readonly logger = new Logger(RtcService.name);
+  private warnedMissingTurn = false;
+
   constructor(private readonly config: ConfigService) {}
 
   /**
-   * WebRTC ICE servers for browser clients.
-   * Prefer your own relay: TURN_URLS (comma-separated), TURN_USERNAME, TURN_CREDENTIAL.
-   * If those are unset, Metered’s public demo relay is included so strict NAT still works (opt out: RTC_STUN_ONLY=1).
+   * ICE servers for browser WebRTC. STUN is always included.
+   * TURN relay (required for most carrier-grade NAT) is included only when all of
+   * TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL are set on this API host (e.g. Coturn or a managed TURN product).
    */
   getIceServers(): { iceServers: IceServerDto[]; turnConfigured: boolean } {
-    const stunOnly =
-      this.config.get<string>('RTC_STUN_ONLY')?.trim() === '1' ||
-      this.config.get<string>('RTC_STUN_ONLY')?.toLowerCase() === 'true';
-
     const urlsRaw = this.config.get<string>('TURN_URLS')?.trim();
     const username = this.config.get<string>('TURN_USERNAME')?.trim();
     const credential = this.config.get<string>('TURN_CREDENTIAL')?.trim();
+
     if (urlsRaw && username && credential) {
       const urlList = urlsRaw
         .split(',')
@@ -50,10 +40,13 @@ export class RtcService {
       }
     }
 
-    if (stunOnly) {
-      return { iceServers: [...DEFAULT_STUN], turnConfigured: false };
+    if (!this.warnedMissingTurn) {
+      this.warnedMissingTurn = true;
+      this.logger.warn(
+        'TURN_URLS / TURN_USERNAME / TURN_CREDENTIAL are not fully set — voice will use STUN only and may fail on strict NAT. Configure a TURN service on this API.',
+      );
     }
 
-    return { iceServers: [...DEFAULT_STUN, OPENRELAY_DEMO], turnConfigured: true };
+    return { iceServers: [...DEFAULT_STUN], turnConfigured: false };
   }
 }
