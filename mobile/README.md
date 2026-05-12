@@ -48,6 +48,8 @@ flutter create --org ph.gov.icdrrmo --project-name icdrrmo_mobile .
 
 Merge `lib/` and `pubspec.yaml` afterward. Configure **location**, **notifications**, **SMS**, and optionally **foreground service / background location** permissions in native manifests (`ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `POST_NOTIFICATIONS`, `READ_SMS`/`SEND_SMS`).
 
+**Screen rotation (follow system lock):** In `android/app/src/main/AndroidManifest.xml`, on the `MainActivity` `<activity>` element set `android:screenOrientation="fullUser"` (API 18+). Avoid `sensor`, `fullSensor`, or `landscape` there — those ignore the user’s portrait/rotation lock. The app’s `main.dart` clears any Dart-side orientation overrides so the OS policy wins.
+
 ### Releases
 
 After `flutter build apk` / `flutter build appbundle` / Xcode archive, attach Play/App Store listings and ICDRRMO signing keys privately.
