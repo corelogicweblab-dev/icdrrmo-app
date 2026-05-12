@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { connectIncidentVoiceSocket } from "@/lib/realtime";
+import { opsFetchJson } from "@/lib/ops-api";
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+const FALLBACK_ICE: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 const VOICE_JOIN_TIMEOUT_MS = 22_000;
 
 type VoiceJoinAck = { ok: boolean; error?: string; peersAlreadyPresent?: number };
@@ -21,6 +22,24 @@ type VoicePeerJoinedMsg = {
   userId?: string;
   role?: string;
 };
+
+type IceApiResponse = {
+  iceServers?: RTCIceServer[];
+  turnConfigured?: boolean;
+};
+
+async function fetchIceServers(accessToken: string): Promise<{ iceServers: RTCIceServer[]; turnConfigured: boolean }> {
+  try {
+    const data = await opsFetchJson<IceApiResponse>("/rtc/ice", accessToken);
+    const list = data?.iceServers;
+    if (Array.isArray(list) && list.length > 0) {
+      return { iceServers: list, turnConfigured: Boolean(data.turnConfigured) };
+    }
+  } catch {
+    /* use fallback */
+  }
+  return { iceServers: FALLBACK_ICE, turnConfigured: false };
+}
 
 export type VoiceIncidentCallStatus =
   | "idle"
@@ -42,6 +61,7 @@ export type UseVoiceIncidentCallResult = {
 export function useVoiceIncidentCall(opts: {
   incidentId: string | null;
   active: boolean;
+  /** Required whenever active (citizen socket + ops ICE fetch). */
   accessToken?: string | null;
   externalSocket?: Socket | null;
 }): UseVoiceIncidentCallResult {
@@ -72,27 +92,29 @@ export function useVoiceIncidentCall(opts: {
     }
 
     const rid = incidentId;
-
-    const useExternal = externalSocket != null;
-    if (!useExternal && (!accessToken || accessToken.length === 0)) {
+    const token = typeof accessToken === "string" ? accessToken.trim() : "";
+    if (!token) {
       setStatus("error");
-      setError("Missing auth for voice connection.");
+      setError("Missing auth for voice (access token).");
       return;
     }
 
+    const useExternal = externalSocket != null;
     let disposed = false;
-    const socket = useExternal ? externalSocket! : connectIncidentVoiceSocket(accessToken!);
+    let pc: RTCPeerConnection | null = null;
+    let turnConfigured = false;
+
+    const socket = useExternal ? externalSocket! : connectIncidentVoiceSocket(token);
     if (!useExternal) ownedSocketRef.current = socket;
 
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    pcRef.current = pc;
+    const pendingConnectJoinRef: { current: (() => void) | null } = { current: null };
 
     const sendSignal = (msg: Omit<VoiceSignalMsg, "incidentId">): void => {
       if (disposed) return;
       socket.emit("voice_signal", { incidentId: rid, ...msg });
     };
 
-    async function ensureMic(): Promise<boolean> {
+    async function ensureMic(conn: RTCPeerConnection): Promise<boolean> {
       try {
         const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         if (disposed) {
@@ -101,7 +123,7 @@ export function useVoiceIncidentCall(opts: {
         }
         localStreamRef.current = s;
         s.getAudioTracks().forEach((t) => {
-          pc.addTrack(t, s);
+          conn.addTrack(t, s);
         });
         return true;
       } catch (e) {
@@ -115,11 +137,10 @@ export function useVoiceIncidentCall(opts: {
     }
 
     async function createAndSendOffer(): Promise<void> {
-      if (disposed || !pcRef.current) return;
-      const conn = pcRef.current;
+      if (disposed || !pc) return;
       try {
-        const offer = await conn.createOffer();
-        await conn.setLocalDescription(offer);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
         sendSignal({
           type: "offer",
           sdp: offer,
@@ -134,13 +155,13 @@ export function useVoiceIncidentCall(opts: {
     }
 
     async function onPeerJoined(): Promise<void> {
-      if (disposed) return;
+      if (disposed || !pc) return;
       if (pc.signalingState !== "stable") return;
       await createAndSendOffer();
     }
 
     async function onSignal(msg: unknown): Promise<void> {
-      if (disposed) return;
+      if (disposed || !pc) return;
       const m = msg as VoiceSignalMsg;
       if (!m || m.incidentId !== rid) return;
 
@@ -187,39 +208,47 @@ export function useVoiceIncidentCall(opts: {
       void onPeerJoined();
     };
 
-    pc.onicecandidate = (ev) => {
-      if (disposed || !ev.candidate) return;
-      sendSignal({
-        type: "candidate",
-        candidate: ev.candidate.toJSON(),
-      });
-    };
-
-    pc.ontrack = (ev) => {
-      if (disposed) return;
-      const [stream] = ev.streams;
-      if (stream) setRemoteStream(stream);
-      setStatus("live");
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (disposed) return;
-      if (pc.connectionState === "failed") {
-        setError("Voice link failed (strict NAT may need TURN — not configured yet).");
-        setStatus("error");
-      }
-    };
-
     const onSignalBound = (msg: unknown): void => {
       void onSignal(msg);
     };
 
-    socket.on("voice_signal", onSignalBound);
-    socket.on("voice_peer_joined", onVoicePeerJoined);
+    function wirePeerConnection(conn: RTCPeerConnection): void {
+      conn.onicecandidate = (ev) => {
+        if (disposed || !ev.candidate) return;
+        sendSignal({
+          type: "candidate",
+          candidate: ev.candidate.toJSON(),
+        });
+      };
 
-    const pendingConnectJoinRef: { current: (() => void) | null } = { current: null };
+      conn.ontrack = (ev) => {
+        if (disposed) return;
+        const [stream] = ev.streams;
+        if (stream) setRemoteStream(stream);
+        setStatus("live");
+      };
 
-    async function start(): Promise<void> {
+      const failVoice = (): void => {
+        if (disposed) return;
+        const hint = turnConfigured
+          ? "Voice link failed (network or firewall). Try another network or verify TURN_URLS on the API."
+          : "Voice link failed — strict NAT usually needs TURN. Set TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL on the Nest API (see backend .env.example).";
+        setError(hint);
+        setStatus("error");
+      };
+
+      conn.onconnectionstatechange = () => {
+        if (disposed || !pc) return;
+        if (pc.connectionState === "failed") failVoice();
+      };
+
+      conn.oniceconnectionstatechange = () => {
+        if (disposed || !pc) return;
+        if (pc.iceConnectionState === "failed") failVoice();
+      };
+    }
+
+    async function runJoinFlow(): Promise<void> {
       setStatus("connecting");
       setError(null);
 
@@ -229,7 +258,18 @@ export function useVoiceIncidentCall(opts: {
         return;
       }
 
-      const okMic = await ensureMic();
+      const ice = await fetchIceServers(token);
+      if (disposed) return;
+      turnConfigured = ice.turnConfigured;
+
+      pc = new RTCPeerConnection({ iceServers: ice.iceServers });
+      pcRef.current = pc;
+      wirePeerConnection(pc);
+
+      socket.on("voice_signal", onSignalBound);
+      socket.on("voice_peer_joined", onVoicePeerJoined);
+
+      const okMic = await ensureMic(pc);
       if (!okMic || disposed) return;
 
       setStatus("joining");
@@ -317,7 +357,7 @@ export function useVoiceIncidentCall(opts: {
       }
     }
 
-    void start();
+    void runJoinFlow();
 
     return () => {
       disposed = true;
@@ -331,10 +371,14 @@ export function useVoiceIncidentCall(opts: {
       }
       socket.off("voice_signal", onSignalBound);
       socket.off("voice_peer_joined", onVoicePeerJoined);
-      pc.onicecandidate = null;
-      pc.ontrack = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
+      if (pc) {
+        pc.onicecandidate = null;
+        pc.ontrack = null;
+        pc.onconnectionstatechange = null;
+        pc.oniceconnectionstatechange = null;
+        pc.close();
+      }
+      pc = null;
       pcRef.current = null;
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;

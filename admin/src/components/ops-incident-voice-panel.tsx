@@ -27,12 +27,13 @@ function statusLabel(s: string): string {
 
 export function OpsIncidentVoicePanel(props: {
   incidentId: string;
+  accessToken: string;
   realtimeSocket: Socket | null;
   socketLive: boolean;
   /** Rising edge: Answer from SOS voice ring — auto-starts browser voice for this incident. */
   autoJoinVoice?: boolean;
 }): ReactElement {
-  const { incidentId, realtimeSocket, socketLive, autoJoinVoice } = props;
+  const { incidentId, accessToken, realtimeSocket, socketLive, autoJoinVoice } = props;
   const [active, setActive] = useState(false);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const prevAutoJoin = useRef(false);
@@ -40,6 +41,7 @@ export function OpsIncidentVoicePanel(props: {
   const { status, error, muted, setMuted, remoteStream } = useVoiceIncidentCall({
     incidentId,
     active: active && socketLive && realtimeSocket != null,
+    accessToken,
     externalSocket: realtimeSocket ?? undefined,
   });
 

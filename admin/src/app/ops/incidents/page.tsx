@@ -549,6 +549,7 @@ export default function OpsIncidentsPage(): ReactElement {
                 )}
                 <OpsIncidentVoicePanel
                   incidentId={selected.id}
+                  accessToken={tokens?.accessToken ?? ""}
                   realtimeSocket={realtimeSocket}
                   socketLive={socketState === "live"}
                   autoJoinVoice={autoJoinVoiceOnce}

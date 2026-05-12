@@ -23,6 +23,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { SystemModule } from './system/system.module';
 import { FirestoreModule } from './firestore/firestore.module';
+import { RtcModule } from './rtc/rtc.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { FirestoreModule } from './firestore/firestore.module';
     DashboardModule,
     AlertsModule,
     SystemModule,
+    RtcModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
