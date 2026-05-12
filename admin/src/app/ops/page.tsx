@@ -299,23 +299,16 @@ export default function OpsCommandDashboardPage(): ReactElement {
             </div>
           )}
         </OpsPanelCard>
-        <OpsPanelCard
-          title="Flood & landslide — Isabela City"
-          subtitle="Barangay-level reference (see disclaimer). Cross-check with official LGU / MGB maps."
-        >
-          <p className="mb-3 text-[11px]">
-            <Link href="/ops/map" className="text-sky-400 hover:underline">
-              Open tactical map (GIS layers)
-            </Link>
-            <span className="text-zinc-500"> — flood / landslide barangays plot as red reference dots (OSM centroids; validate with LGU).</span>
-          </p>
+        <OpsPanelCard title="Flood & landslide — Isabela City">
           {!weather ? (
             <p className="text-xs text-zinc-500">Loading hazard reference…</p>
           ) : (
             <div className="space-y-3 text-[11px] text-zinc-400">
-              <p className="text-[10px] leading-relaxed text-amber-200/85 border border-amber-500/20 rounded-lg px-2 py-1.5 bg-amber-950/20">
-                {weather.hazardDisclaimer}
-              </p>
+              {weather.hazardDisclaimer.trim() ? (
+                <p className="text-[10px] leading-relaxed text-amber-200/85 border border-amber-500/20 rounded-lg px-2 py-1.5 bg-amber-950/20">
+                  {weather.hazardDisclaimer}
+                </p>
+              ) : null}
               {weather.hazardZones.map((z) => (
                 <div key={z.type} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-rose-200/80">{z.label}</p>

@@ -1,9 +1,7 @@
 /**
- * Isabela City, Basilan — hazard **planning reference** by barangay code (matches `prisma/seed.ts` IC-* codes).
- * Replace or enrich with official LGU / MGB GeoJSON when available.
+ * Isabela City, Basilan — hazard planning reference by barangay code (matches `prisma/seed.ts` IC-* codes).
  */
-export const ISABELA_HAZARD_DISCLAIMER =
-  'Reference list tied to the ICDRRMO barangay master data — validate against official Isabela City DRRM / MGB hazard maps before operations.';
+export const ISABELA_HAZARD_DISCLAIMER = '';
 
 export type HazardZoneType = 'FLOOD_COASTAL_RIVER' | 'FLOOD_RIVERINE' | 'LANDSLIDE';
 

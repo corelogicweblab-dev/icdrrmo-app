@@ -2,7 +2,7 @@
 
 Full-stack emergency response platform for **Isabela City Disaster Risk Reduction and Management Office (ICDRRMO)**, Philippines: **Flutter** citizen app, **NestJS** API with **Socket.IO** realtime, **PostgreSQL** + **Prisma**, **Next.js** operation center with command-dashboard UI, **SMS** ingest, **Docker Compose** + **Nginx**, and **Redis** for queues and caching.
 
-**Enterprise blueprint:** [`docs/ENTERPRISE_ECOSYSTEM.md`](docs/ENTERPRISE_ECOSYSTEM.md) — architecture, scaling, DR, integrations. **Delivery phases:** [`docs/IMPLEMENTATION_ROADMAP.md`](docs/IMPLEMENTATION_ROADMAP.md).
+**Enterprise blueprint:** [`docs/ENTERPRISE_ECOSYSTEM.md`](docs/ENTERPRISE_ECOSYSTEM.md) — architecture, scaling, DR, integrations. **Delivery phases:** [`docs/IMPLEMENTATION_ROADMAP.md`](docs/IMPLEMENTATION_ROADMAP.md). **Client / LGU proposal (bilingual, full detail):** [`docs/CLIENT_PROPOSAL_ICDRRMO_SMART_SYSTEM.md`](docs/CLIENT_PROPOSAL_ICDRRMO_SMART_SYSTEM.md).
 
 ## Repository layout
 

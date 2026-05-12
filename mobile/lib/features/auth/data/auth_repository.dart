@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/jwt_decode.dart';
 import '../../../core/firestore/citizen_firestore_sync.dart';
 import '../../../core/push/citizen_push.dart';
+import '../../../core/network/dio_provider.dart';
 import '../../../core/storage/token_storage.dart';
 import 'barangays_repository.dart';
 
@@ -22,25 +23,34 @@ final class AuthRepository {
     required String password,
     required String fullName,
     required String phone,
-    String? barangayId,
-    String? streetPurok,
+    required String birthday,
+    required String gender,
+    required String bloodType,
+    required String medicalConditions,
+    required String streetPurok,
+    required String barangaySelection,
+    required String profilePhotoUrl,
   }) async {
     final body = <String, dynamic>{
       'email': email,
       'password': password,
       'fullName': fullName,
       'phone': phone,
+      'birthday': birthday,
+      'gender': gender,
+      'bloodType': bloodType,
+      'medicalConditions': medicalConditions,
+      'streetPurok': streetPurok,
+      'profilePhotoUrl': profilePhotoUrl,
+      ...barangayRegisterFields(barangaySelection),
     };
-    if (barangayId != null && barangayId.isNotEmpty) {
-      body.addAll(barangayRegisterFields(barangayId));
-    }
-    final sp = streetPurok?.trim();
-    if (sp != null && sp.isNotEmpty) {
-      body['streetPurok'] = sp;
-    }
     final res = await _dio.post<Map<String, dynamic>>(
       '/auth/register',
       data: body,
+      options: Options(
+        sendTimeout: const Duration(seconds: 120),
+        receiveTimeout: const Duration(seconds: 120),
+      ),
     );
     final data = res.data;
     final access = data?['accessToken'] as String?;

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,7 +19,7 @@ import { PasswordInput } from "@/components/password-input";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
-import { loadBarangayPickList, barangayFieldsForPatch } from "@/lib/public-barangays";
+import { loadBarangayPickList, barangayRegisterFields } from "@/lib/public-barangays";
 import { opsFetchJson, OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string; refreshToken?: string };
@@ -38,6 +38,36 @@ const SOS_TYPES = [
   { id: "RESCUE_REQUEST", label: "Rescue request" },
   { id: "OTHER", label: "Other emergency" },
 ] as const;
+
+const REGISTER_GENDER_OPTS = [
+  { value: "MALE", label: "Male" },
+  { value: "FEMALE", label: "Female" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
+const REGISTER_BLOOD_OPTS = [
+  { value: "A_POS", label: "A+ (Rh positive)" },
+  { value: "A_NEG", label: "A− (Rh negative)" },
+  { value: "B_POS", label: "B+ (Rh positive)" },
+  { value: "B_NEG", label: "B− (Rh negative)" },
+  { value: "O_POS", label: "O+ (Rh positive)" },
+  { value: "O_NEG", label: "O− (Rh negative)" },
+  { value: "AB_POS", label: "AB+ (Rh positive)" },
+  { value: "AB_NEG", label: "AB− (Rh negative)" },
+] as const;
+
+function computeAgeFromIso(ymd: string): number | null {
+  const t = ymd.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+  const [y, mo, d] = t.split("-").map(Number);
+  const birth = new Date(y, mo - 1, d);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const md = today.getMonth() - birth.getMonth();
+  if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
 
 function saveTokens(p: Tokens): void {
   localStorage.setItem(STORAGE, JSON.stringify(p));
@@ -93,6 +123,11 @@ export default function CitizenPage(): ReactElement {
   const [registerBarangayId, setRegisterBarangayId] = useState("");
   const [registerStreetPurok, setRegisterStreetPurok] = useState("");
   const [registerBarangays, setRegisterBarangays] = useState<PublicBarangay[]>([]);
+  const [registerBirthday, setRegisterBirthday] = useState("");
+  const [registerGender, setRegisterGender] = useState("MALE");
+  const [registerBloodType, setRegisterBloodType] = useState("O_POS");
+  const [registerMedicalConditions, setRegisterMedicalConditions] = useState("");
+  const [registerProfilePhotoUrl, setRegisterProfilePhotoUrl] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -107,6 +142,34 @@ export default function CitizenPage(): ReactElement {
   const [me, setMe] = useState<CitizenMe | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileErr, setProfileErr] = useState<string | null>(null);
+
+  const registerAgeDisplay = useMemo(() => {
+    const a = computeAgeFromIso(registerBirthday);
+    return a == null ? "" : String(a);
+  }, [registerBirthday]);
+
+  const onRegisterProfilePhotoChange = useCallback((ev: React.ChangeEvent<HTMLInputElement>) => {
+    const f = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      setMsg("Profile picture must be an image file.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const s = typeof reader.result === "string" ? reader.result : "";
+      if (s.length > 580_000) {
+        setMsg("Photo is too large. Use a smaller image.");
+        setRegisterProfilePhotoUrl("");
+        return;
+      }
+      setMsg(null);
+      setRegisterProfilePhotoUrl(s);
+    };
+    reader.onerror = () => setMsg("Could not read the selected photo.");
+    reader.readAsDataURL(f);
+  }, []);
 
   useEffect(() => {
     setTokens(loadTokens());
@@ -196,6 +259,46 @@ export default function CitizenPage(): ReactElement {
   async function register(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     setMsg(null);
+    const bday = registerBirthday.trim();
+    if (!bday) {
+      setMsg("Date of birth is required.");
+      return;
+    }
+    const parsedAge = computeAgeFromIso(bday);
+    if (parsedAge == null) {
+      setMsg("Enter a valid date of birth.");
+      return;
+    }
+    if (parsedAge < 1 || parsedAge > 120) {
+      setMsg("Age must be between 1 and 120.");
+      return;
+    }
+    if (!registerBarangayId.trim()) {
+      setMsg("Barangay is required.");
+      return;
+    }
+    const barFields = barangayRegisterFields(registerBarangayId);
+    if (!barFields.barangayId && !barFields.barangayCode) {
+      setMsg("Barangay is required.");
+      return;
+    }
+    if (!registerStreetPurok.trim()) {
+      setMsg("Street is required.");
+      return;
+    }
+    if (!registerMedicalConditions.trim()) {
+      setMsg("Medical issues are required.");
+      return;
+    }
+    if (!registerProfilePhotoUrl.trim()) {
+      setMsg("Profile picture is required.");
+      return;
+    }
+    const phoneNorm = phone.replace(/\s/g, "");
+    if (!/^\+?[0-9]{8,15}$/.test(phoneNorm)) {
+      setMsg("Enter a valid contact number (8–15 digits, optional + prefix).");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch(`${getApiBaseUrl()}/auth/register`, {
@@ -204,11 +307,17 @@ export default function CitizenPage(): ReactElement {
         body: JSON.stringify({
           email,
           password,
-          fullName,
-          phone: phone.replace(/\s/g, ""),
-          ...(registerBarangayId.trim() ? barangayFieldsForPatch(registerBarangayId) : {}),
-          ...(registerStreetPurok.trim() ? { streetPurok: registerStreetPurok.trim() } : {}),
+          fullName: fullName.trim(),
+          phone: phoneNorm,
+          birthday: bday,
+          gender: registerGender,
+          bloodType: registerBloodType,
+          medicalConditions: registerMedicalConditions.trim(),
+          streetPurok: registerStreetPurok.trim(),
+          profilePhotoUrl: registerProfilePhotoUrl,
+          ...barFields,
         }),
+        signal: typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(120_000) : undefined,
       });
       const data = (await res.json().catch(() => ({}))) as Partial<Tokens> & { message?: string | string[] };
       if (!res.ok) {
@@ -228,8 +337,12 @@ export default function CitizenPage(): ReactElement {
       };
       saveTokens(pair);
       setTokens(pair);
-    } catch {
-      setMsg("Network error during registration.");
+    } catch (err) {
+      setMsg(
+        err instanceof Error && err.name === "TimeoutError"
+          ? "Registration timed out — try a smaller photo or check your connection."
+          : "Network error during registration.",
+      );
     } finally {
       setBusy(false);
     }
@@ -473,21 +586,78 @@ export default function CitizenPage(): ReactElement {
                     className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   />
                 </Field>
-                <Field label="Phone (e.g. +639171234567)">
+                <Field label="Date of birth">
                   <input
                     required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    type="date"
+                    value={registerBirthday}
+                    onChange={(e) => setRegisterBirthday(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                  />
+                </Field>
+                <Field label="Age (from date of birth)">
+                  <input
+                    readOnly
+                    value={registerAgeDisplay}
+                    placeholder="—"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-400 outline-none"
+                  />
+                </Field>
+                <Field label="Gender">
+                  <select
+                    required
+                    value={registerGender}
+                    onChange={(e) => setRegisterGender(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                  >
+                    {REGISTER_GENDER_OPTS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Blood type">
+                  <select
+                    required
+                    value={registerBloodType}
+                    onChange={(e) => setRegisterBloodType(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
+                  >
+                    {REGISTER_BLOOD_OPTS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Medical issues">
+                  <textarea
+                    required
+                    rows={3}
+                    value={registerMedicalConditions}
+                    onChange={(e) => setRegisterMedicalConditions(e.target.value)}
+                    placeholder="Conditions, medications, or notes responders should know"
+                    className="w-full resize-y rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
+                  />
+                </Field>
+                <Field label="Street / purok">
+                  <input
+                    required
+                    value={registerStreetPurok}
+                    onChange={(e) => setRegisterStreetPurok(e.target.value)}
+                    placeholder="e.g. Purok 3, Malamawi Road"
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
                   />
                 </Field>
                 <Field label="Barangay">
                   <select
+                    required
                     value={registerBarangayId}
                     onChange={(e) => setRegisterBarangayId(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   >
-                    <option value="">— Select (optional) —</option>
+                    <option value="">— Select barangay —</option>
                     {registerBarangays.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}
@@ -495,13 +665,34 @@ export default function CitizenPage(): ReactElement {
                     ))}
                   </select>
                 </Field>
-                <Field label="Street / purok (optional)">
+                <Field label="Contact number (e.g. +639171234567)">
                   <input
-                    value={registerStreetPurok}
-                    onChange={(e) => setRegisterStreetPurok(e.target.value)}
-                    placeholder="e.g. Purok 3, Malamawi Road"
-                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
+                    required
+                    inputMode="tel"
+                    pattern="^\+?[0-9\s]{8,20}$"
+                    title="Use digits with optional + prefix (mobile / E.164 style)"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   />
+                </Field>
+                <Field label="Profile picture (required)">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={onRegisterProfilePhotoChange}
+                    className="w-full text-xs text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-rose-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
+                  />
+                  {registerProfilePhotoUrl ? (
+                    <div className="mt-3 flex justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={registerProfilePhotoUrl}
+                        alt="Profile preview"
+                        className="h-28 w-28 rounded-2xl border border-white/10 object-cover"
+                      />
+                    </div>
+                  ) : null}
                 </Field>
                 <Field label="Email">
                   <input

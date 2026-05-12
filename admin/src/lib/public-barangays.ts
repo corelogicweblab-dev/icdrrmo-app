@@ -73,3 +73,11 @@ export function barangayFieldsForPatch(selection: string): { barangayId?: string
   if (/^IC-\d{3}$/i.test(v)) return { barangayCode: v.toUpperCase() };
   return { barangayId: v };
 }
+
+/** `POST /auth/register` — send exactly one of `barangayId` / `barangayCode` when non-empty. */
+export function barangayRegisterFields(selection: string): { barangayId?: string; barangayCode?: string } {
+  const v = selection.trim();
+  if (!v) return {};
+  if (/^IC-\d{3}$/i.test(v)) return { barangayCode: v.toUpperCase() };
+  return { barangayId: v };
+}

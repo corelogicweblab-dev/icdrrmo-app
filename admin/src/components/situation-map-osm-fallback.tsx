@@ -142,9 +142,6 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
             <MapPin className="h-3 w-3 shrink-0 text-rose-400/80" aria-hidden />
             {ISABELA_EOC_LAT.toFixed(5)}°N · {ISABELA_EOC_LNG.toFixed(5)}°E
           </p>
-          <p className="mt-1.5 text-[9px] text-zinc-500">
-            Red dots: flood / landslide barangay reference (OSM-based centroids — validate with LGU / MGB).
-          </p>
         </div>
         <div className="rounded-lg border border-amber-500/25 bg-amber-950/40 px-2 py-1.5 text-[9px] text-amber-100/90 backdrop-blur-sm">
           English-first street basemap (Esri)
