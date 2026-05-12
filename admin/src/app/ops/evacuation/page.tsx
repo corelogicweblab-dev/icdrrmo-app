@@ -155,7 +155,7 @@ export default function OpsEvacuationPage(): ReactElement {
 
   return (
     <div className="p-4 lg:p-6 space-y-4">
-      <OpsPanelCard title="Evacuation centers" subtitle="CRUD · /api/v1/evacuation-centers">
+      <OpsPanelCard title="Evacuation centers" subtitle="Manage shelter sites and capacity">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"

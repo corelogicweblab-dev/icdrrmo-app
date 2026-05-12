@@ -8,7 +8,8 @@
 2. In `backend/.env`, set:
    `DATABASE_URL="postgresql://icdrrmo:icdrrmo@localhost:5432/icdrrmo?schema=public"`
 3. From `backend/`:
-   `npx prisma migrate deploy`
+   `npx prisma migrate deploy`  
+   Optional: `npx prisma db seed` — seeds **45 barangays** + demo accounts. Re-running does **not** change existing passwords unless `FORCE_SEED_PASSWORDS=1`.
 
 ## Prisma CLI paths
 

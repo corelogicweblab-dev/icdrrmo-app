@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { opsFetchJson } from "@/lib/ops-api";
+import { opsApiErrorUserMessage, opsFetchJson, OpsApiError } from "@/lib/ops-api";
 import { ISABELA_EOC_ADDRESS } from "@/lib/isabela-eoc";
 import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
 
@@ -77,7 +77,13 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
         setError(null);
       } catch (e: unknown) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load map context");
+          const msg =
+            e instanceof OpsApiError
+              ? opsApiErrorUserMessage(e)
+              : e instanceof Error
+                ? e.message
+                : "Failed to load map context";
+          setError(msg);
         }
       }
     })();
@@ -257,9 +263,9 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
       {error && data ? <p className="text-[10px] text-rose-300/90">{error}</p> : null}
       <div ref={mapEl} className="h-[420px] w-full overflow-hidden rounded-xl border border-white/[0.08] bg-black/40" />
       <p className="text-[10px] text-zinc-500">
-        Leaflet + Esri World Street (English labels) · EOC: {ISABELA_EOC_ADDRESS} · Live layers from{" "}
-        <code className="text-zinc-400">GET /api/v1/map/ops-live</code>
-        . Roads: Esri basemap. ETA via public OSRM (configure a private router for production).
+        Leaflet + Esri World Street (English labels) · EOC: {ISABELA_EOC_ADDRESS} · Live incident and asset layers load
+        from the emergency services server. ETA uses a public routing service; your administrator may configure a
+        private router for production.
       </p>
     </div>
   );

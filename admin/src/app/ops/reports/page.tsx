@@ -21,7 +21,7 @@ export default function OpsReportsPage(): ReactElement {
         </div>
         <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-sm text-zinc-500 flex flex-col items-center gap-3">
           <History className="h-10 w-10 opacity-60" aria-hidden />
-          Incident table + exporter connects to Nest reporting module + Prisma aggregates.
+          Incident summaries and exports connect to the reporting service when enabled.
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-xl bg-white/[0.06] px-4 py-2 text-xs font-medium text-zinc-300"

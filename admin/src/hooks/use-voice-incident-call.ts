@@ -251,10 +251,10 @@ export function useVoiceIncidentCall(opts: {
           errorAudience === "citizen"
             ? turnConfigured
               ? "Audio could not stay connected. Try Wi‑Fi or a stronger signal, then use SOS voice again."
-              : "Audio could not use a direct path on this network. The ICDRRMO central server still needs its media relay enabled on the same deployment as the emergency API—ask your technical staff (one-time setup)."
+              : "Audio could not use a direct path on this network. Ask your technical administrator to enable media relay on the emergency services server."
             : turnConfigured
-              ? "Voice link failed — check network path, firewall, and media relay health on the API host."
-              : "Voice link failed — enable media relay on the API: TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL (see backend .env.example).";
+              ? "Voice link failed — check network path, firewall, and media relay health."
+              : "Voice link failed — media relay must be enabled on the emergency services server. Contact your technical administrator.";
         setError(hint);
         setStatus("error");
       };
@@ -276,7 +276,7 @@ export function useVoiceIncidentCall(opts: {
 
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
         setStatus("error");
-        setError("Microphone needs HTTPS or localhost.");
+        setError("Microphone access requires a secure (HTTPS) connection.");
         return;
       }
 
@@ -332,7 +332,7 @@ export function useVoiceIncidentCall(opts: {
             finishOnce(() =>
               reject(
                 new Error(
-                  "Voice server did not respond in time. Set NEXT_PUBLIC_WS_URL (or NEXT_PUBLIC_API_URL) so Socket.IO reaches the same host as Nest.",
+                  "Voice service did not respond in time. Check your connection or contact your technical administrator.",
                 ),
               ),
             );

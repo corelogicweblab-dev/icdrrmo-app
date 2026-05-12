@@ -66,7 +66,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _barangaysLoadError = null;
     });
     try {
-      final list = await ref.read(barangaysRepositoryProvider).fetchPublic();
+      final list = await ref.read(barangaysRepositoryProvider).fetchPreferringAuthSession();
       if (!mounted) return;
       setState(() {
         barangays = list;
@@ -79,7 +79,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         barangays = isabelaOfflineBarangays();
         _barangaysLoading = false;
         _barangaysLoadError =
-            'Could not reach barangay API — using offline Isabela list. Check API_BASE / network. ($e)';
+            'Could not load the barangay list from the server. Using an offline reference list. Check your connection.';
       });
     }
   }

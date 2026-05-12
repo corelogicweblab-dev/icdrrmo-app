@@ -31,10 +31,11 @@ export default function OpsDispatchPage(): ReactElement {
           ))}
         </div>
         <p className="mt-4 text-[11px] text-zinc-600">
-          Wire Nest dispatch module + responder routing service. Queue depth: <span className="font-mono text-zinc-400">{queue.length}</span> open incidents.
+          Dispatch board — assignments and routing will appear here as the module is completed. Open incidents in queue:{" "}
+          <span className="font-mono text-zinc-400">{queue.length}</span>
         </p>
       </OpsPanelCard>
-      <OpsPanelCard title="Suggested stack (sim)" subtitle="Replace with PostGIS nearest-neighbor">
+      <OpsPanelCard title="Suggested stack (sim)" subtitle="Illustrative ETA examples for planning">
         <ul className="text-xs text-zinc-400 space-y-2 font-mono">
           <li>Unit A1 · EMS · 6 min ETA</li>
           <li>Unit R3 · Rescue · 9 min ETA</li>

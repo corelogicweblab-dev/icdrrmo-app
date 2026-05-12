@@ -70,7 +70,7 @@ export default function OpsUsersPage(): ReactElement {
 
   return (
     <div className="p-4 lg:p-6 space-y-4">
-      <OpsPanelCard title="Directory" subtitle="REST · GET /api/v1/users · pagination + search">
+      <OpsPanelCard title="Directory" subtitle="Search and paginate user accounts (administrator tools)">
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-[11px] text-zinc-500">
             Search email
@@ -175,8 +175,8 @@ export default function OpsUsersPage(): ReactElement {
           </div>
         </div>
         <p className="mt-2 text-[10px] text-zinc-600">
-          *Online heuristic: device token seen in the last 2 minutes. Create / update / delete users via Nest{" "}
-          <code className="text-zinc-500">POST/PATCH/DELETE /api/v1/users</code> (ADMIN only).
+          *Online heuristic: device token seen in the last 2 minutes. User create, update, and retire actions require an
+          administrator account.
         </p>
       </OpsPanelCard>
     </div>

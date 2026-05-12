@@ -251,7 +251,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                 />
                 <OpsStatusCapsule
                   icon={Server}
-                  label="Socket.IO"
+                  label="Live channel"
                   state={socketState === "live" ? "good" : socketState === "error" ? "bad" : "idle"}
                   detail={
                     socketState === "live"

@@ -5,8 +5,8 @@ import { Globe, KeyRound, Shield, UserCog } from "lucide-react";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 
 const ROWS = [
-  { ts: "2026-05-09T10:41:06Z", actor: "ops.admin", action: "incident_created", detail: "SOS ingestion" },
-  { ts: "2026-05-09T10:42:51Z", actor: "netbird", action: "api_access", detail: "GET /incidents/queue" },
+  { ts: "2026-05-09T10:41:06Z", actor: "eo.operator", action: "incident_created", detail: "SOS ingestion" },
+  { ts: "2026-05-09T10:42:51Z", actor: "api.service", action: "api_access", detail: "Incident queue read" },
 ];
 
 export default function OpsAuditPage(): ReactElement {
@@ -36,7 +36,7 @@ export default function OpsAuditPage(): ReactElement {
           </table>
         </div>
         <p className="mt-4 text-[10px] text-zinc-600">
-          Stream from `IncidentLog` + centralized audit table + nginx access logs correlate.
+          Correlate entries with centralized audit data and server access logs when available.
         </p>
       </OpsPanelCard>
       <OpsPanelCard title="Security scope">

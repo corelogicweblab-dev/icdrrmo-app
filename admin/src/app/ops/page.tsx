@@ -233,7 +233,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
           icon={Radio}
           label="Realtime bus"
           value={wsLabel}
-          subtitle={socketState === "live" ? "Subscribed · /realtime" : wsErrorDetail ?? "Socket.IO"}
+          subtitle={socketState === "live" ? "Live channel connected" : wsErrorDetail ?? "Live channel standby"}
           accent={socketState === "live" ? "emerald" : socketState === "error" ? "rose" : "zinc"}
         />
         <OpsKpiCard
@@ -374,8 +374,8 @@ export default function OpsCommandDashboardPage(): ReactElement {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <OpsPanelCard
-          title="Median dispatch latency (min · sim)"
-          subtitle="Demo spark series until dispatch timestamps are logged for analytics"
+          title="Median dispatch latency (min)"
+          subtitle="Illustrative trend until dispatch timestamps feed analytics"
           className="xl:col-span-6"
         >
           <SparkBars values={mockDispatchLatency.map((x) => 20 - x)} color="bg-sky-500/55" />
@@ -417,7 +417,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
                 <Users className="h-10 w-10 text-zinc-700 mb-4" aria-hidden />
                 <p className="text-sm font-medium text-zinc-400">No incidents in ops queue</p>
                 <p className="mt-2 max-w-xs text-xs text-zinc-600">
-                  Live SOS populate this feed. Use Citizen app or `/citizen` smoke test.
+                  Live SOS incidents appear here when reported through the citizen channel or official hotline.
                 </p>
               </li>
             ) : null}
@@ -487,9 +487,8 @@ export default function OpsCommandDashboardPage(): ReactElement {
         {!hasMapboxToken() ? (
           <>
             {" "}
-            · Mapbox basemap / heat layers: set <span className="text-zinc-500">NEXT_PUBLIC_MAPBOX_TOKEN</span> in{" "}
-            <span className="text-zinc-500">.env.local</span>, then restart <span className="text-zinc-500">npm run dev</span>{" "}
-            or rebuild the admin image.
+            · Map view uses an OpenStreetMap-style basemap; optional premium map styling can be enabled by your
+            technical administrator.
           </>
         ) : null}
       </footer>

@@ -62,21 +62,38 @@ final class BarangaysRepository {
 
   final Dio _dio;
 
+  List<PublicBarangay> _parseBarangayRows(dynamic data) {
+    final List<dynamic> list = _unwrapList(data);
+    final out = <PublicBarangay>[];
+    for (final raw in list) {
+      if (raw is Map<String, dynamic>) {
+        final b = PublicBarangay.fromJson(raw);
+        if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
+      } else if (raw is Map) {
+        final b = PublicBarangay.fromJson(Map<String, dynamic>.from(raw));
+        if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
+      }
+    }
+    return out;
+  }
+
+  /// Signed-in flows (profile, etc.): prefer `GET /barangays` so `<select>` values are DB UUIDs.
+  /// Sending seed `IC-xxx` as [barangayCode] returns 409 if that deployment never seeded those codes.
+  Future<List<PublicBarangay>> fetchPreferringAuthSession() async {
+    try {
+      final res = await _dio.get<dynamic>('/barangays');
+      final out = _parseBarangayRows(res.data);
+      if (out.isNotEmpty) return out;
+    } catch (_) {
+      /* no token, 401, or empty */
+    }
+    return fetchPublic();
+  }
+
   Future<List<PublicBarangay>> fetchPublic() async {
     try {
       final res = await _dio.get<dynamic>('/barangays/public');
-      final data = res.data;
-      final List<dynamic> list = _unwrapList(data);
-      final out = <PublicBarangay>[];
-      for (final raw in list) {
-        if (raw is Map<String, dynamic>) {
-          final b = PublicBarangay.fromJson(raw);
-          if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
-        } else if (raw is Map) {
-          final b = PublicBarangay.fromJson(Map<String, dynamic>.from(raw));
-          if (b.id.isNotEmpty && b.name.isNotEmpty) out.add(b);
-        }
-      }
+      final out = _parseBarangayRows(res.data);
       if (out.isNotEmpty) return out;
     } catch (_) {
       /* use seed list */

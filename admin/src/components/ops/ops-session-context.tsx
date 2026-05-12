@@ -94,7 +94,7 @@ export function useOpsSession(): OpsSessionContextValue {
 
 export function OpsSessionProvider({ children }: { children: ReactNode }): ReactElement {
   const router = useRouter();
-  const [email, setEmail] = useState("ops.admin@icdrrmo.local");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tokens, setTokens] = useState<TokenPair | null>(null);
   const [socketState, setSocketState] = useState<"off" | "live" | "error">("off");
@@ -156,9 +156,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
           setQueueError("Insufficient permissions. Operations queue requires Admin or Operator role.");
           return;
         }
-        setQueueError(
-          `Queue service returned HTTP ${e.status}. Verify Nest is up and NEXT_PUBLIC_API_URL points at /api/v1 on your API host (not static Hosting).`,
-        );
+        setQueueError(`The incident queue is temporarily unavailable (error ${e.status}). Try again or contact support.`);
         return;
       }
       setQueueError("Unable to reach the incident queue. Confirm the API is online.");
@@ -282,18 +280,14 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
         }
         if (res.status === 404) {
           setLoginError(
-            "Authentication endpoint returned 404. On static hosting the browser calls NEXT_PUBLIC_API_URL on your API host — not this page. Rebuild with an absolute API URL (https://…/api/v1) and ensure Nest exposes POST /auth/login.",
+            "Sign-in service was not found. Contact your technical administrator if this continues.",
           );
         } else if (res.status === 400) {
-          setLoginError(
-            `Login rejected (400): ${detail}. Check email/password format; dev emails like *.icdrrmo.local are allowed.`,
-          );
+          setLoginError(`Sign-in could not be completed. ${detail}`);
         } else if (res.status === 401) {
-          setLoginError(
-            `${detail} If you never ran a seed on this API’s database, SSH/run: npm run db:seed (repo root) with DATABASE_URL pointing at that same DB.`,
-          );
+          setLoginError(detail || "Incorrect email or password, or this account is not enabled for this console.");
         } else {
-          setLoginError(`Authentication failed (${res.status}): ${detail}`);
+          setLoginError(`Sign-in failed (${res.status}). ${detail}`);
         }
         setFeed((f) =>
           [`${new Date().toISOString()} · AUTH_FAILURE · ${res.status}`, ...f].slice(0, 80),
@@ -315,7 +309,6 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       setFeed((f) => [`${new Date().toISOString()} · SESSION_ESTABLISHED`, ...f].slice(0, 80));
     } catch (err: unknown) {
       const api = getApiBaseUrl();
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
       const detail = err instanceof Error ? err.message : "Network error";
       const mixed =
         typeof window !== "undefined" &&
@@ -323,8 +316,8 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
         api.startsWith("http:");
       setLoginError(
         mixed
-          ? `Cannot reach ${api} (${detail}). This admin page is HTTPS but the API URL is HTTP — use https:// for the API or the browser blocks the request.`
-          : `Cannot reach ${api} (${detail}). Confirm Nest is reachable from the internet, NEXT_PUBLIC_API_URL in this build points at it, and CORS_ORIGINS on the API includes ${origin || "your admin origin"}.`,
+          ? "This page uses a secure connection, but the emergency services link may need to use HTTPS as well. Contact your technical administrator."
+          : `Cannot reach the emergency services server (${detail}). Check your connection or try again later.`,
       );
       setFeed((f) => [`${new Date().toISOString()} · AUTH_NETWORK_ERROR`, ...f].slice(0, 80));
     }

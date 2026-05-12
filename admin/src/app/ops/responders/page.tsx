@@ -129,7 +129,7 @@ export default function OpsRespondersPage(): ReactElement {
 
   return (
     <div className="p-4 lg:p-6 space-y-4">
-      <OpsPanelCard title="Responder roster" subtitle="CRUD · /api/v1/responders">
+      <OpsPanelCard title="Responder roster" subtitle="Field units, badges, and availability">
         <div className="mb-3 flex flex-wrap justify-between gap-2">
           <button
             type="button"

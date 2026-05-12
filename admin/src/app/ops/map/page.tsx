@@ -16,7 +16,6 @@ import {
 import { SituationMap } from "@/components/situation-map";
 import { formatOpsSync } from "@/components/ops/ops-format";
 import { useOpsSession } from "@/components/ops/ops-session-context";
-import { hasMapboxToken } from "@/lib/env";
 import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 import { defaultOpsMapLayerToggles, OPS_MAP_LAYER_GROUPS } from "@/lib/ops-map-layer-groups";
 import { incidentsToMapPins } from "@/lib/map-pins";
@@ -73,11 +72,8 @@ export default function OpsMapPage(): ReactElement {
               </div>
             ))}
             <p className="border-t border-white/[0.06] px-1 pt-2 text-[10px] leading-relaxed text-zinc-600">
-              AOI: {ISABELA_EOC_ADDRESS}. Toggles update the Mapbox style when a token is set; without a token the main
-              panel uses an English-first Esri street basemap with the same incident pins. Heatmap / clusters need Mapbox.
-              {!hasMapboxToken()
-                ? " Optional: NEXT_PUBLIC_MAPBOX_TOKEN in .env.local for full GIS styling."
-                : null}
+              AOI: {ISABELA_EOC_ADDRESS}. Layer toggles apply when premium map styling is enabled; otherwise the main
+              map uses a standard street basemap with the same incident pins.
             </p>
           </div>
         </OpsPanelCard>

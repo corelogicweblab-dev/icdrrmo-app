@@ -52,7 +52,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         barangays = isabelaOfflineBarangays();
         _barangaysLoading = false;
         _barangaysLoadError =
-            'Could not reach barangay API — using offline Isabela list. Check API_BASE / network. ($e)';
+            'Could not load the barangay list from the server. Using an offline reference list. Check your connection.';
       });
     }
   }

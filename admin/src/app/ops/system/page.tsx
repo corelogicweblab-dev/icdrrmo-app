@@ -13,7 +13,6 @@ import {
   Wifi,
   Workflow,
 } from "lucide-react";
-import { getHealthCheckUrl } from "@/lib/env";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -69,7 +68,7 @@ export default function OpsSystemPage(): ReactElement {
       setLogs(Array.isArray(l.merged) ? l.merged : []);
       setLogsMeta(
         typeof l.audit === "number" && typeof l.incidentLogs === "number"
-          ? `audit window ${l.audit} · incident logs ${l.incidentLogs} · merged tail`
+          ? `${l.audit} audit entries · ${l.incidentLogs} incident log entries in this window`
           : null,
       );
     } catch (e: unknown) {
@@ -104,7 +103,7 @@ export default function OpsSystemPage(): ReactElement {
         <ul className="space-y-3 text-sm text-zinc-300">
           <li className="flex justify-between gap-4">
             <span className="flex items-center gap-2">
-              <Server className="h-4 w-4 text-sky-400" aria-hidden /> Nest API (browser)
+              <Server className="h-4 w-4 text-sky-400" aria-hidden /> Emergency API (browser)
             </span>
             <span className={apiReachable ? "text-emerald-400 font-mono text-xs" : "text-rose-400 font-mono text-xs"}>
               {apiReachable === null ? "…" : apiReachable ? "UP" : "DOWN"}
@@ -124,7 +123,7 @@ export default function OpsSystemPage(): ReactElement {
           </li>
           <li className="flex justify-between gap-4">
             <span className="flex items-center gap-2">
-              <Workflow className="h-4 w-4 text-amber-400" aria-hidden /> Redis URL
+              <Workflow className="h-4 w-4 text-amber-400" aria-hidden /> Message queue (Redis)
             </span>
             <span className="font-mono text-xs text-zinc-400">
               {metrics == null ? "…" : metrics.redis?.configured ? "configured" : "not set"}
@@ -132,7 +131,7 @@ export default function OpsSystemPage(): ReactElement {
           </li>
           <li className="flex justify-between gap-4">
             <span className="flex items-center gap-2">
-              <Wifi className="h-4 w-4 text-emerald-400" aria-hidden /> Socket.IO
+              <Wifi className="h-4 w-4 text-emerald-400" aria-hidden /> Live channel
             </span>
             <span className="font-mono text-xs text-zinc-400">{socketState === "live" ? "connected" : socketState}</span>
           </li>
@@ -143,11 +142,13 @@ export default function OpsSystemPage(): ReactElement {
             <span className="font-mono text-[10px] text-zinc-500">{metrics?.service ?? "—"}</span>
           </li>
         </ul>
-        <p className="mt-4 text-[10px] text-zinc-600">Load balancer health: {getHealthCheckUrl()}</p>
+        <p className="mt-4 text-[10px] text-zinc-600">
+          ICT monitors API readiness using the configured health endpoint on the server.
+        </p>
         {metricsErr ? <p className="mt-2 text-xs text-rose-400/90">{metricsErr}</p> : null}
       </OpsPanelCard>
 
-      <OpsPanelCard title="Process metrics" subtitle="GET /system/metrics">
+      <OpsPanelCard title="Process metrics" subtitle="Server process snapshot">
         <div className="mb-3 flex justify-end">
           <button
             type="button"
@@ -162,7 +163,7 @@ export default function OpsSystemPage(): ReactElement {
         <ul className="space-y-2 text-xs text-zinc-400 font-mono">
           <li className="flex gap-2">
             <Cpu className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden />
-            Node {metrics?.node ?? "—"} · PID {metrics?.pid ?? "—"} · env {metrics?.env?.nodeEnv ?? "—"}
+            PID {metrics?.pid ?? "—"} · mode {metrics?.env?.nodeEnv ?? "—"}
           </li>
           <li className="flex gap-2">
             <HardDrive className="h-4 w-4 text-sky-400 shrink-0" aria-hidden />
@@ -184,7 +185,7 @@ export default function OpsSystemPage(): ReactElement {
         </p>
       </OpsPanelCard>
 
-      <OpsPanelCard title="Merged log tail" subtitle="GET /system/logs — audit + incident logs" className="lg:col-span-3">
+      <OpsPanelCard title="Merged log tail" subtitle="Recent audit and incident activity" className="lg:col-span-3">
         {logsMeta ? <p className="mb-2 text-[10px] text-zinc-600">{logsMeta}</p> : null}
         {logsErr ? <p className="mb-2 text-xs text-rose-400/90">{logsErr}</p> : null}
         <pre className="max-h-[min(52vh,480px)] overflow-auto rounded-lg border border-white/[0.06] bg-black/50 p-3 text-[10px] leading-relaxed text-zinc-300 font-mono whitespace-pre-wrap break-all">

@@ -20,7 +20,7 @@ import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
 import { loadBarangayPickList, barangayFieldsForPatch } from "@/lib/public-barangays";
-import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
+import { opsFetchJson, OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string; refreshToken?: string };
 
@@ -145,12 +145,10 @@ export default function CitizenPage(): ReactElement {
         if (!cancelled) setMe(u);
       } catch (e: unknown) {
         if (!cancelled) {
-          const hint =
-            e instanceof OpsApiError && e.status === 404
-              ? " (API path not found — set NEXT_PUBLIC_API_URL at build time to your Nest server.)"
-              : "";
           setProfileErr(
-            e instanceof OpsApiError ? `${e.message}${hint}` : "Could not load profile. Check the API URL.",
+            e instanceof OpsApiError
+              ? opsApiErrorUserMessage(e)
+              : "Could not load your profile. Check your connection or try again.",
           );
           setMe(null);
         }

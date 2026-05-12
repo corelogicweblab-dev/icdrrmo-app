@@ -14,8 +14,8 @@ Use **one** of these:
 
 | Choice | Pre-Deploy Command | Start / Docker CMD |
 |--------|--------------------|----------------------|
-| **A (simplest)** | *(leave empty)* | Keep default from `backend/Dockerfile` (`migrate deploy` then `node dist/main.js`) |
-| **B** | `npx prisma migrate deploy` | In Render **Docker Command**, set `node dist/main.js` only if you want migrations **only** at pre-deploy (avoids running migrate on every cold start) |
+| **A (simplest)** | *(leave empty)* | Keep default **`backend/Dockerfile`**: `migrate deploy` → **`db seed`** → `node dist/main.js` (barangays + demo users on every start; passwords are **not** rotated unless `FORCE_SEED_PASSWORDS=1`) |
+| **B** | `npx prisma migrate deploy` | In Render **Docker Command**, set `node dist/main.js` only if you want migrations **only** at pre-deploy (then run **`npx prisma db seed` once** after first deploy, or add seed to pre-deploy) |
 
 After saving, trigger a **manual deploy**.
 
@@ -47,17 +47,20 @@ Do **not** combine **Root Directory = `backend`** with **Dockerfile Path = `back
 | `CORS_ORIGINS` | Comma-separated origins, **no spaces** (e.g. `https://icdrrmo-b204e.web.app,https://icdrrmo-b204e.firebaseapp.com`). Add Firebase **preview** URLs if you use PR channels, e.g. `https://icdrrmo-b204e--pr-12.web.app`. |
 | `REDIS_URL` | **Unset** if you have no Redis on Render (avoids `ECONNREFUSED 127.0.0.1:6379`). Optional: use Render Redis / Upstash URL |
 
-### 4. One-time seed (ops admin)
+### 4. Database seed (barangays + demo accounts)
 
-After the first successful deploy and migrations:
+On each API container start, the default Dockerfile runs **`npx prisma db seed`** after migrations. That ensures **45 barangays** exist (fixes `Invalid barangay code` / empty public lists) and creates or updates **ops admin**, **demo responder** (with barangay for scoped map), and **Binuangan operator** logins. **Existing user passwords are not changed** unless you set **`FORCE_SEED_PASSWORDS=1`** in the service environment.
+
+To rotate seeded passwords intentionally:
 
 ```bash
 # From your machine, with DATABASE_URL pointing at the same Render DB:
 cd backend
+$env:FORCE_SEED_PASSWORDS='1'   # PowerShell; use export on bash
 npx prisma db seed
 ```
 
-Or from repo root: `npm run seed` (with `DATABASE_URL` exported for that shell).
+Or from repo root: `npm run seed` with the same env vars.
 
 ### 5. Health check
 

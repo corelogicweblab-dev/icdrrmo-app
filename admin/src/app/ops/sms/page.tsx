@@ -24,19 +24,15 @@ export default function OpsSmsPage(): ReactElement {
         </ul>
       </OpsPanelCard>
       <OpsPanelCard
-        title="BullMQ outbound lane"
-        subtitle="Requires REDIS_URL on API + parallel worker process"
+        title="SMS outbound queue"
+        subtitle="Requires Redis on the API host and a background worker process"
       >
         <p className="text-sm text-zinc-400 leading-relaxed mb-3">
-          When ops checks <strong className="text-zinc-200">notify SMS</strong> on an incident PATCH, Nest enqueues{" "}
-          <code className="text-[11px] font-mono text-rose-300/90">sms-retry</code> jobs. Process them with:
+          When operators request SMS notifications on an incident update, the API queues delivery jobs. Your hosting
+          team runs the SMS worker alongside the API so messages are sent and retried reliably.
         </p>
-        <pre className="rounded-lg bg-black/50 border border-white/[0.06] p-4 font-mono text-[11px] text-emerald-200/85 overflow-auto scroll-ops">
-          {`cd backend && npm run build\nREDIS_URL=redis://localhost:6379 npm run worker:bull`}
-        </pre>
-        <p className="mt-3 text-[11px] text-zinc-600">
-          Pair with <code className="font-mono text-zinc-400">notification-fanout</code> worker (same script) for
-          in-app notification rows + future FCM/APNs.
+        <p className="text-[11px] text-zinc-600">
+          In-app notification fan-out uses the same worker infrastructure when enabled.
         </p>
       </OpsPanelCard>
     </div>

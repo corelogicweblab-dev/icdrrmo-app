@@ -1,13 +1,22 @@
 /**
- * Seeds a default operations admin for first deploy (change password immediately).
- * Run: npx prisma db seed
+ * Seeds barangays + demo accounts for first deploy.
+ * Run from `backend/`: `npx prisma db seed` (or root `npm run db:seed`).
+ *
+ * Password hashes on **existing** users are only updated when `FORCE_SEED_PASSWORDS=1` (or `true`),
+ * so the Docker API can run seed on every start without wiping production passwords.
  */
 import { PrismaClient, ResponderStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+function forceSeedPasswords(): boolean {
+  const v = process.env.FORCE_SEED_PASSWORDS;
+  return v === '1' || v === 'true';
+}
+
 async function main(): Promise<void> {
+  const repushPasswords = forceSeedPasswords();
   /** Official Isabela City barangay names (45) — codes IC-001…IC-045. Keep aligned with admin/mobile seed lists. */
   const barangayNames = [
     'Aguada',
@@ -69,6 +78,8 @@ async function main(): Promise<void> {
   }
   console.log(`Seeded ${barangays.length} Isabela City barangay rows (codes IC-001…IC-045)`);
 
+  const aguada = await prisma.barangay.findUnique({ where: { code: 'IC-001' } });
+
   const email = process.env.SEED_ADMIN_EMAIL ?? 'ops.admin@icdrrmo.local';
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!OpsAdmin12';
   const passwordHash = await bcrypt.hash(password, 12);
@@ -81,9 +92,14 @@ async function main(): Promise<void> {
       role: UserRole.ADMIN,
       profile: { create: { fullName: 'ICDRRMO Operations Admin', setupCompleted: true } },
     },
-    update: { passwordHash, role: UserRole.ADMIN },
+    update: {
+      ...(repushPasswords ? { passwordHash } : {}),
+      role: UserRole.ADMIN,
+    },
   });
-  console.log(`Seeded admin: ${email} (set SEED_ADMIN_PASSWORD to override default)`);
+  console.log(
+    `Seeded admin: ${email}${repushPasswords ? '' : ' (password unchanged — set FORCE_SEED_PASSWORDS=1 to rotate)'}`,
+  );
 
   const demoResponderEmail =
     process.env.SEED_RESPONDER_EMAIL ?? 'responder.demo@icdrrmo.local';
@@ -99,7 +115,11 @@ async function main(): Promise<void> {
       passwordHash: responderPasswordHash,
       role: UserRole.RESPONDER,
       profile: {
-        create: { fullName: 'Demo Field Responder (Alpha)', setupCompleted: true },
+        create: {
+          fullName: 'Demo Field Responder (Alpha)',
+          setupCompleted: true,
+          ...(aguada ? { barangayId: aguada.id } : {}),
+        },
       },
       responder: {
         create: {
@@ -109,11 +129,25 @@ async function main(): Promise<void> {
       },
     },
     update: {
-      passwordHash: responderPasswordHash,
+      ...(repushPasswords ? { passwordHash: responderPasswordHash } : {}),
       role: UserRole.RESPONDER,
     },
   });
   console.log(`Seeded responder login: ${demoResponderEmail}`);
+
+  if (aguada) {
+    const ru = await prisma.user.findUnique({
+      where: { email: demoResponderEmail },
+      include: { profile: true },
+    });
+    if (ru?.profile != null && ru.profile.barangayId == null) {
+      await prisma.userProfile.update({
+        where: { userId: ru.id },
+        data: { barangayId: aguada.id },
+      });
+      console.log(`Linked demo responder profile to barangay ${aguada.name} (scoped map).`);
+    }
+  }
 
   const demoUser = await prisma.user.findUnique({
     where: { email: demoResponderEmail },
@@ -153,7 +187,7 @@ async function main(): Promise<void> {
         },
       },
       update: {
-        passwordHash: opPasswordHash,
+        ...(repushPasswords ? { passwordHash: opPasswordHash } : {}),
         role: UserRole.OPERATOR,
       },
     });

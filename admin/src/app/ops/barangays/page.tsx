@@ -17,8 +17,8 @@ export default function OpsBarangaysPage(): ReactElement {
         className="lg:col-span-2"
       >
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-          Use this list for planning, dispatch, and operator barangay assignment. Database rows and map layers use{" "}
-          <code className="text-zinc-400">GET /api/v1/barangays</code> for live IDs and codes after seed or migration.
+          Use this list for planning, dispatch, and operator barangay assignment. Authoritative names and IDs for
+          profiles and maps come from the live barangay directory in the emergency services database.
         </p>
         <ul className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 text-[13px] text-zinc-300">
           {ISABELA_CITY_OFFICIAL_BARANGAYS.map((name, i) => (

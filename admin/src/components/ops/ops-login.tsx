@@ -9,7 +9,7 @@ type OpsLoginProps = {
   password: string;
   setPassword: (v: string) => void;
   loginError: string | null;
-  /** Shown when NEXT_PUBLIC_* was built for local dev but the page is on production hosting. */
+  /** Optional connectivity / configuration notice (generic unless dev diagnostics build). */
   apiConfigWarning: string | null;
   onSubmit: (e: React.FormEvent) => void;
 };
@@ -45,7 +45,7 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
             </li>
             <li className="flex gap-3">
               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
-              Realtime Socket.IO · REST queue · PWA installable.
+              Realtime incident feed · REST-backed queue · PWA installable.
             </li>
             <li className="flex gap-3">
               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
@@ -115,8 +115,7 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
             </button>
           </form>
           <p className="mt-8 text-center text-[11px] leading-relaxed text-zinc-600">
-            Provision the operations account via database seed before first use; rotate default
-            credentials prior to deployment.
+            Access is issued by ICDRRMO. Unauthorized use is prohibited and may be subject to audit.
           </p>
         </div>
       </div>

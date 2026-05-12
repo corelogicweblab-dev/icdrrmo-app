@@ -34,8 +34,7 @@ Full-stack emergency response platform for **Isabela City Disaster Risk Reductio
 
 1. Root: copy `.env.example` → `.env` (JWT etc.). Backend: copy `backend/.env.example` → `backend/.env` (Compose Postgres URL: `postgresql://icdrrmo:icdrrmo@localhost:5432/icdrrmo?schema=public`).
 2. `docker compose up --build -d`
-3. One-time ops account: **`npm run docker:seed`** (or `docker compose exec api npx prisma db seed`)  
-   Login: **ops.admin@icdrrmo.local** / **ChangeMe!OpsAdmin12** (override with `SEED_ADMIN_*` on seed).
+3. The **API** container runs **`prisma migrate deploy`** then **`prisma db seed`** before `node` starts, so **barangays** and demo users exist on first boot. Default logins (change in production): **ops.admin@icdrrmo.local** / **ChangeMe!OpsAdmin12**; **responder.demo@icdrrmo.local** / **ChangeMe!Responder12**; **operator.binuangan@icdrrmo.local** / **ChangeMe!Operator12** (override with `SEED_*` env vars). Re-running seed does **not** rotate existing passwords unless you set **`FORCE_SEED_PASSWORDS=1`**. To seed again manually: **`npm run docker:seed`**.
 4. Open **http://localhost** (Nginx → admin + `/api/` + Socket.IO). Or **http://localhost:3000** (direct admin; REST `/api/v1` and `/socket.io` are proxied to the API).
 
 Default ports: Nginx **:80**, API **:4000**, admin **:3000**, Postgres **:5432**, Redis **:6379**.
@@ -55,7 +54,7 @@ docker compose down -v
 docker compose up --build
 ```
 
-Then seed again: `docker compose exec api npx prisma db seed`.
+Then (if you need a manual re-seed): `docker compose exec api npx prisma db seed` — the API image also runs seed on **container start** after `migrate deploy`, so barangays are usually already present.
 
 **Keep data but clear failed migration record** (only if you know no tables were created from that run — true for a BOM failure at line 1):
 

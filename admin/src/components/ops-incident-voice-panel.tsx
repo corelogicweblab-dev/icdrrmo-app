@@ -82,8 +82,8 @@ export function OpsIncidentVoicePanel(props: {
       ) : null}
       {socketLive && !relayConfigured ? (
         <p className="text-[10px] leading-relaxed text-amber-200/85 rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
-          Media relay is not enabled on the API yet — browser voice may fail on strict mobile networks. Set TURN_URLS,
-          TURN_USERNAME, TURN_CREDENTIAL on the Nest host.
+          Media relay is not enabled yet — voice may fail on strict mobile networks. Ask your technical administrator to
+          enable media relay on the emergency services server.
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">

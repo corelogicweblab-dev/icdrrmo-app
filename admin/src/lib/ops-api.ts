@@ -11,6 +11,19 @@ export class OpsApiError extends Error {
   }
 }
 
+/** Prefer Nest `message` from JSON body; fall back to status line or truncated body. */
+export function opsApiErrorUserMessage(e: OpsApiError, bodyMax = 280): string {
+  try {
+    const o = JSON.parse(e.body ?? "{}") as { message?: unknown };
+    if (typeof o.message === "string" && o.message.trim()) return o.message.trim();
+  } catch {
+    /* ignore */
+  }
+  const b = e.body?.trim();
+  if (b) return b.length <= bodyMax ? b : `${e.message}: ${b.slice(0, bodyMax)}…`;
+  return e.message;
+}
+
 export async function opsFetchJson<T>(
   path: string,
   accessToken: string,

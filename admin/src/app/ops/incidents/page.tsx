@@ -34,7 +34,7 @@ import { OpsIncidentVoicePanel } from "@/components/ops-incident-voice-panel";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
-import { API_INCIDENTS_QUEUE_PATH, API_INCIDENTS_RESPONDERS_ASSIGNABLE_PATH } from "@/lib/ops-api-paths";
+import { API_INCIDENTS_RESPONDERS_ASSIGNABLE_PATH } from "@/lib/ops-api-paths";
 import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 
 const BACKEND_TO_TARGET: Record<string, string> = {
@@ -326,7 +326,7 @@ export default function OpsIncidentsPage(): ReactElement {
       <aside className="xl:col-span-4 space-y-3">
         <OpsPanelCard
           title="Incoming SOS queue"
-          subtitle={`Nest JSON · GET ${API_INCIDENTS_QUEUE_PATH} (under /api/v1/incidents — not static files)`}
+          subtitle="Live incident records from the emergency services server"
         >
           <ul className="scroll-ops max-h-[520px] overflow-auto space-y-2 -m-1 p-1">
             {queue.map((row: OpsIncident) => (
@@ -586,8 +586,8 @@ export default function OpsIncidentsPage(): ReactElement {
                   ))}
                 </ol>
                 <p className="mt-4 text-[10px] text-zinc-600 leading-relaxed">
-                  Tactical labels (left timeline) map to Prisma IncidentStatus · updates persist + BullMQ notify +
-                  realtime <code className="text-zinc-500">incident_updated</code>.
+                  Timeline labels follow official incident stages. Updates are saved to the server and broadcast to
+                  subscribed consoles.
                 </p>
 
                 <div className="mt-4 space-y-3 rounded-xl border border-white/[0.06] bg-black/30 p-4">
@@ -600,7 +600,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     </div>
                   ) : null}
                   <label className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                    Prisma status
+                    Incident status
                     <select
                       className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950/80 px-3 py-2 text-sm text-white outline-none focus:border-rose-500/40 font-mono"
                       value={statusDraft}
@@ -615,7 +615,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     </select>
                   </label>
                   <label className="block text-[10px] uppercase tracking-wider text-zinc-500">
-                    Assign responder (DB id)
+                    Assign responder
                     <select
                       className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950/80 px-3 py-2 text-sm text-white outline-none focus:border-rose-500/40"
                       value={assignDraft}
@@ -704,8 +704,8 @@ export default function OpsIncidentsPage(): ReactElement {
                     </button>
                   </div>
                   <p className="text-[9px] text-zinc-600 leading-relaxed">
-                    CLOSED / RESOLVED / FALSE_ALARM clears the ops queue snapshot and emits{" "}
-                    <code className="font-mono">incident_closed</code>.
+                    Closed, resolved, or false-alarm outcomes remove the case from the active dispatch list and notify
+                    subscribed consoles.
                   </p>
                 </div>
               </div>
@@ -713,7 +713,7 @@ export default function OpsIncidentsPage(): ReactElement {
           )}
         </OpsPanelCard>
 
-        <OpsPanelCard title="Live updates" subtitle={`Last queue sync ${formatOpsSync(lastQueueSync)} — prefer Socket.IO`}>
+        <OpsPanelCard title="Live updates" subtitle={`Last queue sync ${formatOpsSync(lastQueueSync)} · live channel`}>
           <p className="text-xs text-zinc-500">
             Stream mirrors command dashboard feed. Full activity log in Audit panel.
           </p>

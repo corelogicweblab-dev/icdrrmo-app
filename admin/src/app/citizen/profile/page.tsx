@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, LocateFixed, Save } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/env";
-import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
-import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
+import { barangayFieldsForPatch, loadBarangaysForStaffSession, resolveBarangaySelectValue, withProfileBarangay } from "@/lib/public-barangays";
+import { opsApiErrorUserMessage, opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string };
 
@@ -83,7 +83,8 @@ export default function CitizenProfilePage(): ReactElement {
     setErr(null);
     try {
       const u = await opsFetchJson<MeUser>("/users/me", t.accessToken);
-      const b = await loadBarangayPickList();
+      const raw = await loadBarangaysForStaffSession(t.accessToken);
+      const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
       setMe(u);
       setBarangays(b);
       if (u.profile) {
@@ -98,7 +99,7 @@ export default function CitizenProfilePage(): ReactElement {
       const ev = await opsFetchJson<EvacRow[]>(`/evacuation-centers/nearest`, t.accessToken);
       setNearest(Array.isArray(ev) ? ev : []);
     } catch (e: unknown) {
-      setErr(e instanceof OpsApiError ? e.message : "Failed to load");
+      setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Failed to load");
     }
   }, []);
 
@@ -150,7 +151,7 @@ export default function CitizenProfilePage(): ReactElement {
       });
       void load();
     } catch (e: unknown) {
-      setErr(e instanceof OpsApiError ? e.body?.slice(0, 200) ?? e.message : "Save failed");
+      setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e, 200) : "Save failed");
     } finally {
       setBusy(false);
     }
