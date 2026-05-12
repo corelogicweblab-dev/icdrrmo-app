@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/jwt_decode.dart';
 import '../../../core/firestore/citizen_firestore_sync.dart';
-import '../../../core/network/dio_provider.dart';
+import '../../../core/push/citizen_push.dart';
 import '../../../core/storage/token_storage.dart';
 import 'barangays_repository.dart';
 
@@ -50,6 +50,7 @@ final class AuthRepository {
     final refresh = data?['refreshToken'] as String?;
     await _tokens.saveSession(access: access, refresh: refresh);
     await CitizenFirestoreSync.signInWithBackend(_dio);
+    await CitizenPush.registerWithBackend(_dio);
   }
 
   /// Returns JWT `role` (e.g. `CITIZEN`, `RESPONDER`). Firebase mirror runs only for citizens.
@@ -71,6 +72,7 @@ final class AuthRepository {
     final role = jwtRole(access) ?? 'CITIZEN';
     if (role == 'CITIZEN') {
       await CitizenFirestoreSync.signInWithBackend(_dio);
+      await CitizenPush.registerWithBackend(_dio);
     } else {
       await CitizenFirestoreSync.signOut();
     }
@@ -78,6 +80,11 @@ final class AuthRepository {
   }
 
   Future<void> logout() async {
+    try {
+      await CitizenPush.unregisterFromBackend(_dio);
+    } catch (_) {
+      /* still sign out */
+    }
     await CitizenFirestoreSync.signOut();
     await _tokens.clearSession();
   }
@@ -87,6 +94,7 @@ final class AuthRepository {
     final (access, _) = await _tokens.loadTokens();
     if (jwtRole(access) == 'CITIZEN') {
       await CitizenFirestoreSync.signInWithBackend(_dio);
+      await CitizenPush.registerWithBackend(_dio);
     }
   }
 

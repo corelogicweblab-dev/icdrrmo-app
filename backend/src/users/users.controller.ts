@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -22,6 +23,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
 import { PatchMyProfileDto } from './dto/patch-my-profile.dto';
+import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
 
 function clientMeta(req: Request): { ip?: string; ua?: string } {
   const forwarded = req.headers['x-forwarded-for'];
@@ -44,6 +46,21 @@ export class UsersController {
   @Patch('me')
   patchMe(@CurrentUser() user: JwtPayload, @Body() dto: PatchMyProfileDto) {
     return this.users.patchMe(user.sub, dto);
+  }
+
+  @Roles(UserRole.CITIZEN)
+  @Post('me/device-token')
+  registerDeviceToken(@CurrentUser() user: JwtPayload, @Body() dto: RegisterDeviceTokenDto) {
+    return this.users.upsertDeviceToken(user.sub, dto);
+  }
+
+  @Roles(UserRole.CITIZEN)
+  @Delete('me/device-token')
+  removeDeviceToken(@CurrentUser() user: JwtPayload, @Query('token') token?: string) {
+    if (!token?.trim()) {
+      throw new BadRequestException('Query parameter token is required');
+    }
+    return this.users.removeDeviceToken(user.sub, token.trim());
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)

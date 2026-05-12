@@ -205,6 +205,12 @@ model Barangay {
   geometryGeoJson  Json?    @map("geometry_geojson")
   riskNotes        String?  @map("risk_notes")
   isFloodProne     Boolean  @default(false) @map("is_flood_prone")
+  /// EOC live advisory — push + sound to citizens registered in this barangay when active.
+  opsFloodActive     Boolean   @default(false) @map("ops_flood_active")
+  opsFloodMessage    String?   @map("ops_flood_message")
+  opsRedZoneActive   Boolean   @default(false) @map("ops_red_zone_active")
+  opsRedZoneMessage  String?   @map("ops_red_zone_message")
+  opsHazardUpdatedAt DateTime? @map("ops_hazard_updated_at")
   createdAt        DateTime @default(now()) @map("created_at")
 
   profiles           UserProfile[]

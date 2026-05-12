@@ -14,6 +14,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
 import { PatchMyProfileDto } from './dto/patch-my-profile.dto';
+import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
 import { getOperatorBarangayId } from '../common/ops-operator-scope';
 import { FirestoreMirrorService } from '../firestore/firestore-mirror.service';
 
@@ -372,5 +373,20 @@ export class UsersService {
     });
     void this.firestoreMirror.syncUserProfile(id);
     return user;
+  }
+
+  async upsertDeviceToken(userId: string, dto: RegisterDeviceTokenDto): Promise<{ ok: true }> {
+    const platform = dto.platform ?? 'UNKNOWN';
+    await this.prisma.deviceToken.upsert({
+      where: { token: dto.token },
+      create: { userId, token: dto.token, platform, lastSeenAt: new Date() },
+      update: { userId, platform, lastSeenAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  async removeDeviceToken(userId: string, token: string): Promise<{ ok: true }> {
+    await this.prisma.deviceToken.deleteMany({ where: { userId, token } });
+    return { ok: true };
   }
 }
