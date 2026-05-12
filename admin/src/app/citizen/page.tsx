@@ -19,6 +19,7 @@ import { PasswordInput } from "@/components/password-input";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
+import { loadBarangayPickList, barangayFieldsForPatch } from "@/lib/public-barangays";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string; refreshToken?: string };
@@ -116,15 +117,9 @@ export default function CitizenPage(): ReactElement {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${getApiBaseUrl()}/barangays/public`);
-        const j = (await res.json()) as unknown;
-        if (cancelled || !Array.isArray(j)) return;
-        setRegisterBarangays(
-          j.filter((x): x is PublicBarangay => {
-            const o = x as Record<string, unknown>;
-            return typeof o?.id === "string" && typeof o?.name === "string";
-          }),
-        );
+        const list = await loadBarangayPickList();
+        if (cancelled) return;
+        setRegisterBarangays(list);
       } catch {
         if (!cancelled) setRegisterBarangays([]);
       }
@@ -213,7 +208,7 @@ export default function CitizenPage(): ReactElement {
           password,
           fullName,
           phone: phone.replace(/\s/g, ""),
-          ...(registerBarangayId ? { barangayId: registerBarangayId } : {}),
+          ...(registerBarangayId.trim() ? barangayFieldsForPatch(registerBarangayId) : {}),
           ...(registerStreetPurok.trim() ? { streetPurok: registerStreetPurok.trim() } : {}),
         }),
       });

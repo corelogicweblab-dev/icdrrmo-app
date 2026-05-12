@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Save, Shield } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
+import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Barangay = { id: string; name: string; code: string };
@@ -79,16 +80,14 @@ export default function OpsProfilePage(): ReactElement {
     if (!access) return;
     setErr(null);
     try {
-      const [u, b] = await Promise.all([
-        opsFetchJson<MeUser>("/users/me", access),
-        opsFetchJson<Barangay[]>("/barangays", access),
-      ]);
+      const u = await opsFetchJson<MeUser>("/users/me", access);
+      const b = await loadBarangayPickList();
       setMe(u);
-      setBarangays(Array.isArray(b) ? b : []);
+      setBarangays(b);
       if (u.profile) {
         setFullName(u.profile.fullName);
         setPhone(u.phone ?? "");
-        setBarangayId(u.profile.barangayId ?? "");
+        setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
         setAddress(u.profile.address ?? "");
         setBloodType(u.profile.bloodType ?? "UNKNOWN");
         setAllergies(u.profile.allergies ?? "");
@@ -118,7 +117,7 @@ export default function OpsProfilePage(): ReactElement {
         body: JSON.stringify({
           fullName,
           phone: phone.trim() || null,
-          barangayId: barangayId || null,
+          ...barangayFieldsForPatch(barangayId),
           address: address.trim() || null,
           bloodType,
           allergies: allergies.trim() || null,

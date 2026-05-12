@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AppInstallStrip } from "@/components/app-install-strip";
 import { PwaRegister } from "@/components/pwa-register";
 import { RouteLogoTransition } from "@/components/route-logo-transition";
 
@@ -41,6 +42,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-[#060608] text-zinc-100`}
       >
         <PwaRegister />
+        <AppInstallStrip />
         <RouteLogoTransition />
         <div className="flex min-h-dvh flex-col">
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Database,
-  Download,
   Headphones,
   LogOut,
   Maximize2,
@@ -28,11 +27,6 @@ import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { OpsStatusCapsule } from "@/components/ops/ops-widgets";
 import { OpsVoiceRingOverlay } from "@/components/ops/ops-voice-ring-overlay";
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
 export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
   const pathname = usePathname() ?? "/ops";
   const {
@@ -52,7 +46,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
   } = useOpsSession();
 
   const [fullscreen, setFullscreen] = useState(false);
-  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const title = OPS_PAGE_TITLES[pathname] ?? "Operation center";
 
   const navSections = useMemo(() => {
@@ -77,15 +70,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  useEffect(() => {
-    const onBip = (e: Event): void => {
-      e.preventDefault();
-      setInstallEvent(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", onBip as EventListener);
-    return () => window.removeEventListener("beforeinstallprompt", onBip as EventListener);
-  }, []);
-
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
@@ -94,13 +78,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
       /* ignored */
     }
   }, []);
-
-  const onInstall = useCallback(async () => {
-    if (!installEvent) return;
-    await installEvent.prompt();
-    await installEvent.userChoice;
-    setInstallEvent(null);
-  }, [installEvent]);
 
   const wsLabel =
     socketState === "live" ? "Live" : socketState === "error" ? "Fault" : "Standby";
@@ -228,24 +205,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                     <Volume2 className="h-4 w-4 text-emerald-300" aria-hidden />
                   )}
                 </button>
-                {installEvent ? (
-                  <button
-                    type="button"
-                    onClick={() => void onInstall()}
-                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-950/35 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100 hover:bg-emerald-900/40"
-                  >
-                    <Download className="h-3.5 w-3.5" aria-hidden />
-                    Install app
-                  </button>
-                ) : (
-                  <span
-                    className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/35 px-2 py-1.5 text-[9px] text-zinc-500 max-w-[160px]"
-                    title="iOS: Safari → Share → Add to Home Screen"
-                  >
-                    <Download className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                    PWA ready
-                  </span>
-                )}
                 <span className="hidden md:inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-950/15 px-2 py-1 text-[10px] text-amber-100/90">
                   <span className="text-amber-400/90" aria-hidden>
                     ◎

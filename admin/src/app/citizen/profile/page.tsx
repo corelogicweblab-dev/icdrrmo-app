@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, LocateFixed, Save } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/env";
+import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string };
@@ -22,14 +23,13 @@ function loadTokens(): Tokens | null {
   }
 }
 
-type Barangay = { id: string; name: string };
-
 type MeUser = {
   email: string;
   phone: string | null;
   profile: null | {
     fullName: string;
     barangayId: string | null;
+    barangay?: { id: string; name: string; code: string } | null;
     address: string | null;
     streetPurok: string | null;
     bloodType: string;
@@ -63,7 +63,7 @@ const BLOOD = [
 export default function CitizenProfilePage(): ReactElement {
   const [tokens] = useState<Tokens | null>(() => (typeof window === "undefined" ? null : loadTokens()));
   const [me, setMe] = useState<MeUser | null>(null);
-  const [barangays, setBarangays] = useState<Barangay[]>([]);
+  const [barangays, setBarangays] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const [nearest, setNearest] = useState<EvacRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -82,16 +82,14 @@ export default function CitizenProfilePage(): ReactElement {
     if (!t) return;
     setErr(null);
     try {
-      const [u, b] = await Promise.all([
-        opsFetchJson<MeUser>("/users/me", t.accessToken),
-        opsFetchJson<Barangay[]>("/barangays", t.accessToken),
-      ]);
+      const u = await opsFetchJson<MeUser>("/users/me", t.accessToken);
+      const b = await loadBarangayPickList();
       setMe(u);
-      setBarangays(Array.isArray(b) ? b : []);
+      setBarangays(b);
       if (u.profile) {
         setFullName(u.profile.fullName);
         setPhone(u.phone ?? "");
-        setBarangayId(u.profile.barangayId ?? "");
+        setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
         setBloodType(u.profile.bloodType ?? "UNKNOWN");
         setAllergies(u.profile.allergies ?? "");
         setMedicalConditions(u.profile.medicalConditions ?? "");
@@ -143,7 +141,7 @@ export default function CitizenProfilePage(): ReactElement {
         body: JSON.stringify({
           fullName,
           phone: phone.trim() || null,
-          barangayId: barangayId || null,
+          ...barangayFieldsForPatch(barangayId),
           streetPurok: streetPurok.trim() || null,
           bloodType,
           allergies: allergies.trim() || null,
@@ -211,7 +209,7 @@ export default function CitizenProfilePage(): ReactElement {
                   onChange={(e) => setBarangayId(e.target.value)}
                   className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2.5 text-sm"
                 >
-                  <option value="">—</option>
+                  <option value="">— Select —</option>
                   {barangays.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}

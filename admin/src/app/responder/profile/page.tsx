@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Loader2, Save } from "lucide-react";
 import { useResponderSession, isResponderRole } from "@/components/responder/responder-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
+import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
 
 type Barangay = { id: string; name: string; code: string };
 
@@ -18,6 +18,7 @@ type MeUser = {
   profile: null | {
     fullName: string;
     barangayId: string | null;
+    barangay?: { id: string; name: string; code: string } | null;
     address: string | null;
     bloodType: string;
     allergies: string | null;
@@ -72,16 +73,14 @@ export default function ResponderProfilePage(): ReactElement {
     if (!access || !isResponderRole(access)) return;
     setErr(null);
     try {
-      const [u, b] = await Promise.all([
-        opsFetchJson<MeUser>("/users/me", access),
-        opsFetchJson<Barangay[]>("/barangays", access),
-      ]);
+      const u = await opsFetchJson<MeUser>("/users/me", access);
+      const b = await loadBarangayPickList();
       setMe(u);
-      setBarangays(Array.isArray(b) ? b : []);
+      setBarangays(b);
       if (u.profile) {
         setFullName(u.profile.fullName);
         setPhone(u.phone ?? "");
-        setBarangayId(u.profile.barangayId ?? "");
+        setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
         setAddress(u.profile.address ?? "");
         setBloodType(u.profile.bloodType ?? "UNKNOWN");
         setAllergies(u.profile.allergies ?? "");
@@ -111,7 +110,7 @@ export default function ResponderProfilePage(): ReactElement {
         body: JSON.stringify({
           fullName,
           phone: phone.trim() || null,
-          barangayId: barangayId || null,
+          ...barangayFieldsForPatch(barangayId),
           address: address.trim() || null,
           bloodType,
           allergies: allergies.trim() || null,
@@ -178,7 +177,7 @@ export default function ResponderProfilePage(): ReactElement {
                   onChange={(e) => setBarangayId(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
                 >
-                  <option value="">—</option>
+                  <option value="">— Select —</option>
                   {barangays.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
