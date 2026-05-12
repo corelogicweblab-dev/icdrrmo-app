@@ -23,8 +23,8 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const overlayRef = useRef<import("leaflet").LayerGroup | null>(null);
 
-  const gmapsUrl = `https://www.google.com/maps/dir/${ISABELA_EOC_LAT},${ISABELA_EOC_LNG}/${props.userLat},${props.userLon}`;
-  const wazeUrl = `https://waze.com/ul?ll=${encodeURIComponent(String(props.userLat))},${encodeURIComponent(String(props.userLon))}&navigate=yes`;
+  const externalDirectionsUrl = `https://www.google.com/maps/dir/${ISABELA_EOC_LAT},${ISABELA_EOC_LNG}/${props.userLat},${props.userLon}`;
+  const externalNavigationUrl = `https://waze.com/ul?ll=${encodeURIComponent(String(props.userLat))},${encodeURIComponent(String(props.userLon))}&navigate=yes`;
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +43,7 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
         if (cancelled) return;
         const route = j.routes?.[0];
         if (!route?.geometry?.coordinates?.length) {
-          setRouteErr("No driving route found — try the Maps / Waze links below.");
+          setRouteErr("No driving route found — use the external links below if needed.");
           return;
         }
         setEtaMin(Math.round(route.duration / 60));
@@ -91,7 +91,7 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
           .bindPopup("SOS location");
         map.fitBounds(poly.getBounds(), { padding: [24, 24] });
       } catch {
-        if (!cancelled) setRouteErr("Could not load directions. Use Maps / Waze below.");
+        if (!cancelled) setRouteErr("Could not load directions. Try the external links below.");
       }
     })();
 
@@ -134,22 +134,22 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
       <div ref={mapEl} className="h-48 w-full overflow-hidden rounded-xl border border-white/10 bg-black/40" />
       <div className="flex flex-col gap-2 sm:flex-row">
         <a
-          href={gmapsUrl}
+          href={externalDirectionsUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-xs font-semibold text-white hover:bg-white/15"
         >
           <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-          Google Maps (EOC → you)
+          Driving directions (EOC → you)
           <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
         </a>
         <a
-          href={wazeUrl}
+          href={externalNavigationUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600/90 px-4 py-3 text-xs font-semibold text-white hover:bg-sky-600"
         >
-          Open in Waze
+          Turn-by-turn navigation
           <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
         </a>
       </div>

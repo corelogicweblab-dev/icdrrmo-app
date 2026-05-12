@@ -270,8 +270,8 @@ export default function OpsIncidentsPage(): ReactElement {
       `Phone: ${selected.reporter?.phone ?? "—"}`,
       `GPS: ${lat ?? "—"}, ${lng ?? "—"}`,
       `Responder (assignment draft): ${assignEmail ?? (assignDraft || "unassigned")}`,
-      `Google Maps (EOC→scene): ${gmaps || "—"}`,
-      `Waze (navigate): ${waze || "—"}`,
+      `Driving directions (EOC→scene): ${gmaps || "—"}`,
+      `Turn-by-turn (external): ${waze || "—"}`,
       `Ops deep link: ${origin}/ops/incidents?focus=${encodeURIComponent(selected.id)}`,
     ].join("\n");
     try {
