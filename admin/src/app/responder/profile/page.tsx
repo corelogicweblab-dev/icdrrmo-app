@@ -7,7 +7,12 @@ import { Loader2, Save } from "lucide-react";
 import { useResponderSession, isResponderRole } from "@/components/responder/responder-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
-import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
+import {
+  barangayFieldsForPatch,
+  loadBarangaysForStaffSession,
+  resolveBarangaySelectValue,
+  withProfileBarangay,
+} from "@/lib/public-barangays";
 
 type Barangay = { id: string; name: string; code: string };
 
@@ -75,7 +80,8 @@ export default function ResponderProfilePage(): ReactElement {
     setErr(null);
     try {
       const u = await opsFetchJson<MeUser>("/users/me", access);
-      const b = await loadBarangayPickList();
+      const raw = await loadBarangaysForStaffSession(access);
+      const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
       setMe(u);
       setBarangays(b);
       if (u.profile) {

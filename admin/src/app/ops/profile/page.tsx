@@ -5,7 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Save, Shield } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
+import {
+  barangayFieldsForPatch,
+  loadBarangaysForStaffSession,
+  resolveBarangaySelectValue,
+  withProfileBarangay,
+} from "@/lib/public-barangays";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Barangay = { id: string; name: string; code: string };
@@ -81,7 +86,8 @@ export default function OpsProfilePage(): ReactElement {
     setErr(null);
     try {
       const u = await opsFetchJson<MeUser>("/users/me", access);
-      const b = await loadBarangayPickList();
+      const raw = await loadBarangaysForStaffSession(access);
+      const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
       setMe(u);
       setBarangays(b);
       if (u.profile) {
