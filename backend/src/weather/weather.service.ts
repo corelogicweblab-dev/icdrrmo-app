@@ -1,4 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import Redis from 'ioredis';
 import { ISABELA_HAZARD_DISCLAIMER, ISABELA_HAZARD_ZONES } from './isabela-hazard-reference';
 
 /** CDRRMO reference point — Isabela City proper (WGS84). */
@@ -14,6 +20,9 @@ const OPEN_METEO_URL =
   '&current=temperature_2m,relative_humidity_2m,weather_code,is_day,precipitation,rain' +
   '&hourly=precipitation_probability,precipitation,rain,weathercode' +
   '&timezone=Asia%2FManila&forecast_days=2';
+
+/** Cross-process / cross-replica cache (requires `REDIS_URL` on the API). */
+const REDIS_SITUATION_KEY = 'icd:v1:weather:situation';
 
 type OpenMeteoHourly = {
   time?: string[];
@@ -99,17 +108,77 @@ function sleep(ms: number): Promise<void> {
 }
 
 @Injectable()
-export class WeatherService {
+export class WeatherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WeatherService.name);
+  private redis: Redis | null = null;
   /** Last successful JSON parse (no upstreamError). */
   private goodSnapshot: WeatherSituationSnapshot | null = null;
   private goodSnapshotWallMs = 0;
   private inflight: Promise<WeatherSituationSnapshot> | null = null;
 
+  onModuleInit(): void {
+    const url = process.env.REDIS_URL?.trim();
+    if (!url || process.env.NODE_ENV === 'test') {
+      this.logger.log('Weather shared cache: in-memory only (set REDIS_URL for cross-replica Open-Meteo cache).');
+      return;
+    }
+    try {
+      this.redis = new Redis(url, {
+        maxRetriesPerRequest: 2,
+        enableReadyCheck: true,
+      });
+      this.redis.on('error', (e: Error) => this.logger.warn(`Weather Redis: ${e.message}`));
+      this.logger.log('Weather shared cache: Redis enabled for Open-Meteo snapshot.');
+    } catch (e) {
+      this.logger.warn(`Weather Redis init failed: ${e instanceof Error ? e.message : e}`);
+      this.redis = null;
+    }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.redis) {
+      await this.redis.quit().catch(() => {});
+      this.redis = null;
+    }
+  }
+
   private cacheTtlMs(): number {
     const sec = Number(process.env.OPEN_METEO_CACHE_TTL_SEC);
     if (Number.isFinite(sec) && sec >= 60) return Math.floor(sec * 1000);
-    return 600_000;
+    return 900_000;
+  }
+
+  private redisTtlSec(): number {
+    const sec = Number(process.env.OPEN_METEO_REDIS_TTL_SEC);
+    if (Number.isFinite(sec) && sec >= 300) return Math.floor(sec);
+    return 2700;
+  }
+
+  private async readSharedCache(): Promise<WeatherSituationSnapshot | null> {
+    if (!this.redis) return null;
+    try {
+      const raw = await this.redis.get(REDIS_SITUATION_KEY);
+      if (!raw) return null;
+      const o = JSON.parse(raw) as WeatherSituationSnapshot;
+      if (o?.location?.latitude == null || o?.rainOutlook6h == null) return null;
+      let source = o.source ?? 'Open-Meteo';
+      if (!source.includes('shared server cache')) {
+        source = `${source} · shared server cache`;
+      }
+      return { ...o, upstreamError: undefined, source };
+    } catch {
+      return null;
+    }
+  }
+
+  private async writeSharedCache(s: WeatherSituationSnapshot): Promise<void> {
+    if (!this.redis) return;
+    const ttl = this.redisTtlSec();
+    try {
+      await this.redis.setex(REDIS_SITUATION_KEY, ttl, JSON.stringify(s));
+    } catch (e) {
+      this.logger.warn(`Weather Redis SETEX failed: ${e instanceof Error ? e.message : e}`);
+    }
   }
 
   async getSituationSnapshot(): Promise<WeatherSituationSnapshot> {
@@ -118,6 +187,14 @@ export class WeatherService {
     if (this.goodSnapshot && now - this.goodSnapshotWallMs < ttl) {
       return this.goodSnapshot;
     }
+
+    const shared = await this.readSharedCache();
+    if (shared) {
+      this.goodSnapshot = shared;
+      this.goodSnapshotWallMs = now;
+      return shared;
+    }
+
     if (this.inflight) {
       return this.inflight;
     }
@@ -181,11 +258,21 @@ export class WeatherService {
     };
   }
 
+  private friendlyUpstreamError(status: number): string {
+    if (status === 429) {
+      return (
+        'The free weather model is temporarily busy (too many requests). ' +
+        'Wait a few minutes and refresh. If this persists, set REDIS_URL on the API so all servers share one forecast cache.'
+      );
+    }
+    return `Open-Meteo HTTP ${status}`;
+  }
+
   private async refreshFromUpstream(): Promise<WeatherSituationSnapshot> {
     const res = await this.fetchOpenMeteoWithRetry();
     if (!res.ok) {
-      const err = `Open-Meteo HTTP ${res.status}`;
-      this.logger.warn(err);
+      const err = this.friendlyUpstreamError(res.status);
+      this.logger.warn(`Open-Meteo HTTP ${res.status}`);
       if (this.goodSnapshot) {
         return {
           ...this.goodSnapshot,
@@ -195,6 +282,12 @@ export class WeatherService {
               ? 'Open-Meteo (cached forecast — upstream rate limit; cache reduces repeat calls)'
               : 'Open-Meteo (cached forecast — upstream error)',
         };
+      }
+      const again = await this.readSharedCache();
+      if (again) {
+        this.goodSnapshot = again;
+        this.goodSnapshotWallMs = Date.now();
+        return again;
       }
       return this.emptySnapshot(err);
     }
@@ -212,11 +305,18 @@ export class WeatherService {
           source: 'Open-Meteo (cached forecast — invalid upstream response)',
         };
       }
+      const again = await this.readSharedCache();
+      if (again) {
+        this.goodSnapshot = again;
+        this.goodSnapshotWallMs = Date.now();
+        return again;
+      }
       return this.emptySnapshot(`Invalid JSON: ${msg}`);
     }
     const snapshot = this.parseOpenMeteoJson(json);
     this.goodSnapshot = snapshot;
     this.goodSnapshotWallMs = Date.now();
+    void this.writeSharedCache(snapshot);
     return snapshot;
   }
 
