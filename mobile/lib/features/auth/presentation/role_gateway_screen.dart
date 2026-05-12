@@ -1,32 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/config/web_portal_config.dart';
 import '../../../core/navigation/routes.dart';
 
-/// Entry point: citizen uses the app; responder & operator use the web ops console.
+/// Entry point: all roles sign in here; citizens stay in-app, staff opens the web console via token handoff.
 class RoleGatewayScreen extends StatelessWidget {
   const RoleGatewayScreen({super.key});
-
-  Future<void> _openWeb(Uri? uri, BuildContext context) async {
-    if (uri == null) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Set ICDRRMO_WEB_URL when building (e.g. --dart-define=ICDRRMO_WEB_URL=https://your-host).',
-          ),
-        ),
-      );
-      return;
-    }
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open browser.')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,31 +49,27 @@ class RoleGatewayScreen extends StatelessWidget {
                     _RoleTile(
                       title: 'Responder',
                       subtitle:
-                          'Field units & dispatch — sign in on the operations web console.',
+                          'Field units — same sign-in; after login we open the web console with your session.',
                       icon: Icons.local_police_outlined,
                       accent: scheme.secondary,
-                      onTap: () => _openWeb(
-                        WebPortalConfig.responderSignInUri(),
-                        context,
-                      ),
+                      onTap: () =>
+                          Navigator.of(context).pushNamed(Routes.login),
                     ),
                     const SizedBox(height: 12),
                     _RoleTile(
                       title: 'Operator / EOC',
                       subtitle:
-                          'City ops desk — incident queue, map, assignments.',
+                          'City ops desk — same sign-in; opens the secure web dashboard after login.',
                       icon: Icons.dashboard_customize_outlined,
                       accent: scheme.tertiary,
-                      onTap: () => _openWeb(
-                        WebPortalConfig.operatorSignInUri(),
-                        context,
-                      ),
+                      onTap: () =>
+                          Navigator.of(context).pushNamed(Routes.login),
                     ),
                   ],
                 ),
               ),
               Text(
-                'Citizens stay in-app. Responders and operators use the secure web dashboard (larger map, queue, audit).',
+                'Citizens stay in the app. Responders and operators are sent to the web dashboard in the browser after a successful sign-in.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: scheme.onSurface.withValues(alpha: 0.45),

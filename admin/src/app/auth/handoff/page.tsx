@@ -1,0 +1,56 @@
+"use client";
+
+import type { ReactElement } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { saveOpsTokens } from "@/components/ops/ops-storage";
+
+/**
+ * Mobile staff sign-in opens this URL with `#t=<Nest JWT>` so we can persist the same
+ * `icdrrmo_ops_tokens` key the web responder/ops consoles already use.
+ */
+function HandoffBody(): ReactElement {
+  const router = useRouter();
+  const search = useSearchParams();
+  const [note, setNote] = useState<string>("Opening console…");
+
+  useEffect(() => {
+    const targetRaw = search.get("target");
+    const target = targetRaw === "responder" ? "responder" : "ops";
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    const raw = hash.startsWith("#") ? hash.slice(1) : "";
+    const params = new URLSearchParams(raw);
+    const t = params.get("t");
+    if (!t || !t.trim()) {
+      setNote("Missing token. Return to the mobile app and sign in again.");
+      return;
+    }
+    try {
+      saveOpsTokens({ accessToken: decodeURIComponent(t.trim()) });
+    } catch {
+      setNote("Could not save session. Try signing in again on the web portal.");
+      return;
+    }
+    router.replace(target === "responder" ? "/responder" : "/ops");
+  }, [router, search]);
+
+  return (
+    <div className="flex min-h-[50dvh] flex-col items-center justify-center bg-[#060608] px-6 text-center text-sm text-zinc-400">
+      {note}
+    </div>
+  );
+}
+
+export default function AuthHandoffPage(): ReactElement {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40dvh] items-center justify-center bg-[#060608] text-sm text-zinc-500">
+          Loading…
+        </div>
+      }
+    >
+      <HandoffBody />
+    </Suspense>
+  );
+}

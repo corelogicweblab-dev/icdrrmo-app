@@ -14,20 +14,20 @@ export type HazardZoneRow = {
   barangays: { code: string; name: string }[];
 };
 
-/** Barangay names from seed — keep in sync with `prisma/seed.ts` when codes change. */
+/** Barangay names / codes — keep in sync with `prisma/seed.ts` (45 barangays, IC-001…IC-045). */
 export const ISABELA_HAZARD_ZONES: HazardZoneRow[] = [
   {
     type: 'FLOOD_COASTAL_RIVER',
     label: 'Coastal / surge / river mouth',
     description: 'Higher exposure to coastal flooding, storm surge, and tide‑influenced river mouths.',
     barangays: [
-      { code: 'IC-026', name: 'Port Area' },
-      { code: 'IC-028', name: 'Seaside' },
-      { code: 'IC-027', name: 'Riverside' },
-      { code: 'IC-022', name: 'Marketsite' },
-      { code: 'IC-016', name: 'Lampinigan' },
-      { code: 'IC-024', name: 'Panigayan' },
-      { code: 'IC-034', name: 'Tampalan' },
+      { code: 'IC-033', name: 'Port Area' },
+      { code: 'IC-038', name: 'Seaside' },
+      { code: 'IC-034', name: 'Riverside' },
+      { code: 'IC-028', name: 'Marketsite' },
+      { code: 'IC-021', name: 'Lampinigan' },
+      { code: 'IC-031', name: 'Panigayan' },
+      { code: 'IC-044', name: 'Tampalan' },
     ],
   },
   {
@@ -36,12 +36,13 @@ export const ISABELA_HAZARD_ZONES: HazardZoneRow[] = [
     description: 'Inner basins and low gradients where runoff concentrates during heavy rain.',
     barangays: [
       { code: 'IC-012', name: 'Isabela Proper' },
-      { code: 'IC-001', name: 'City Proper (Poblacion)' },
+      { code: 'IC-037', name: 'Santa Cruz' },
       { code: 'IC-009', name: 'Carbon' },
-      { code: 'IC-023', name: 'Menzi' },
-      { code: 'IC-030', name: 'Sumagdang' },
-      { code: 'IC-021', name: 'Marang-marang' },
-      { code: 'IC-002', name: 'Aguada' },
+      { code: 'IC-030', name: 'Menzi' },
+      { code: 'IC-040', name: 'Sumagdang' },
+      { code: 'IC-027', name: 'Marang-marang' },
+      { code: 'IC-001', name: 'Aguada' },
+      { code: 'IC-039', name: 'Small Kapatagan' },
     ],
   },
   {
@@ -51,12 +52,12 @@ export const ISABELA_HAZARD_ZONES: HazardZoneRow[] = [
     barangays: [
       { code: 'IC-003', name: 'Baluno' },
       { code: 'IC-006', name: 'Busay' },
-      { code: 'IC-017', name: 'Lanote' },
-      { code: 'IC-020', name: 'Makiri' },
-      { code: 'IC-033', name: 'Tabuk' },
-      { code: 'IC-036', name: 'Tongbato' },
-      { code: 'IC-037', name: 'Ubit' },
+      { code: 'IC-022', name: 'Lanote' },
+      { code: 'IC-025', name: 'Makiri' },
+      { code: 'IC-043', name: 'Tabuk' },
       { code: 'IC-004', name: 'Begang' },
+      { code: 'IC-026', name: 'Maligue' },
+      { code: 'IC-018', name: 'Kapayawan' },
     ],
   },
 ];

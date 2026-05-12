@@ -21,3 +21,9 @@ String? jwtSub(String? jwt) {
   if (jwt == null || jwt.isEmpty) return null;
   return decodeJwtPayload(jwt)?['sub'] as String?;
 }
+
+String? jwtRole(String? jwt) {
+  if (jwt == null || jwt.isEmpty) return null;
+  final r = decodeJwtPayload(jwt)?['role'];
+  return r is String ? r : null;
+}

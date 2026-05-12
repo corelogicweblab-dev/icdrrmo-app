@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/jwt_decode.dart';
 import '../../../core/firestore/citizen_firestore_sync.dart';
 import '../../../core/network/dio_provider.dart';
 import '../../../core/storage/token_storage.dart';
@@ -51,7 +52,8 @@ final class AuthRepository {
     await CitizenFirestoreSync.signInWithBackend(_dio);
   }
 
-  Future<void> login({
+  /// Returns JWT `role` (e.g. `CITIZEN`, `RESPONDER`). Firebase mirror runs only for citizens.
+  Future<String> login({
     required String email,
     required String password,
   }) async {
@@ -66,7 +68,13 @@ final class AuthRepository {
     }
     final refresh = data?['refreshToken'] as String?;
     await _tokens.saveSession(access: access, refresh: refresh);
-    await CitizenFirestoreSync.signInWithBackend(_dio);
+    final role = jwtRole(access) ?? 'CITIZEN';
+    if (role == 'CITIZEN') {
+      await CitizenFirestoreSync.signInWithBackend(_dio);
+    } else {
+      await CitizenFirestoreSync.signOut();
+    }
+    return role;
   }
 
   Future<void> logout() async {
@@ -74,8 +82,13 @@ final class AuthRepository {
     await _tokens.clearSession();
   }
 
-  /// After cold start with stored Nest JWT, attach Firebase session for Firestore reads.
-  Future<void> syncFirebaseAfterRestore() => CitizenFirestoreSync.signInWithBackend(_dio);
+  /// After cold start with stored Nest JWT, attach Firebase session for Firestore reads (citizens only).
+  Future<void> syncFirebaseAfterRestore() async {
+    final (access, _) = await _tokens.loadTokens();
+    if (jwtRole(access) == 'CITIZEN') {
+      await CitizenFirestoreSync.signInWithBackend(_dio);
+    }
+  }
 
   Future<bool> restoreSession() async {
     final (a, _) = await _tokens.loadTokens();

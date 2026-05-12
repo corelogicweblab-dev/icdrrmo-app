@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/branding.dart';
 import '../../../core/bootstrap/global_store.dart';
+import '../../../core/config/web_portal_config.dart';
 import '../../../core/navigation/routes.dart';
+import '../../../core/storage/token_storage.dart';
 import '../data/auth_repository.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -32,8 +36,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       error = null;
     });
     try {
-      await ref.read(authRepositoryProvider).login(email: email.text.trim(), password: password.text);
+      final role = await ref.read(authRepositoryProvider).login(email: email.text.trim(), password: password.text);
       if (!mounted) return;
+      if (role != 'CITIZEN') {
+        final web = WebPortalConfig.resolvedAdminWebBase;
+        if (web.isEmpty) {
+          await ref.read(authRepositoryProvider).logout();
+          setState(() => error = 'Set ICDRRMO_WEB_URL for this build so we can open the web console.');
+          return;
+        }
+        final target = role == 'RESPONDER' ? 'responder' : 'ops';
+        final (access, _) = await ref.read(tokenStorageProvider).loadTokens();
+        if (access == null || access.isEmpty) {
+          setState(() => error = 'Missing access token after sign-in.');
+          return;
+        }
+        final uri = Uri.parse('$web/auth/handoff?target=$target#t=${Uri.encodeComponent(access)}');
+        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!ok && mounted) {
+          setState(() => error = 'Could not open browser for web console.');
+        }
+        await ref.read(authRepositoryProvider).logout();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed(Routes.gateway);
+        return;
+      }
       final store = gCitizenStore;
       if (store == null) {
         Navigator.of(context).pushReplacementNamed(Routes.login);
@@ -53,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Citizen sign-in'),
+        title: const Text('Sign in'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pushReplacementNamed(Routes.gateway),

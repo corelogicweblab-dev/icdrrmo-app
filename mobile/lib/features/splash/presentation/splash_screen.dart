@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../../../core/bootstrap/global_store.dart';
+import '../../../core/auth/jwt_decode.dart';
 import '../../../core/navigation/app_navigator_key.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/health/health_check.dart';
+import '../../../core/network/dio_provider.dart';
 import '../../../core/navigation/routes.dart';
 import '../../../core/branding.dart';
 import '../../../features/auth/data/auth_repository.dart';
@@ -78,15 +79,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
     final authed = await ref.read(authRepositoryProvider).restoreSession();
     if (authed) {
-      await ref.read(authRepositoryProvider).syncFirebaseAfterRestore();
+      final (tok, _) = await ref.read(tokenStorageProvider).loadTokens();
+      if (jwtRole(tok) != 'CITIZEN') {
+        await ref.read(authRepositoryProvider).logout();
+      } else {
+        await ref.read(authRepositoryProvider).syncFirebaseAfterRestore();
+      }
     }
 
     if (!mounted) return;
 
+    final (tokAfter, _) = await ref.read(tokenStorageProvider).loadTokens();
+    final stillAuthed =
+        tokAfter != null && tokAfter.isNotEmpty && jwtRole(tokAfter) == 'CITIZEN';
+
     final String nextRoute;
     if (!store.onboardingDone) {
       nextRoute = Routes.onboarding;
-    } else if (!authed) {
+    } else if (!stillAuthed) {
       nextRoute = Routes.gateway;
     } else if (!store.profileComplete) {
       nextRoute = Routes.profileSetup;

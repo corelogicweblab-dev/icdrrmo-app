@@ -8,45 +8,58 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
-  const barangays = [
-    { code: 'IC-001', name: 'City Proper (Poblacion)' },
-    { code: 'IC-002', name: 'Aguada' },
-    { code: 'IC-003', name: 'Baluno' },
-    { code: 'IC-004', name: 'Begang' },
-    { code: 'IC-005', name: 'Binuangan' },
-    { code: 'IC-006', name: 'Busay' },
-    { code: 'IC-007', name: 'Cabunbata' },
-    { code: 'IC-008', name: 'Calvario' },
-    { code: 'IC-009', name: 'Carbon' },
-    { code: 'IC-010', name: 'Diki' },
-    { code: 'IC-011', name: 'Isabela Eastside (Kumalarang)' },
-    { code: 'IC-012', name: 'Isabela Proper' },
-    { code: 'IC-013', name: 'Kaumpang' },
-    { code: 'IC-014', name: 'Kapatagan Grande' },
-    { code: 'IC-015', name: 'Kapatagan Pequeño' },
-    { code: 'IC-016', name: 'Lampinigan' },
-    { code: 'IC-017', name: 'Lanote' },
-    { code: 'IC-018', name: 'Lukbuton' },
-    { code: 'IC-019', name: 'Lumbangan' },
-    { code: 'IC-020', name: 'Makiri' },
-    { code: 'IC-021', name: 'Marang-marang' },
-    { code: 'IC-022', name: 'Marketsite' },
-    { code: 'IC-023', name: 'Menzi' },
-    { code: 'IC-024', name: 'Panigayan' },
-    { code: 'IC-025', name: 'Panunsulan' },
-    { code: 'IC-026', name: 'Port Area' },
-    { code: 'IC-027', name: 'Riverside' },
-    { code: 'IC-028', name: 'Seaside' },
-    { code: 'IC-029', name: 'Small Kapatagan' },
-    { code: 'IC-030', name: 'Sumagdang' },
-    { code: 'IC-031', name: 'Sunrise Village' },
-    { code: 'IC-032', name: 'Tabiauan' },
-    { code: 'IC-033', name: 'Tabuk' },
-    { code: 'IC-034', name: 'Tampalan' },
-    { code: 'IC-035', name: 'Timpul' },
-    { code: 'IC-036', name: 'Tongbato' },
-    { code: 'IC-037', name: 'Ubit' },
-  ];
+  /** Official Isabela City barangay names (45) — codes IC-001…IC-045. Keep aligned with admin/mobile seed lists. */
+  const barangayNames = [
+    'Aguada',
+    'Balatanay',
+    'Baluno',
+    'Begang',
+    'Binuangan',
+    'Busay',
+    'Cabunbata',
+    'Calvario',
+    'Carbon',
+    'Diki',
+    'Isabela Eastside',
+    'Isabela Proper',
+    'Dona Ramona T. Alano',
+    'Kapatagan Grande',
+    'Kaumpurnah Zone I',
+    'Kaumpurnah Zone II',
+    'Kaumpurnah Zone III',
+    'Kapayawan',
+    'Kumalarang',
+    'La Piedad',
+    'Lampinigan',
+    'Lanote',
+    'Lukbuton',
+    'Lumbang',
+    'Makiri',
+    'Maligue',
+    'Marang-marang',
+    'Marketsite',
+    'Masula',
+    'Menzi',
+    'Panigayan',
+    'Panunsulan',
+    'Port Area',
+    'Riverside',
+    'San Rafael',
+    'Santa Barbara',
+    'Santa Cruz',
+    'Seaside',
+    'Small Kapatagan',
+    'Sumagdang',
+    'Sunrise Village',
+    'Tabiawan',
+    'Tabuk',
+    'Tampalan',
+    'Timpul',
+  ] as const;
+  const barangays = barangayNames.map((name, i) => ({
+    code: `IC-${String(i + 1).padStart(3, '0')}`,
+    name,
+  }));
   for (const b of barangays) {
     await prisma.barangay.upsert({
       where: { code: b.code },
@@ -54,7 +67,7 @@ async function main(): Promise<void> {
       update: { name: b.name },
     });
   }
-  console.log(`Seeded ${barangays.length} Isabela City barangay rows (codes IC-001…)`);
+  console.log(`Seeded ${barangays.length} Isabela City barangay rows (codes IC-001…IC-045)`);
 
   const email = process.env.SEED_ADMIN_EMAIL ?? 'ops.admin@icdrrmo.local';
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!OpsAdmin12';
