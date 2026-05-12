@@ -20,8 +20,8 @@ export function formatOpsSync(d: Date | null): string {
   });
 }
 
-export function incidentBorderClass(type: string): string {
-  const t = type.toUpperCase();
+export function incidentBorderClass(type: string | undefined | null): string {
+  const t = (type ?? "UNKNOWN").toUpperCase();
   if (t.includes("FIRE")) return "border-l-orange-500";
   if (t.includes("FLOOD") || t.includes("TYPHOON") || t.includes("LANDSLIDE")) return "border-l-sky-400";
   if (t.includes("MEDICAL")) return "border-l-emerald-400";
@@ -30,8 +30,8 @@ export function incidentBorderClass(type: string): string {
 }
 
 /** Human-readable status for badges (avoid "OPEN" looking like a verb / button). */
-export function humanIncidentStatus(status: string): string {
-  const s = status.toUpperCase();
+export function humanIncidentStatus(status: string | undefined | null): string {
+  const s = (status ?? "OPEN").toUpperCase();
   const map: Record<string, string> = {
     OPEN: "Open",
     ACKNOWLEDGED: "Acknowledged",
@@ -41,11 +41,12 @@ export function humanIncidentStatus(status: string): string {
     CLOSED: "Closed",
     FALSE_ALARM: "False alarm",
   };
-  return map[s] ?? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const raw = status ?? "OPEN";
+  return map[s] ?? raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function statusBadgeClass(status: string): string {
-  const s = status.toUpperCase();
+export function statusBadgeClass(status: string | undefined | null): string {
+  const s = (status ?? "OPEN").toUpperCase();
   if (s === "OPEN" || s === "ACKNOWLEDGED")
     return "bg-amber-500/12 text-amber-200 ring-1 ring-amber-500/25";
   if (s === "DISPATCHED" || s === "IN_PROGRESS")

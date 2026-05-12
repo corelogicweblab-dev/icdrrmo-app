@@ -91,9 +91,9 @@ export default function OpsIncidentsPage(): ReactElement {
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const lastFocusScrollRef = useRef<string | null>(null);
-  /** One-shot from ?voiceAnswer=1 after answering the SOS voice ring overlay. */
+  /** One-shot after ?voiceAnswer=1 — auto-opens ops browser voice for focused incident. */
   const [autoJoinVoiceOnce, setAutoJoinVoiceOnce] = useState(false);
-  const pendingVoiceAnswerRef = useRef(false);
+  const voiceAnswerHandledRef = useRef(false);
 
   useEffect(() => {
     if (queue.length === 0) {
@@ -121,30 +121,25 @@ export default function OpsIncidentsPage(): ReactElement {
     });
   }, [queue]);
 
-  /** Strip voiceAnswer=1 from URL once the focused incident is selected (auto-opens voice panel). */
+  /** Strip ?voiceAnswer=1 and arm one-shot auto-join (history only — avoids Next router re-entrancy crashes). */
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (voiceAnswerHandledRef.current) return;
     const sp = new URLSearchParams(window.location.search);
     if (sp.get("voiceAnswer") !== "1") return;
     const focus = sp.get("focus");
     if (!focus || selectedId !== focus) return;
-    pendingVoiceAnswerRef.current = true;
+    voiceAnswerHandledRef.current = true;
     setAutoJoinVoiceOnce(true);
     sp.delete("voiceAnswer");
     const q = sp.toString();
-    router.replace(q ? `/ops/incidents?${q}` : "/ops/incidents", { scroll: false });
-  }, [selectedId, router]);
-
-  useEffect(() => {
-    if (pendingVoiceAnswerRef.current) {
-      pendingVoiceAnswerRef.current = false;
-      return;
-    }
-    setAutoJoinVoiceOnce(false);
+    const path = q ? `/ops/incidents?${q}` : "/ops/incidents";
+    window.history.replaceState(window.history.state, "", path);
   }, [selectedId]);
 
   const openIncident = useCallback(
     (id: string) => {
+      setAutoJoinVoiceOnce(false);
       setSelectedId(id);
       router.replace(`/ops/incidents?focus=${encodeURIComponent(id)}`, { scroll: false });
       requestAnimationFrame(() => {
@@ -312,7 +307,9 @@ export default function OpsIncidentsPage(): ReactElement {
 
   const timeline = useMemo(() => {
     const base = [...TARGET_INCIDENT_LIFECYCLE];
-    const mapped = selected ? BACKEND_TO_TARGET[selected.status.toUpperCase()] ?? "pending" : "pending";
+    const mapped = selected
+      ? BACKEND_TO_TARGET[(selected.status ?? "OPEN").toUpperCase()] ?? "pending"
+      : "pending";
     const idx = Math.max(
       0,
       base.indexOf(mapped as (typeof TARGET_INCIDENT_LIFECYCLE)[number]),
@@ -343,7 +340,7 @@ export default function OpsIncidentsPage(): ReactElement {
                 >
                   <div className="flex justify-between gap-2 items-start">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-rose-200/90">
-                      {(row.title ?? row.type.replace(/_/g, " ")).slice(0, 48)}
+                      {(row.title ?? (row.type ?? "UNKNOWN").replace(/_/g, " ")).slice(0, 48)}
                     </span>
                     <div className="flex flex-col items-end gap-0.5 shrink-0">
                       <span className="text-[8px] font-semibold uppercase tracking-wider text-zinc-500">Status</span>
@@ -543,7 +540,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     deduplicated={false}
                     userLat={toNum(selected.latitude)!}
                     userLon={toNum(selected.longitude)!}
-                    emergencyLabel={`${selected.type.replace(/_/g, " ")}${selected.title ? ` · ${selected.title}` : ""}`}
+                    emergencyLabel={`${(selected.type ?? "UNKNOWN").replace(/_/g, " ")}${selected.title ? ` · ${selected.title}` : ""}`}
                   />
                 ) : (
                   <p className="text-xs text-zinc-500 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
@@ -654,7 +651,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     </button>
                     <button
                       type="button"
-                      disabled={patchLoading || !selected || statusDraft === selected.status.toUpperCase()}
+                      disabled={patchLoading || !selected || statusDraft === (selected.status ?? "OPEN").toUpperCase()}
                       onClick={() =>
                         void patchIncident({
                           status: statusDraft,

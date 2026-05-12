@@ -44,6 +44,11 @@ export function OpsIncidentVoicePanel(props: {
   });
 
   useEffect(() => {
+    setActive(false);
+    prevAutoJoin.current = false;
+  }, [incidentId]);
+
+  useEffect(() => {
     if (autoJoinVoice && !prevAutoJoin.current && socketLive && realtimeSocket) {
       setActive(true);
     }
@@ -59,11 +64,6 @@ export function OpsIncidentVoicePanel(props: {
       el.srcObject = null;
     };
   }, [remoteStream]);
-
-  useEffect(() => {
-    setActive(false);
-    prevAutoJoin.current = false;
-  }, [incidentId]);
 
   return (
     <div className="rounded-xl border border-sky-500/25 bg-sky-950/20 p-4 space-y-3">
