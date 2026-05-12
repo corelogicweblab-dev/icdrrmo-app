@@ -12,7 +12,7 @@ function ResponderChrome({ children }: { children: ReactNode }): ReactElement {
   const pathname = usePathname() ?? "/responder";
 
   return (
-    <div className="min-h-screen bg-[#060608] text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-transparent text-zinc-100 flex flex-col">
       <header className="shrink-0 border-b border-white/[0.06] bg-black/50 backdrop-blur-md px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10 bg-black/40 p-0.5">

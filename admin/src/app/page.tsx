@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function GatewayPage(): ReactElement {
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#040406] text-zinc-100">
+    <div className="min-h-[100dvh] flex flex-col bg-transparent text-zinc-100">
       <header className="border-b border-white/[0.06] bg-black/35 backdrop-blur-md">
         <div className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 text-center md:py-14">
           <div className="mx-auto flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-2xl bg-black/30 shadow-[0_20px_50px_-20px_rgba(225,29,72,0.45)] ring-1 ring-white/12 p-2 md:h-36 md:w-36 md:p-3">

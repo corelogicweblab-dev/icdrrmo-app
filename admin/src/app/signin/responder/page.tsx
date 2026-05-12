@@ -36,7 +36,7 @@ export default function SigninResponderPage(): ReactElement {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#060608] text-zinc-100 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-transparent text-zinc-100 px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-gradient-to-b from-sky-950/35 to-black/60 p-8 shadow-panel">
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black/40 ring-1 ring-white/10 p-0.5">

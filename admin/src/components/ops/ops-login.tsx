@@ -16,9 +16,9 @@ type OpsLoginProps = {
 
 export function OpsLoginView(props: OpsLoginProps): ReactElement {
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#060608]">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-transparent">
       <div className="relative hidden lg:flex lg:w-[46%] flex-col justify-between overflow-hidden px-11 py-12 border-r border-white/[0.06]">
-        <div className="absolute inset-0 bg-gradient-to-br from-rose-950/90 via-[#0a0a10] to-[#060608]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-rose-950/90 via-[#0a0a10] to-[#020208]/95" />
         <div className="absolute inset-0 ops-grid-bg opacity-40 mix-blend-overlay" aria-hidden />
         <div className="relative z-10 flex flex-col gap-10">
           <div className="flex items-start gap-4">

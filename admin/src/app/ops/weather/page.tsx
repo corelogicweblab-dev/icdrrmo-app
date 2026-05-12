@@ -1,46 +1,16 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { CloudRain, Globe2, Layers, Radio, Waves, Wind } from "lucide-react";
+import { IsabelaForecastEmbed } from "@/components/ops/isabela-forecast-embed";
 import { WEATHER_SOURCES } from "@/components/ops/ops-nav";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
+import { PH_SYNOPTIC_LAT, PH_SYNOPTIC_LON, PH_SYNOPTIC_ZOOM } from "@/lib/isabela-forecast-embed";
 
 /**
- * Synoptic framing over the Philippines (Basilan / Isabela still in view); operators pan/zoom in the embed.
- * Windy requires decimal lat/lon in the embed URL.
- */
-const VIEW_LAT = 12.25;
-const VIEW_LNG = 122.25;
-const VIEW_ZOOM = 6;
-
-/** Windy embed — animated particles (wind), temp field, city labels, etc. Logo must remain visible per Windy terms. */
-function windyEmbedSrc(overlay: string): string {
-  const q = new URLSearchParams({
-    lat: String(VIEW_LAT),
-    lon: String(VIEW_LNG),
-    zoom: String(VIEW_ZOOM),
-    level: "surface",
-    overlay,
-    menu: "",
-    message: "",
-    marker: "",
-    calendar: "now",
-    pressure: "",
-    type: "map",
-    location: "coordinates",
-    detail: "",
-    metricWind: "kmh",
-    metricTemp: "default",
-    radarRange: "-1",
-  });
-  return `https://embed.windy.com/embed2.html?${q.toString()}`;
-}
-
-/**
- * Windy `overlay` values (documented: wind, temp, pressure, clouds, rh, gust, rain, lclouds, waves, …).
- * Radar stays under the embed’s own menu; mosaic playback stays on Ops → Map (RainViewer).
+ * Map overlay tabs — values match the embed provider’s `overlay` parameter (wind, rain, temp, …).
  */
 const EMBED_OVERLAYS = [
   { id: "wind", label: "Wind", hint: "Particles + speed scale" },
@@ -57,11 +27,10 @@ type OverlayId = (typeof EMBED_OVERLAYS)[number]["id"];
 
 export default function OpsWeatherPage(): ReactElement {
   const [overlay, setOverlay] = useState<OverlayId>("wind");
-  const iframeSrc = useMemo(() => windyEmbedSrc(overlay), [overlay]);
 
   return (
     <div className="flex flex-col gap-5 p-4 lg:p-6">
-      <section className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#040406] shadow-[0_24px_80px_-40px_rgba(14,165,233,0.35)]">
+      <section className="overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950/45 shadow-[0_24px_80px_-40px_rgba(14,165,233,0.35)] backdrop-blur-md">
         <div className="border-b border-white/[0.06] bg-gradient-to-r from-[#06080f] via-[#0a0c12] to-sky-950/25 px-4 py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -107,24 +76,19 @@ export default function OpsWeatherPage(): ReactElement {
           </div>
         </div>
 
-        <div className="relative bg-black">
-          <iframe
-            key={overlay}
-            title="Situational weather map"
-            className="h-[min(72vh,820px)] w-full min-h-[440px] border-0"
-            src={iframeSrc}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
+        <div className="relative z-0 bg-black">
+          <IsabelaForecastEmbed
+            variant="synoptic"
+            overlay={overlay}
+            title="Philippines situational weather map"
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black via-black/70 to-transparent" aria-hidden />
-          <div className="pointer-events-none absolute bottom-2 left-3 right-3 flex flex-col items-center gap-1 text-center sm:flex-row sm:justify-between sm:text-left">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1 px-3 pb-2 text-center sm:flex-row sm:justify-between sm:text-left">
             <p className="text-[10px] text-zinc-500">
-              Default view: <span className="text-zinc-400">{VIEW_LAT.toFixed(2)}°N</span>
+              Default view: <span className="text-zinc-400">{PH_SYNOPTIC_LAT.toFixed(2)}°N</span>
               <span className="mx-1 text-zinc-600">·</span>
-              <span className="text-zinc-400">{VIEW_LNG.toFixed(2)}°E</span>
+              <span className="text-zinc-400">{PH_SYNOPTIC_LON.toFixed(2)}°E</span>
               <span className="mx-1 text-zinc-600">·</span>
-              zoom {VIEW_ZOOM}
+              zoom {PH_SYNOPTIC_ZOOM}
               <span className="mx-1 text-zinc-600">·</span>
               EOC pin{" "}
               <span className="font-mono text-zinc-400">
@@ -132,7 +96,7 @@ export default function OpsWeatherPage(): ReactElement {
               </span>
             </p>
             <p className="text-[10px] text-zinc-600">
-              Map data © OpenStreetMap — forecast visualization via embed provider (not PAGASA official product).
+              Map data © OpenStreetMap — forecast visualization via embed (not PAGASA official product).
             </p>
           </div>
         </div>

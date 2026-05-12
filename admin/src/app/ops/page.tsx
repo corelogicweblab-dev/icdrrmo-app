@@ -18,6 +18,7 @@ import { useOpsSession } from "@/components/ops/ops-session-context";
 import { formatOpsSync, incidentBorderClass, statusBadgeClass } from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
 import Link from "next/link";
+import { IsabelaForecastEmbed } from "@/components/ops/isabela-forecast-embed";
 import { OpsKpiCard, OpsPanelCard } from "@/components/ops/ops-widgets";
 import { SituationMap } from "@/components/situation-map";
 import { incidentsToMapPins } from "@/lib/map-pins";
@@ -199,8 +200,8 @@ export default function OpsCommandDashboardPage(): ReactElement {
             <span className="text-zinc-500">Sheltered (DB headcount)</span>
             <span className="ml-2 font-mono text-emerald-300">{shelteredTotal}</span>
           </span>
-          <span className="min-w-[10rem]">
-            <span className="text-zinc-500">Rain next ~6h (model)</span>
+            <span className="min-w-[10rem]">
+            <span className="text-zinc-500">Rain next ~6h (reference)</span>
             <span
               className={`ml-2 font-semibold ${weather?.rainOutlook6h.willRainLikely ? "text-amber-200" : "text-sky-200"}`}
             >
@@ -247,60 +248,33 @@ export default function OpsCommandDashboardPage(): ReactElement {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <OpsPanelCard
-          title="Weather — Isabela City (live model)"
-          subtitle="Open-Meteo hourly grid · not a PAGASA official warning"
+          title="Weather — Isabela City"
+          subtitle="Live forecast map · not a PAGASA official product"
         >
-          {weatherErr ? (
-            <p className="text-xs text-rose-300">{weatherErr}</p>
-          ) : !weather ? (
-            <p className="text-xs text-zinc-500">Loading forecast…</p>
-          ) : (
-            <div className="space-y-3 text-xs text-zinc-300">
-              {weather.upstreamError ? (
-                <p className="text-[11px] text-amber-200/90">Upstream: {weather.upstreamError}</p>
-              ) : null}
-              <div className="rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2.5">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">Will it rain (next ~6h)?</p>
-                <p
-                  className={`mt-1 text-sm font-bold ${weather.rainOutlook6h.willRainLikely ? "text-amber-200" : "text-sky-200"}`}
-                >
-                  {weather.rainOutlook6h.willRainLikely ? "Yes — plan for wet conditions" : "Probably not — still monitor official advisories"}
-                </p>
-                <p className="mt-2 text-[11px] text-zinc-400 leading-relaxed">{weather.rainOutlook6h.headline}</p>
-                <p className="mt-2 font-mono text-[10px] text-zinc-500">
-                  Max hourly chance {weather.rainOutlook6h.maxPrecipProbPct}% · model rain sum ~{weather.rainOutlook6h.totalRainMm} mm
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 text-[11px] text-zinc-400">
-                <span>
-                  Now:{" "}
-                  <span className="text-zinc-200">
-                    {weather.current.temperatureC != null ? `${weather.current.temperatureC}°C` : "—"} ·{" "}
-                    {weather.current.weatherLabel}
-                  </span>
-                </span>
-                {weather.current.humidityPct != null ? (
-                  <span>
-                    RH: <span className="text-zinc-200">{weather.current.humidityPct}%</span>
-                  </span>
-                ) : null}
-              </div>
-              <ul className="space-y-1.5 border-t border-white/[0.06] pt-2 text-[11px] text-zinc-500">
-                {weather.nextHours.slice(0, 6).map((h) => (
-                  <li key={h.time} className="flex justify-between gap-2 font-mono">
-                    <span>{new Date(h.time).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                    <span>
-                      {(h.precipProbPct ?? 0)}% · rain {h.rainMm ?? h.precipMm ?? 0} mm
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[10px] text-zinc-600">Updated {new Date(weather.fetchedAt).toLocaleString("en-PH")} · {weather.source}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            {weatherErr ? (
+              <p className="text-[11px] text-amber-200/90">
+                Desk metrics link degraded — map still loads. ({weatherErr})
+              </p>
+            ) : null}
+            <IsabelaForecastEmbed
+              variant="compact"
+              overlay="rain"
+              title="Isabela City weather forecast"
+            />
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              Meteogram and timeline controls are inside the viewer.{" "}
+              <Link href="/ops/weather" className="text-sky-400 hover:underline">
+                Open full desk map
+              </Link>
+              .
+            </p>
+          </div>
         </OpsPanelCard>
         <OpsPanelCard title="Flood & landslide — Isabela City">
-          {!weather ? (
+          {weatherErr && !weather ? (
+            <p className="text-xs text-rose-300">{weatherErr}</p>
+          ) : !weather ? (
             <p className="text-xs text-zinc-500">Loading hazard reference…</p>
           ) : (
             <div className="space-y-3 text-[11px] text-zinc-400">

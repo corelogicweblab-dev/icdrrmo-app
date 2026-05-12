@@ -6,7 +6,7 @@ import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 
 export default function SigninCitizenPage(): ReactElement {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#060608] text-zinc-100 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-transparent text-zinc-100 px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-zinc-950/80 p-8 text-center space-y-4">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-black/35 ring-1 ring-white/10 p-1">
           <IcdrrmoLogo size={56} priority className="rounded-xl" />

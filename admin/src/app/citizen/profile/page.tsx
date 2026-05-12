@@ -159,7 +159,7 @@ export default function CitizenProfilePage(): ReactElement {
 
   if (!tokens) {
     return (
-      <div className="min-h-[100dvh] bg-[#060608] text-zinc-100 p-8 text-center">
+      <div className="min-h-[100dvh] bg-transparent text-zinc-100 p-8 text-center">
         <p className="text-sm text-zinc-400 mb-4">Sign in from the citizen home page first.</p>
         <Link href="/citizen" className="text-rose-400 text-sm underline">
           Citizen portal
@@ -169,7 +169,7 @@ export default function CitizenProfilePage(): ReactElement {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#060608] text-zinc-100">
+    <div className="min-h-[100dvh] bg-transparent text-zinc-100">
       <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/50 backdrop-blur-lg px-4 py-3 flex items-center justify-between">
         <Link href="/citizen" className="inline-flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />

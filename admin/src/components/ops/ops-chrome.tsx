@@ -72,7 +72,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
 
   return (
     <div
-      className="h-screen flex overflow-hidden bg-[#060608] text-zinc-100 font-sans"
+      className="h-screen flex overflow-hidden bg-transparent text-zinc-100 font-sans"
       data-icdrrmo-console="ops-v2-command-board"
     >
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-white/[0.06] bg-[#080809]">

@@ -464,7 +464,7 @@ export default function CitizenPage(): ReactElement {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#060608] text-zinc-100">
+    <div className="min-h-[100dvh] bg-transparent text-zinc-100">
       <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/50 backdrop-blur-lg">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3.5">
           <Link

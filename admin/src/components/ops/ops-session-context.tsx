@@ -395,7 +395,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
 
   if (!booted) {
     return (
-      <div className="min-h-screen bg-[#060608] flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-zinc-600 animate-live-pulse">
           Initializing command console…
         </p>

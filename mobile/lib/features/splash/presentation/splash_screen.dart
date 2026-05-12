@@ -110,15 +110,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [scheme.surfaceContainerHighest, scheme.surface],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -169,7 +162,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
             ),
           ),
         ),
-      ),
     );
   }
 }

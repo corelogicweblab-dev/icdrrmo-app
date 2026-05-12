@@ -41,7 +41,7 @@ class RoleGatewayScreen extends ConsumerWidget {
     final wide = mq.size.width >= 720;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF040406),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [

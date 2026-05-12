@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/bootstrap/global_store.dart';
+import 'core/theme/futuristic_background_layer.dart';
 import 'core/navigation/app_navigator_key.dart';
 import 'core/navigation/routes.dart';
 import 'features/auth/presentation/forgot_password_screen.dart';
@@ -30,7 +31,8 @@ class IcdrrmoApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB91C1C), brightness: Brightness.dark),
         useMaterial3: true,
-        canvasColor: const Color(0xFF18181b),
+        canvasColor: Colors.transparent,
+        scaffoldBackgroundColor: Colors.transparent,
         popupMenuTheme: const PopupMenuThemeData(
           color: Color(0xFF27272a),
           surfaceTintColor: Colors.transparent,
@@ -46,24 +48,31 @@ class IcdrrmoApp extends StatelessWidget {
         final themed = child ?? const SizedBox.shrink();
         return MediaQuery(
           data: mq.copyWith(textScaler: TextScaler.linear(scale)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
             children: [
-              Expanded(child: themed),
-              SafeArea(
-                top: false,
-                minimum: const EdgeInsets.only(bottom: 4),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                  child: Text(
-                    'Powered by: CoreLogic',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
-                          letterSpacing: 0.4,
-                        ),
+              const FuturisticBackgroundLayer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: themed),
+                  SafeArea(
+                    top: false,
+                    minimum: const EdgeInsets.only(bottom: 4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                      child: Text(
+                        'Powered by: CoreLogic',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
+                              letterSpacing: 0.4,
+                            ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

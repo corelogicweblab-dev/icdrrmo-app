@@ -35,7 +35,7 @@ function HandoffBody(): ReactElement {
   }, [router, search]);
 
   return (
-    <div className="flex min-h-[50dvh] flex-col items-center justify-center bg-[#060608] px-6 text-center text-sm text-zinc-400">
+    <div className="flex min-h-[50dvh] flex-col items-center justify-center bg-transparent px-6 text-center text-sm text-zinc-400">
       {note}
     </div>
   );
@@ -45,7 +45,7 @@ export default function AuthHandoffPage(): ReactElement {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[40dvh] items-center justify-center bg-[#060608] text-sm text-zinc-500">
+        <div className="flex min-h-[40dvh] items-center justify-center bg-transparent text-sm text-zinc-500">
           Loading…
         </div>
       }

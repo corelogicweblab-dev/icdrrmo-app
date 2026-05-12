@@ -16,8 +16,91 @@ html {
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background: transparent;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/**
+ * Global “futuristic” backdrop — deep space base, rose/sky/violet mesh, HUD grid, soft drift.
+ * Sits fixed under app content (see root layout). Respects reduced motion.
+ */
+.icdrrmo-app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: #020208;
+  background-image:
+    radial-gradient(ellipse 130% 90% at 15% -5%, rgba(225, 29, 72, 0.22), transparent 52%),
+    radial-gradient(ellipse 100% 70% at 95% 8%, rgba(6, 182, 212, 0.14), transparent 48%),
+    radial-gradient(ellipse 90% 60% at 50% 105%, rgba(139, 92, 246, 0.16), transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, transparent 42%, rgba(255, 255, 255, 0.015) 100%),
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 36px 36px, 36px 36px;
+}
+
+.icdrrmo-app-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(circle at 35% 45%, rgba(255, 255, 255, 0.04), transparent 38%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.012) 2px,
+      rgba(255, 255, 255, 0.012) 3px
+    );
+  opacity: 0.65;
+  animation: icdrrmo-backdrop-drift 32s ease-in-out infinite;
+}
+
+.icdrrmo-app-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 40% at 50% 120%, rgba(225, 29, 72, 0.08), transparent 60%);
+  mix-blend-mode: screen;
+  animation: icdrrmo-backdrop-pulse 14s ease-in-out infinite alternate;
+}
+
+@keyframes icdrrmo-backdrop-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  40% {
+    transform: translate(2.5%, -1.5%) rotate(1.2deg);
+  }
+  70% {
+    transform: translate(-1.8%, 2%) rotate(-0.8deg);
+  }
+}
+
+@keyframes icdrrmo-backdrop-pulse {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icdrrmo-app-backdrop::before,
+  .icdrrmo-app-backdrop::after {
+    animation: none;
+  }
+  .icdrrmo-app-backdrop::before {
+    transform: none;
+    opacity: 0.45;
+  }
+  .icdrrmo-app-backdrop::after {
+    opacity: 0.55;
+  }
 }
 
 /* Subtle tactical grid for command surfaces */
