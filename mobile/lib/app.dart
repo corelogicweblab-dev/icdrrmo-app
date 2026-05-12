@@ -69,11 +69,10 @@ class IcdrrmoApp extends StatelessWidget {
           ),
         );
       },
-      initialRoute: Routes.splash,
+      initialRoute: Routes.gateway,
       routes: {
-        Routes.splash: (_) => const SplashScreen(),
-        Routes.onboarding: (_) => const OnboardingScreen(),
         Routes.gateway: (_) => const RoleGatewayScreen(),
+        Routes.splash: (_) => const SplashScreen(),
         Routes.login: (_) => const LoginScreen(),
         Routes.register: (_) => const RegisterScreen(),
         Routes.forgotPassword: (_) => const ForgotPasswordScreen(),

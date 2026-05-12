@@ -31,7 +31,7 @@ class _CitizenMainShellState extends ConsumerState<CitizenMainShell> {
   Future<void> _logout() async {
     await ref.read(authRepositoryProvider).logout();
     if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(Routes.login, (r) => false);
+    Navigator.of(context).pushNamedAndRemoveUntil(Routes.gateway, (r) => false);
   }
 
   @override

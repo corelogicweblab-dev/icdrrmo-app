@@ -2,7 +2,7 @@
   "name": "ICDRRMO Operation Center",
   "short_name": "ICDRRMO Ops",
   "description": "Isabela City DRRMO — live incident coordination and situation awareness",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
