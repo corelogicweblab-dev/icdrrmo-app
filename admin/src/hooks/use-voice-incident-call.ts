@@ -17,12 +17,6 @@ type VoiceSignalMsg = {
   candidate?: RTCIceCandidateInit;
 };
 
-type VoicePeerJoinedMsg = {
-  incidentId: string;
-  userId?: string;
-  role?: string;
-};
-
 type IceApiResponse = {
   iceServers?: RTCIceServer[];
   turnConfigured?: boolean;
@@ -56,6 +50,8 @@ export type UseVoiceIncidentCallResult = {
   muted: boolean;
   setMuted: (v: boolean) => void;
   remoteStream: MediaStream | null;
+  /** True when API returned a configured media relay (same deployment as Nest). */
+  relayConfigured: boolean;
 };
 
 export function useVoiceIncidentCall(opts: {
@@ -64,12 +60,15 @@ export function useVoiceIncidentCall(opts: {
   /** Required whenever active (citizen socket + ops ICE fetch). */
   accessToken?: string | null;
   externalSocket?: Socket | null;
+  /** Citizen copy avoids ops-only env jargon. */
+  errorAudience?: "citizen" | "ops";
 }): UseVoiceIncidentCallResult {
-  const { incidentId, active, accessToken, externalSocket } = opts;
+  const { incidentId, active, accessToken, externalSocket, errorAudience = "ops" } = opts;
   const [status, setStatus] = useState<VoiceIncidentCallStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [muted, setMutedState] = useState(false);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [relayConfigured, setRelayConfigured] = useState(false);
 
   const ownedSocketRef = useRef<Socket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -88,6 +87,7 @@ export function useVoiceIncidentCall(opts: {
       setStatus("idle");
       setError(null);
       setRemoteStream(null);
+      setRelayConfigured(false);
       return;
     }
 
@@ -154,11 +154,13 @@ export function useVoiceIncidentCall(opts: {
       }
     }
 
-    async function onPeerJoined(): Promise<void> {
-      if (disposed || !pc) return;
-      if (pc.signalingState !== "stable") return;
-      await createAndSendOffer();
-    }
+    /**
+     * Only the joiner with peersAlreadyPresent > 0 sends the initial offer after voice_join.
+     * Do NOT also offer on voice_peer_joined — that races with the joiner's offer (glare) and
+     * produces duplicate answers / "setRemoteDescription answer in stable" errors.
+     */
+
+    let signalChain: Promise<void> = Promise.resolve();
 
     async function onSignal(msg: unknown): Promise<void> {
       if (disposed || !pc) return;
@@ -167,14 +169,27 @@ export function useVoiceIncidentCall(opts: {
 
       if (m.type === "offer" && m.sdp) {
         try {
-          await pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          sendSignal({
-            type: "answer",
-            sdp: answer,
-          });
-          if (!disposed) setStatus("negotiating");
+          if (pc.signalingState === "stable") {
+            await pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sendSignal({
+              type: "answer",
+              sdp: answer,
+            });
+            if (!disposed) setStatus("negotiating");
+          } else if (pc.signalingState === "have-local-offer") {
+            // Glare: both sides sent an offer — roll back ours and accept the peer's offer.
+            await pc.setLocalDescription({ type: "rollback" });
+            await pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sendSignal({
+              type: "answer",
+              sdp: answer,
+            });
+            if (!disposed) setStatus("negotiating");
+          }
         } catch (e) {
           if (!disposed) {
             setError(e instanceof Error ? e.message : "SDP negotiation failed");
@@ -186,6 +201,10 @@ export function useVoiceIncidentCall(opts: {
 
       if (m.type === "answer" && m.sdp) {
         try {
+          if (pc.signalingState !== "have-local-offer") {
+            // Duplicate or out-of-order answer (e.g. after we already went stable).
+            return;
+          }
           await pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
         } catch (e) {
           if (!disposed) setError(e instanceof Error ? e.message : "SDP answer failed");
@@ -202,14 +221,12 @@ export function useVoiceIncidentCall(opts: {
       }
     }
 
-    const onVoicePeerJoined = (msg: unknown): void => {
-      const p = msg as VoicePeerJoinedMsg;
-      if (!p || p.incidentId !== rid || disposed) return;
-      void onPeerJoined();
-    };
-
     const onSignalBound = (msg: unknown): void => {
-      void onSignal(msg);
+      signalChain = signalChain
+        .then(() => onSignal(msg))
+        .catch(() => {
+          /* serialization drop — next message still runs */
+        });
     };
 
     function wirePeerConnection(conn: RTCPeerConnection): void {
@@ -230,9 +247,14 @@ export function useVoiceIncidentCall(opts: {
 
       const failVoice = (): void => {
         if (disposed) return;
-        const hint = turnConfigured
-          ? "Voice link failed — check network path, firewall, and TURN service health on the API host."
-          : "Voice link failed — configure TURN on the API (TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL). STUN-only paths do not work on most mobile networks.";
+        const hint =
+          errorAudience === "citizen"
+            ? turnConfigured
+              ? "Audio could not stay connected. Try Wi‑Fi or a stronger signal, then use SOS voice again."
+              : "Audio could not use a direct path on this network. The ICDRRMO central server still needs its media relay enabled on the same deployment as the emergency API—ask your technical staff (one-time setup)."
+            : turnConfigured
+              ? "Voice link failed — check network path, firewall, and media relay health on the API host."
+              : "Voice link failed — enable media relay on the API: TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL (see backend .env.example).";
         setError(hint);
         setStatus("error");
       };
@@ -261,13 +283,13 @@ export function useVoiceIncidentCall(opts: {
       const ice = await fetchIceServers(token);
       if (disposed) return;
       turnConfigured = ice.turnConfigured;
+      setRelayConfigured(ice.turnConfigured);
 
       pc = new RTCPeerConnection({ iceServers: ice.iceServers });
       pcRef.current = pc;
       wirePeerConnection(pc);
 
       socket.on("voice_signal", onSignalBound);
-      socket.on("voice_peer_joined", onVoicePeerJoined);
 
       const okMic = await ensureMic(pc);
       if (!okMic || disposed) return;
@@ -370,7 +392,6 @@ export function useVoiceIncidentCall(opts: {
         pendingConnectJoinRef.current = null;
       }
       socket.off("voice_signal", onSignalBound);
-      socket.off("voice_peer_joined", onVoicePeerJoined);
       if (pc) {
         pc.onicecandidate = null;
         pc.ontrack = null;
@@ -393,8 +414,9 @@ export function useVoiceIncidentCall(opts: {
       }
       setRemoteStream(null);
       setStatus("idle");
+      setRelayConfigured(false);
     };
-  }, [incidentId, active, accessToken, externalSocket]);
+  }, [incidentId, active, accessToken, externalSocket, errorAudience]);
 
   useEffect(() => {
     localStreamRef.current?.getAudioTracks().forEach((t) => {
@@ -402,5 +424,5 @@ export function useVoiceIncidentCall(opts: {
     });
   }, [muted]);
 
-  return { status, error, muted, setMuted, remoteStream };
+  return { status, error, muted, setMuted, remoteStream, relayConfigured };
 }

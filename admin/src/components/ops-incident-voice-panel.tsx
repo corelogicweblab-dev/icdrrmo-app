@@ -15,7 +15,7 @@ function statusLabel(s: string): string {
     case "standby":
       return "Mic on — citizen may be waiting…";
     case "negotiating":
-      return "WebRTC handshake…";
+      return "Linking secure audio…";
     case "live":
       return "Live duplex";
     case "error":
@@ -38,11 +38,12 @@ export function OpsIncidentVoicePanel(props: {
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const prevAutoJoin = useRef(false);
 
-  const { status, error, muted, setMuted, remoteStream } = useVoiceIncidentCall({
+  const { status, error, muted, setMuted, remoteStream, relayConfigured } = useVoiceIncidentCall({
     incidentId,
     active: active && socketLive && realtimeSocket != null,
     accessToken,
     externalSocket: realtimeSocket ?? undefined,
+    errorAudience: "ops",
   });
 
   useEffect(() => {
@@ -78,6 +79,12 @@ export function OpsIncidentVoicePanel(props: {
       </p>
       {!socketLive ? (
         <p className="text-[11px] text-amber-200/90">Realtime socket offline — reconnect the ops session.</p>
+      ) : null}
+      {socketLive && !relayConfigured ? (
+        <p className="text-[10px] leading-relaxed text-amber-200/85 rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
+          Media relay is not enabled on the API yet — browser voice may fail on strict mobile networks. Set TURN_URLS,
+          TURN_USERNAME, TURN_CREDENTIAL on the Nest host.
+        </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {!active ? (

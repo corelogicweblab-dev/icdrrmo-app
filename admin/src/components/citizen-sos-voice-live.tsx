@@ -14,7 +14,7 @@ function statusLabel(s: string): string {
     case "standby":
       return "Mic live — waiting for ops desk…";
     case "negotiating":
-      return "Linking audio (WebRTC)…";
+      return "Linking secure audio…";
     case "live":
       return "Duplex — ops desk on channel";
     case "error":
@@ -29,10 +29,11 @@ export function CitizenSosVoiceLive(props: {
   accessToken: string;
 }): ReactElement {
   const { incidentId, accessToken } = props;
-  const { status, error, muted, setMuted, remoteStream } = useVoiceIncidentCall({
+  const { status, error, muted, setMuted, remoteStream, relayConfigured } = useVoiceIncidentCall({
     incidentId,
     active: true,
     accessToken,
+    errorAudience: "citizen",
   });
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
@@ -55,9 +56,15 @@ export function CitizenSosVoiceLive(props: {
         Browser voice to ops
       </div>
       <p className="text-[11px] text-zinc-400 leading-relaxed">
-        Your microphone is tied to this incident. Ops gets a flashing alert with Answer — keep this page open until the desk
-        joins the same WebRTC room.
+        This is direct browser-to-browser voice with the ICDRRMO ops desk over your emergency system (signaling goes
+        through the same ICDRRMO servers you already use). Keep this page open until the desk answers the flashing alert.
       </p>
+      {!relayConfigured && status !== "error" && status !== "idle" && status !== "connecting" ? (
+        <p className="text-[10px] leading-relaxed text-amber-200/90 rounded-lg border border-amber-500/25 bg-amber-950/25 px-2.5 py-2">
+          On some mobile networks the city operations server must expose a built-in media relay on the same deployment as
+          the API so audio can reach the ops browser—your technical team enables this once for the whole program.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {status === "error" ? null : status === "live" || status === "standby" ? (
           <span
