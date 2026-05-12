@@ -10,6 +10,13 @@
       "**/trace",
       "**/*.tsbuildinfo"
     ],
+    "redirects": [
+      {
+        "regex": "^/(?P<path>.+/.+)\\.txt$",
+        "destination": "/:path",
+        "type": 302
+      }
+    ],
     "headers": [
       {
         "source": "/_next/static/**",
