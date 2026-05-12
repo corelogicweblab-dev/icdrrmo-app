@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, MapPin } from "lucide-react";
 import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
+import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
 import "leaflet/dist/leaflet.css";
 
 export type CitizenSosRouteCardProps = {
@@ -56,8 +57,8 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
 
         if (!mapRef.current) {
           mapRef.current = L.map(mapEl.current, { zoomControl: true }).setView(user, 13);
-          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: "&copy; OpenStreetMap",
+          L.tileLayer(OPS_LEAFLET_TILE_URL, {
+            attribution: OPS_LEAFLET_ATTRIBUTION,
             maxZoom: 19,
           }).addTo(mapRef.current);
           overlayRef.current = L.layerGroup().addTo(mapRef.current);

@@ -6,6 +6,7 @@ import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { opsFetchJson } from "@/lib/ops-api";
 import { ISABELA_EOC_ADDRESS } from "@/lib/isabela-eoc";
+import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
 
 type OpsLive = {
   eoc: { label: string; latitude: number; longitude: number };
@@ -94,8 +95,8 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
       const center: LatLngExpression = [data.eoc.latitude, data.eoc.longitude];
       if (!mapRef.current) {
         mapRef.current = L.map(mapEl.current, { zoomControl: true }).setView(center, 13);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap",
+        L.tileLayer(OPS_LEAFLET_TILE_URL, {
+          attribution: OPS_LEAFLET_ATTRIBUTION,
           maxZoom: 19,
         }).addTo(mapRef.current);
         layerRef.current = L.layerGroup().addTo(mapRef.current);
@@ -256,9 +257,9 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
       {error && data ? <p className="text-[10px] text-rose-300/90">{error}</p> : null}
       <div ref={mapEl} className="h-[420px] w-full overflow-hidden rounded-xl border border-white/[0.08] bg-black/40" />
       <p className="text-[10px] text-zinc-500">
-        Leaflet + OSM · EOC: {ISABELA_EOC_ADDRESS} · Live layers from{" "}
+        Leaflet + Esri World Street (English labels) · EOC: {ISABELA_EOC_ADDRESS} · Live layers from{" "}
         <code className="text-zinc-400">GET /api/v1/map/ops-live</code>
-        . Roads: OSM tiles. ETA via public OSRM (configure a private router for production).
+        . Roads: Esri basemap. ETA via public OSRM (configure a private router for production).
       </p>
     </div>
   );

@@ -74,7 +74,7 @@ export default function OpsMapPage(): ReactElement {
             ))}
             <p className="border-t border-white/[0.06] px-1 pt-2 text-[10px] leading-relaxed text-zinc-600">
               AOI: {ISABELA_EOC_ADDRESS}. Toggles update the Mapbox style when a token is set; without a token the main
-              panel uses OpenStreetMap with the same incident pins. Heatmap / clusters need Mapbox.
+              panel uses an English-first Esri street basemap with the same incident pins. Heatmap / clusters need Mapbox.
               {!hasMapboxToken()
                 ? " Optional: NEXT_PUBLIC_MAPBOX_TOKEN in .env.local for full GIS styling."
                 : null}
@@ -134,14 +134,14 @@ export default function OpsMapPage(): ReactElement {
       <div className="flex flex-col gap-4">
         <MapDispatchPanel />
         <div className="grid gap-4 lg:grid-cols-2">
-          <OpsPanelCard title="Leaflet EOC (live REST)" subtitle="OSM tiles · EOC reference · incidents · responders · vehicles · shelters">
+          <OpsPanelCard title="Leaflet EOC (live REST)" subtitle="English basemap (Esri) · EOC reference · incidents · responders · vehicles · shelters · hazard pins">
             <EocLeafletMap accessToken={tokens?.accessToken} />
           </OpsPanelCard>
           <OpsPanelCard title="Weather radar (RainViewer)" subtitle="Composite viewport — embed">
             <iframe
               title="RainViewer radar"
               className="h-[420px] w-full rounded-lg border border-white/10 bg-black/40"
-              src={`https://www.rainviewer.com/map.html?loc=${ISABELA_EOC_LAT},${ISABELA_EOC_LNG},8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&rmt=1&c=1&o=83&lm=0&th=0&sm=0&sn=1`}
+              src={`https://www.rainviewer.com/map.html?loc=${ISABELA_EOC_LAT},${ISABELA_EOC_LNG},8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&rmt=1&c=1&o=83&lm=0&th=0&sm=0&sn=1&lang=en`}
               loading="lazy"
             />
           </OpsPanelCard>

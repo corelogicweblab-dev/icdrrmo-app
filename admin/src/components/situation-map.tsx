@@ -66,6 +66,11 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     };
 
     const onLoad = (): void => {
+      try {
+        map.setLanguage("en");
+      } catch {
+        /* optional on some style versions */
+      }
       installIcdOpsMapLayers(map);
       unbindClusterRef.current = bindClusterExpansionClick(map);
       bumpResize();

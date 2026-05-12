@@ -9,6 +9,7 @@ import type { MapIncidentPin } from "@/lib/map-pins";
 import { markerColorForIncidentType } from "@/lib/map-pins";
 import { hazardPinsForLayers } from "@/lib/isabela-hazard-barangay-locations";
 import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
+import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
 
 export type SituationMapOsmFallbackProps = {
   pins: MapIncidentPin[];
@@ -18,7 +19,7 @@ export type SituationMapOsmFallbackProps = {
 };
 
 /**
- * OpenStreetMap basemap when `NEXT_PUBLIC_MAPBOX_TOKEN` is unset — same AOI and incident pins as Mapbox build.
+ * English-first basemap when `NEXT_PUBLIC_MAPBOX_TOKEN` is unset — same AOI and incident pins as Mapbox build.
  */
 export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): ReactElement {
   const { pins, showMarkers, layerToggles } = props;
@@ -40,8 +41,8 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
 
       if (!mapRef.current) {
         mapRef.current = L.map(el, { zoomControl: true }).setView(center, 12.2);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap",
+        L.tileLayer(OPS_LEAFLET_TILE_URL, {
+          attribution: OPS_LEAFLET_ATTRIBUTION,
           maxZoom: 19,
         }).addTo(mapRef.current);
         layerRef.current = L.layerGroup().addTo(mapRef.current);
@@ -146,7 +147,7 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
           </p>
         </div>
         <div className="rounded-lg border border-amber-500/25 bg-amber-950/40 px-2 py-1.5 text-[9px] text-amber-100/90 backdrop-blur-sm">
-          OSM fallback — Mapbox token enables clusters / heatmap
+          OSM fallback — English basemap (Esri) · Mapbox token enables clusters / heatmap
         </div>
       </div>
     </div>
