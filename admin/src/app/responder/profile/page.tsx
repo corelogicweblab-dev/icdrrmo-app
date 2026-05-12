@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Loader2, Save } from "lucide-react";
 import { useResponderSession, isResponderRole } from "@/components/responder/responder-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
+import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 import { barangayFieldsForPatch, loadBarangayPickList, resolveBarangaySelectValue } from "@/lib/public-barangays";
 
 type Barangay = { id: string; name: string; code: string };
