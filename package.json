@@ -13,6 +13,8 @@
     "dev:api": "npm --prefix backend run start:dev",
     "dev:admin": "npm --prefix admin run dev",
     "prisma:generate": "npm --prefix backend exec -- prisma generate",
+    "migrate": "npm run db:migrate",
+    "prisma": "npm --prefix backend exec -- prisma",
     "db:migrate": "npm --prefix backend exec -- prisma migrate deploy",
     "db:seed": "npm --prefix backend exec -- prisma db seed",
     "seed": "npm run db:seed",

@@ -17,7 +17,7 @@ Full-stack emergency response platform for **Isabela City Disaster Risk Reductio
 ## Windows + Prisma (read this)
 
 - **Paths with spaces:** use quotes: `cd "D:\CoreLogic Files\ICDRRMO"` then `cd backend` (or stay at root and use `npm run …` below).
-- **Do not run `npx prisma` at the repo root** unless you pass `--schema` — the schema and seed live under **`backend/`**. Root scripts call **`npm --prefix backend exec -- prisma …`** so the correct Prisma + `package.json` seed are used.
+- **Do not run `npx prisma …` at the repo root** — there is no `schema.prisma` here. Use **`npm run migrate`**, **`npm run db:seed`**, or **`npm run prisma -- <subcommand>`** (see workspace scripts table). Or `cd backend` and run `npx prisma …` there.
 
 ## Workspace npm scripts (repo root)
 
@@ -28,7 +28,10 @@ Full-stack emergency response platform for **Isabela City Disaster Risk Reductio
 | `npm run start:admin` | Next production server on :3000 (needs `npm run build:admin` first) |
 | `npm run dev:api` / `npm run dev:admin` | Local dev servers |
 | `npm run prisma:generate` | `prisma generate` using **backend** schema + CLI |
+| `npm run migrate` | Same as **`db:migrate`** — `prisma migrate deploy` in **backend** |
+| `npm run db:migrate` | `prisma migrate deploy` in **backend** |
 | `npm run seed` / `npm run db:seed` | Prisma seed — same as `backend`’s `prisma db seed` (uses **`tsx prisma/seed.ts`** there) |
+| `npm run prisma -- <args>` | Run any Prisma CLI command in **backend** (e.g. `npm run prisma -- migrate status`, `npm run prisma -- db seed`) |
 
 ## Quick start (Docker — production-like)
 

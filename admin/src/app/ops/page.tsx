@@ -383,7 +383,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <section className="xl:col-span-5 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
+        <section className="xl:col-span-5 flex min-h-[440px] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
           <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-black/25 px-4 py-3">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
               <Map className="h-4 w-4 text-rose-400/90" aria-hidden />
@@ -391,7 +391,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
             </h2>
             <ShieldAlert className="h-4 w-4 text-zinc-600" aria-hidden />
           </div>
-          <div className="min-h-0 w-full flex-1">
+          <div className="min-h-[400px] min-h-0 w-full flex-1">
             <SituationMap incidentPins={mapPins} />
           </div>
         </section>

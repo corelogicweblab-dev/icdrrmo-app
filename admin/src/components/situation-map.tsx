@@ -37,6 +37,7 @@ export function SituationMap(props: SituationMapProps): ReactElement {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const unbindClusterRef = useRef<(() => void) | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [mapboxDisabled, setMapboxDisabled] = useState(false);
   const token = readMapboxToken();
 
   const showHtmlMarkers = layerToggles === undefined ? true : Boolean(layerToggles["Incident markers"]);
@@ -44,7 +45,11 @@ export function SituationMap(props: SituationMapProps): ReactElement {
   const showLandslideHazard = layerToggles === undefined ? true : Boolean(layerToggles["Landslide polygons"]);
 
   useEffect(() => {
-    if (!token || !containerRef.current) return;
+    setMapboxDisabled(false);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || mapboxDisabled || !containerRef.current) return;
 
     mapboxgl.accessToken = token;
     const el = containerRef.current;
@@ -58,6 +63,11 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     });
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
     mapRef.current = map;
+
+    const onMapboxError = (): void => {
+      setMapboxDisabled(true);
+    };
+    map.on("error", onMapboxError);
 
     const bumpResize = (): void => {
       requestAnimationFrame(() => {
@@ -95,6 +105,7 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     return () => {
       ro?.disconnect();
       window.removeEventListener("resize", onWinResize);
+      map.off("error", onMapboxError);
       map.off("load", onLoad);
       unbindClusterRef.current?.();
       unbindClusterRef.current = null;
@@ -104,17 +115,17 @@ export function SituationMap(props: SituationMapProps): ReactElement {
       map.remove();
       mapRef.current = null;
     };
-  }, [token]);
+  }, [token, mapboxDisabled]);
 
   useEffect(() => {
-    if (!token || !mapRef.current || !mapReady) return;
+    if (!token || mapboxDisabled || !mapRef.current || !mapReady) return;
     const map = mapRef.current;
     setIncidentGeoJson(map, fc);
     syncOpsMapLayerVisibility(map, layerToggles);
-  }, [fc, layerToggles, mapReady, token]);
+  }, [fc, layerToggles, mapReady, token, mapboxDisabled]);
 
   useEffect(() => {
-    if (!token || !mapRef.current || !mapReady) return;
+    if (!token || mapboxDisabled || !mapRef.current || !mapReady) return;
     const map = mapRef.current;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -179,9 +190,9 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     } else {
       map.flyTo({ center: ISABELA_MAP_CENTER_LNGLAT, zoom: 12.2, duration: 400 });
     }
-  }, [pins, mapReady, token, showHtmlMarkers, layerToggles, showFloodHazard, showLandslideHazard]);
+  }, [pins, mapReady, token, mapboxDisabled, showHtmlMarkers, layerToggles, showFloodHazard, showLandslideHazard]);
 
-  if (!token) {
+  if (!token || mapboxDisabled) {
     return <SituationMapOsmFallback pins={pins} showMarkers={showHtmlMarkers} layerToggles={layerToggles} />;
   }
 
@@ -193,8 +204,8 @@ export function SituationMap(props: SituationMapProps): ReactElement {
     ) : null;
 
   return (
-    <div className="relative h-full min-h-[min(52vh,560px)] min-h-[320px] w-full flex-1">
-      <div ref={containerRef} className="absolute inset-0 min-h-[280px]" />
+    <div className="relative h-full min-h-[max(420px,min(52vh,560px))] w-full flex-1">
+      <div ref={containerRef} className="absolute inset-0 min-h-[400px]" />
       {gisHud}
       {pins.length > 0 ? (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 text-[10px] font-mono text-zinc-300 backdrop-blur-sm">

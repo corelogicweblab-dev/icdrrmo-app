@@ -132,8 +132,8 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
   }, []);
 
   return (
-    <div className="relative flex h-full min-h-[min(52vh,560px)] min-h-[320px] w-full flex-1 flex-col">
-      <div ref={containerRef} className="absolute inset-0 min-h-[280px] z-0" />
+    <div className="relative h-full min-h-[420px] w-full flex-1 flex-col">
+      <div ref={containerRef} className="absolute inset-0 min-h-[400px] z-0" />
       <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-[500] flex flex-wrap items-end justify-between gap-2">
         <div className="max-w-[min(100%,420px)] rounded-lg border border-white/10 bg-black/70 px-2.5 py-2 text-[10px] leading-snug text-zinc-200 backdrop-blur-sm">
           <span className="font-semibold text-rose-300/95">EOC</span>
@@ -147,7 +147,7 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
           </p>
         </div>
         <div className="rounded-lg border border-amber-500/25 bg-amber-950/40 px-2 py-1.5 text-[9px] text-amber-100/90 backdrop-blur-sm">
-          OSM fallback — English basemap (Esri) · Mapbox token enables clusters / heatmap
+          English-first street basemap (Esri)
         </div>
       </div>
     </div>

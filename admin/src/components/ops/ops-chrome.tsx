@@ -4,27 +4,13 @@ import type { ReactElement, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Database,
-  Headphones,
-  LogOut,
-  Maximize2,
-  Minimize2,
-  Radio,
-  RefreshCw,
-  Server,
-  Volume2,
-  VolumeX,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
-import { getApiBaseUrl, getHealthCheckUrl } from "@/lib/env";
+import { LogOut, Maximize2, Minimize2, Radio, RefreshCw, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/env";
 import { OPS_NAV_SECTIONS, OPS_PAGE_TITLES } from "@/components/ops/ops-nav";
 import { isOpsGlobalAdmin } from "@/lib/decode-jwt-role";
 import { useOpsSession } from "@/components/ops/ops-session-context";
-import { decodeJwtEmail, formatOpsClock, formatOpsSync } from "@/components/ops/ops-format";
+import { decodeJwtEmail, formatOpsClock } from "@/components/ops/ops-format";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
-import { OpsStatusCapsule } from "@/components/ops/ops-widgets";
 import { OpsVoiceRingOverlay } from "@/components/ops/ops-voice-ring-overlay";
 
 export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
@@ -38,8 +24,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
     refreshQueue,
     tokens,
     apiReachable,
-    lastHealthAt,
-    lastSocketAt,
     now,
     soundMuted,
     setSoundMuted,
@@ -55,8 +39,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
       items: sec.items.filter((it) => (it.href === "/ops/system" ? admin : true)),
     }));
   }, [tokens?.accessToken]);
-
-  const showInfraHealthRow = isOpsGlobalAdmin(tokens?.accessToken);
 
   const sessionLabel = tokens?.accessToken
     ? decodeJwtEmail(tokens.accessToken) ?? "Ops session"
@@ -241,34 +223,6 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                 </button>
               </div>
             </div>
-            {showInfraHealthRow ? (
-              <div className="hidden sm:flex flex-wrap items-center gap-2 border-t border-white/[0.04] pt-2">
-                <OpsStatusCapsule
-                  icon={Database}
-                  label="PostgreSQL"
-                  state={apiReachable === false ? "bad" : apiReachable ? "good" : "idle"}
-                  detail={lastHealthAt ? `Ready · ${formatOpsSync(lastHealthAt)}` : `GET ${getHealthCheckUrl()}`}
-                />
-                <OpsStatusCapsule
-                  icon={Server}
-                  label="Live channel"
-                  state={socketState === "live" ? "good" : socketState === "error" ? "bad" : "idle"}
-                  detail={
-                    socketState === "live"
-                      ? `Ops · ${formatOpsSync(lastSocketAt)}`
-                      : socketState === "error"
-                        ? wsErrorDetail ?? "Fault"
-                        : "Standby"
-                  }
-                />
-                <OpsStatusCapsule
-                  icon={Headphones}
-                  label="Voice bridge"
-                  state="idle"
-                  detail="WebRTC / Agora — configure in Voice panel"
-                />
-              </div>
-            ) : null}
           </div>
         </header>
 
