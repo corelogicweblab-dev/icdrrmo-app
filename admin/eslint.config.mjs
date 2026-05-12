@@ -10,6 +10,8 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Local Flutter checkout under admin (see root .gitignore); must not be linted.
+  { ignores: ["src/flutter/**", ".next/**", "out/**", "node_modules/**"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 

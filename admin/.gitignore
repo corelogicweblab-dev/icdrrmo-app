@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# Never lint or track a Flutter SDK copy parked under src (breaks next export)
+/src/flutter/
+
 # production
 /build
 
