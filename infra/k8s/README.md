@@ -17,7 +17,7 @@ The flat manifests below remain a minimal reference.
 ```bash
 kubectl apply -f namespace.yaml
 kubectl apply -f configmap.yaml
-# Create secret icdrrmo-secrets (DATABASE_URL, JWT_SECRET, FIREBASE_SERVICE_ACCOUNT_JSON, …)
+# Create secret icdrrmo-secrets (DATABASE_URL, JWT_ACCESS_SECRET, FIREBASE_SERVICE_ACCOUNT_JSON, …)
 kubectl apply -f api-deployment.yaml
 kubectl apply -f admin-deployment.yaml
 kubectl apply -f ingress.yaml

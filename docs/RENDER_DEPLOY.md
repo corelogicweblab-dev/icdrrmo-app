@@ -1,5 +1,19 @@
 # Deploy ICDRRMO API on Render (Docker)
 
+## If deploy exits: `JWT_ACCESS_SECRET does not exist`
+
+The API **will not start** without a JWT signing key. In Render → **Environment**:
+
+| Key | Value |
+|-----|--------|
+| `JWT_ACCESS_SECRET` | Long random string, 32+ chars. Example (PowerShell): `[Convert]::ToBase64String((1..48 \| ForEach-Object { Get-Random -Maximum 256 }))` or `openssl rand -base64 48` |
+
+Remove legacy `JWT_SECRET` if present — use **`JWT_ACCESS_SECRET`** only (the server maps `JWT_SECRET` temporarily if you forgot to rename).
+
+After saving env vars, **Manual Deploy** the service. Health check: `/api/v1/health`.
+
+Optional: repo root **`render.yaml`** can provision `JWT_ACCESS_SECRET` via `generateValue: true` when using a Render Blueprint.
+
 ## Prisma schema
 
 The Prisma schema is **`backend/prisma/schema.prisma`**. It already exists — do not replace it with a minimal model file.

@@ -1,3 +1,7 @@
+import { bootstrapEnv } from './bootstrap-env';
+
+bootstrapEnv();
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
