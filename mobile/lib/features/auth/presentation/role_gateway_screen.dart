@@ -5,6 +5,7 @@ import '../../../core/auth/jwt_decode.dart';
 import '../../../core/bootstrap/global_store.dart';
 import '../../../core/branding.dart';
 import '../../../core/navigation/routes.dart';
+import '../../../core/theme/icd_colors.dart';
 import '../../../core/network/dio_provider.dart';
 
 /// Same entry experience as web `/` — always the first screen on cold start (see [IcdrrmoApp]).
@@ -55,14 +56,14 @@ class RoleGatewayScreen extends ConsumerWidget {
                       height: 120,
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: Colors.black.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                        border: Border.all(color: IcdColors.orange.withValues(alpha: 0.45)),
                         boxShadow: [
                           BoxShadow(
-                            color: scheme.primary.withValues(alpha: 0.35),
+                            color: IcdColors.red.withValues(alpha: 0.4),
                             blurRadius: 40,
-                            spreadRadius: -12,
+                            spreadRadius: -8,
                           ),
                         ],
                       ),
@@ -82,7 +83,7 @@ class RoleGatewayScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             letterSpacing: 3.5,
-                            color: const Color(0xFFfda4af),
+                            color: IcdColors.orangeGlow,
                           ),
                     ),
                     const SizedBox(height: 10),
@@ -235,7 +236,7 @@ class _GatewayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF09090b).withValues(alpha: 0.65),
+      color: const Color(0xF00A0604),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -243,7 +244,14 @@ class _GatewayCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+            border: Border.all(color: IcdColors.orange.withValues(alpha: 0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: IcdColors.orange.withValues(alpha: 0.08),
+                blurRadius: 24,
+                spreadRadius: -4,
+              ),
+            ],
           ),
           padding: const EdgeInsets.all(20),
           constraints: const BoxConstraints(minHeight: 200),
@@ -256,10 +264,10 @@ class _GatewayCard extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                      color: Colors.white.withValues(alpha: 0.04),
+                      border: Border.all(color: IcdColors.orange.withValues(alpha: 0.35)),
+                      color: IcdColors.orange.withValues(alpha: 0.08),
                     ),
-                    child: Icon(icon, color: const Color(0xFFfecdd3), size: 26),
+                    child: Icon(icon, color: IcdColors.orangeGlow, size: 26),
                   ),
                   const Spacer(),
                   Icon(Icons.arrow_forward_rounded, color: Colors.white.withValues(alpha: 0.25), size: 22),
@@ -271,7 +279,7 @@ class _GatewayCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1.2,
-                      color: const Color(0xFFfb7185),
+                      color: IcdColors.orange,
                     ),
               ),
               const SizedBox(height: 6),

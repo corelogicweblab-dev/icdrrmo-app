@@ -7,7 +7,9 @@ import '../../../core/branding.dart';
 import '../../../core/bootstrap/global_store.dart';
 import '../../../core/config/web_portal_config.dart';
 import '../../../core/navigation/routes.dart';
-import '../../../core/storage/token_storage.dart';
+import '../../../core/network/dio_provider.dart';
+import '../../../core/theme/icd_colors.dart';
+import '../../../core/widgets/icd_hud_card.dart';
 import '../data/auth_repository.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -83,6 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Sign in'),
         leading: IconButton(
@@ -91,35 +94,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         children: [
           Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.asset(
-                IcdrrmoBranding.logoAsset,
-                width: 88,
-                height: 88,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(Icons.shield_outlined, size: 72, color: Theme.of(context).colorScheme.primary),
+            child: Container(
+              width: 100,
+              height: 100,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: IcdColors.orange.withValues(alpha: 0.45)),
+                boxShadow: [
+                  BoxShadow(color: IcdColors.red.withValues(alpha: 0.35), blurRadius: 32, spreadRadius: -4),
+                ],
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  IcdrrmoBranding.logoAsset,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.shield_outlined, size: 64, color: IcdColors.orange),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 20),
-          Text('Session persistence', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.tertiary)),
-          TextFormField(controller: email, decoration: const InputDecoration(labelText: 'Email'), keyboardType: TextInputType.emailAddress),
-          TextFormField(controller: password, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          Text(
+            'SECURE CHANNEL',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  letterSpacing: 3,
+                  color: IcdColors.orangeGlow,
+                ),
+          ),
+          const SizedBox(height: 16),
+          IcdHudCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Account sign-in',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Citizens stay in-app. Responders, operators, and chairmen open the web console after login.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: email,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: password,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+                ],
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: loading ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: IcdColors.orangeDim,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: loading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: IcdColors.white),
+                        )
+                      : const Text('Continue'),
+                ),
+              ],
             ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: loading ? null : _submit,
-            child: loading
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Login'),
           ),
           TextButton(
             onPressed: () => Navigator.pushNamed(context, Routes.register),

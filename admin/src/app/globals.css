@@ -10,7 +10,7 @@
   --icd-black: #030303;
   --ops-accent: #ea580c;
   --ops-accent-dim: rgba(249, 115, 22, 0.14);
-  --ops-grid: rgba(249, 115, 22, 0.06);
+  --ops-grid: rgba(249, 115, 22, 0.14);
   --icd-panel-bg: rgba(8, 8, 8, 0.92);
   --icd-text-shadow: 0 1px 14px rgba(0, 0, 0, 0.92);
 }
@@ -34,10 +34,10 @@ body {
   overflow: hidden;
   background-color: #030303;
   background-image:
-    radial-gradient(ellipse 120% 85% at 12% -8%, rgba(249, 115, 22, 0.28), transparent 50%),
-    radial-gradient(ellipse 95% 70% at 92% 5%, rgba(220, 38, 38, 0.22), transparent 48%),
-    radial-gradient(ellipse 80% 55% at 50% 110%, rgba(234, 88, 12, 0.14), transparent 58%),
-    linear-gradient(180deg, rgba(3, 3, 3, 0.4) 0%, rgba(3, 3, 3, 0.95) 72%),
+    radial-gradient(ellipse 120% 85% at 12% -8%, rgba(249, 115, 22, 0.52), transparent 52%),
+    radial-gradient(ellipse 95% 70% at 92% 5%, rgba(220, 38, 38, 0.42), transparent 50%),
+    radial-gradient(ellipse 80% 55% at 50% 110%, rgba(234, 88, 12, 0.28), transparent 58%),
+    linear-gradient(180deg, rgba(3, 3, 3, 0.15) 0%, rgba(3, 3, 3, 0.88) 72%),
     linear-gradient(var(--ops-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--ops-grid) 1px, transparent 1px);
   background-size: auto, auto, auto, auto, 40px 40px, 40px 40px;
@@ -422,4 +422,247 @@ body {
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: rgba(251, 146, 60, 0.95);
+}
+
+/* —— Auth shell: split hero + HUD card (high-visibility futuristic) —— */
+
+.icd-auth-page {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+  color: #fafafa;
+}
+
+@media (min-width: 1024px) {
+  .icd-auth-page {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  }
+}
+
+.icd-auth-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    linear-gradient(var(--ops-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ops-grid) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%);
+}
+
+.icd-auth-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem 1.5rem 2.5rem;
+  border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+  background: linear-gradient(155deg, rgba(69, 10, 10, 0.75) 0%, rgba(8, 4, 2, 0.92) 42%, #030303 100%);
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .icd-auth-hero {
+    border-bottom: none;
+    border-right: 1px solid rgba(249, 115, 22, 0.25);
+    padding: 3rem 2.5rem;
+  }
+}
+
+.icd-auth-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(249, 115, 22, 0.35), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 100% 100%, rgba(220, 38, 38, 0.28), transparent 50%);
+  pointer-events: none;
+}
+
+.icd-auth-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .icd-auth-hero-inner {
+    margin: 0;
+  }
+}
+
+.icd-auth-title {
+  margin-top: 0.5rem;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.icd-auth-lead {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #a1a1aa;
+  max-width: 28rem;
+}
+
+.icd-auth-features {
+  margin-top: 1.75rem;
+  display: grid;
+  gap: 0.65rem;
+  font-size: 0.8rem;
+  color: #d4d4d8;
+}
+
+.icd-auth-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.icd-feature-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #f97316;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.9);
+  flex-shrink: 0;
+}
+
+.icd-role-chip-row {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.icd-role-chip {
+  border-radius: 9999px;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.08);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fdba74;
+}
+
+.icd-auth-status-bar {
+  margin-top: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.4rem 0.75rem;
+}
+
+.icd-auth-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem 2.5rem;
+}
+
+.icd-logo-pulse-wrap {
+  position: relative;
+  width: 8.5rem;
+  height: 8.5rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .icd-logo-pulse-wrap {
+    margin: 0;
+  }
+}
+
+.icd-logo-pulse-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  animation: icd-logo-ring-pulse 2.8s ease-in-out infinite;
+}
+
+.icd-logo-pulse-core {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.25rem;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 0 48px rgba(220, 38, 38, 0.35),
+    0 0 0 1px rgba(251, 146, 60, 0.4),
+    inset 0 0 32px rgba(249, 115, 22, 0.12);
+  padding: 0.5rem;
+}
+
+@keyframes icd-logo-ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.35);
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+    box-shadow: 0 0 28px rgba(220, 38, 38, 0.45);
+  }
+}
+
+.icd-hud-card {
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: linear-gradient(160deg, rgba(18, 10, 6, 0.96) 0%, rgba(3, 3, 3, 0.98) 60%);
+  padding: 1.75rem 1.5rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(249, 115, 22, 0.12),
+    0 24px 64px rgba(0, 0, 0, 0.65);
+}
+
+.icd-hud-card::before,
+.icd-hud-card::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+
+.icd-hud-card::before {
+  top: 8px;
+  left: 8px;
+  border-top: 2px solid #f97316;
+  border-left: 2px solid #f97316;
+  box-shadow: -4px -4px 16px rgba(249, 115, 22, 0.35);
+}
+
+.icd-hud-card::after {
+  right: 8px;
+  bottom: 8px;
+  border-right: 2px solid #dc2626;
+  border-bottom: 2px solid #dc2626;
+  box-shadow: 4px 4px 16px rgba(220, 38, 38, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icd-logo-pulse-ring {
+    animation: none;
+  }
 }

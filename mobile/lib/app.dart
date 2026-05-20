@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'core/bootstrap/global_store.dart';
 import 'core/theme/futuristic_background_layer.dart';
+import 'core/theme/icd_colors.dart';
+import 'core/theme/icd_theme.dart';
 import 'core/navigation/app_navigator_key.dart';
 import 'core/navigation/routes.dart';
 import 'features/auth/presentation/forgot_password_screen.dart';
@@ -28,17 +30,7 @@ class IcdrrmoApp extends StatelessWidget {
       title: 'ICDRRMO Citizen',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB91C1C), brightness: Brightness.dark),
-        useMaterial3: true,
-        canvasColor: Colors.transparent,
-        scaffoldBackgroundColor: Colors.transparent,
-        popupMenuTheme: const PopupMenuThemeData(
-          color: Color(0xFF27272a),
-          surfaceTintColor: Colors.transparent,
-          textStyle: TextStyle(color: Color(0xFFfafafa), fontSize: 14),
-        ),
-      ),
+      theme: IcdTheme.build(),
       builder: (context, child) {
         final store = gCitizenStore;
         var scale = 1.0;
@@ -66,7 +58,7 @@ class IcdrrmoApp extends StatelessWidget {
                         'Powered by: CoreLogic',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
+                              color: IcdColors.orangeGlow.withValues(alpha: 0.85),
                               letterSpacing: 0.4,
                             ),
                       ),
