@@ -6,6 +6,27 @@ import {
 } from '@nestjs/common';
 import Redis from 'ioredis';
 import { ISABELA_HAZARD_DISCLAIMER, ISABELA_HAZARD_ZONES } from './isabela-hazard-reference';
+import { PagasaRssService, type PagasaAdvisoryItem } from './pagasa-rss.service';
+
+export type OpenWeatherLayerConfig = {
+  id: string;
+  label: string;
+  urlTemplate: string;
+};
+
+export type EocWeatherBundle = {
+  situation: WeatherSituationSnapshot;
+  pagasa: {
+    source: string;
+    fetchedAt: string;
+    items: PagasaAdvisoryItem[];
+    upstreamError?: string;
+  };
+  openWeather: {
+    configured: boolean;
+    layers: OpenWeatherLayerConfig[];
+  };
+};
 
 /** CDRRMO reference point — Isabela City proper (WGS84). */
 const ISABELA_LAT = 6.70325;
@@ -110,6 +131,9 @@ function sleep(ms: number): Promise<void> {
 @Injectable()
 export class WeatherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WeatherService.name);
+
+  constructor(private readonly pagasa: PagasaRssService) {}
+
   private redis: Redis | null = null;
   /** Last successful JSON parse (no upstreamError). */
   private goodSnapshot: WeatherSituationSnapshot | null = null;
@@ -448,6 +472,37 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
         totalRainMm: Math.round(totalRain * 10) / 10,
         maxHourlyRainMm: Math.round(maxHourRain * 10) / 10,
       },
+    };
+  }
+
+  getOpenWeatherLayers(): { configured: boolean; layers: OpenWeatherLayerConfig[] } {
+    const key = process.env.OPENWEATHERMAP_API_KEY?.trim();
+    if (!key) {
+      return { configured: false, layers: [] };
+    }
+    const base = 'https://tile.openweathermap.org/map';
+    const tpl = (layer: string) =>
+      `${base}/${layer}/{z}/{x}/{y}.png?appid=${encodeURIComponent(key)}`;
+    return {
+      configured: true,
+      layers: [
+        { id: 'precipitation', label: 'Rain / precipitation', urlTemplate: tpl('precipitation_new') },
+        { id: 'clouds', label: 'Clouds', urlTemplate: tpl('clouds_new') },
+        { id: 'temp', label: 'Temperature', urlTemplate: tpl('temp_new') },
+        { id: 'wind', label: 'Wind', urlTemplate: tpl('wind_new') },
+      ],
+    };
+  }
+
+  async getEocWeatherBundle(): Promise<EocWeatherBundle> {
+    const [situation, pagasa] = await Promise.all([
+      this.getSituationSnapshot(),
+      this.pagasa.fetchAdvisories(),
+    ]);
+    return {
+      situation,
+      pagasa,
+      openWeather: this.getOpenWeatherLayers(),
     };
   }
 }

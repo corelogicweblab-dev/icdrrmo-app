@@ -10,13 +10,43 @@ import {
 } from '../common/ops-operator-scope';
 import { CreateEvacuationCenterDto } from './dto/create-evacuation-center.dto';
 import { UpdateEvacuationCenterDto } from './dto/update-evacuation-center.dto';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
 export class EvacuationCentersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogService,
+    private readonly realtime: RealtimeGateway,
   ) {}
+
+  private wsPayload(row: {
+    id: string;
+    name: string;
+    barangayId: string | null;
+    latitude: unknown;
+    longitude: unknown;
+    capacity: number | null;
+    occupancy: number;
+    contactPhone: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    barangay?: { name: string } | null;
+  }) {
+    return {
+      id: row.id,
+      name: row.name,
+      barangayId: row.barangayId,
+      barangayName: row.barangay?.name ?? null,
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+      capacity: row.capacity,
+      occupancy: row.occupancy,
+      contactPhone: row.contactPhone,
+      isActive: row.isActive,
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371;
@@ -117,6 +147,7 @@ export class EvacuationCentersService {
       ipAddress: meta.ip,
       userAgent: meta.ua,
     });
+    this.realtime.emitEvacuationCenterAdded(this.wsPayload(row));
     return row;
   }
 
@@ -168,6 +199,11 @@ export class EvacuationCentersService {
       ipAddress: meta.ip,
       userAgent: meta.ua,
     });
+    const { createdAt: _c, ...updated } = this.wsPayload({
+      ...row,
+      createdAt: existing.createdAt,
+    });
+    this.realtime.emitEvacuationCenterUpdated(updated);
     return row;
   }
 

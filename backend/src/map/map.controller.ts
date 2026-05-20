@@ -12,7 +12,13 @@ import { JwtPayload } from '../auth/types/jwt-payload.type';
 export class MapController {
   constructor(private readonly map: MapService) {}
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR, UserRole.RESPONDER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.OPERATOR,
+    UserRole.RESPONDER,
+    UserRole.BARANGAY_CHAIRMAN,
+  )
   @Get('ops-live')
   opsLive(@CurrentUser() actor: JwtPayload) {
     return this.map.opsLiveContext(actor);

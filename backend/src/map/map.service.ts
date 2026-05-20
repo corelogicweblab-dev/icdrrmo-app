@@ -42,6 +42,12 @@ export class MapService {
           include: { user: { include: { profile: { select: { barangayId: true } } } } },
         });
         bg = r?.user.profile?.barangayId ?? null;
+      } else if (actor.role === UserRole.BARANGAY_CHAIRMAN) {
+        const profile = await this.prisma.userProfile.findUnique({
+          where: { userId: actor.sub },
+          select: { barangayId: true },
+        });
+        bg = profile?.barangayId ?? null;
       } else {
         bg = await getOperatorBarangayId(this.prisma, actor);
       }
@@ -49,7 +55,9 @@ export class MapService {
         throw new ForbiddenException(
           actor.role === UserRole.RESPONDER
             ? 'Responder accounts need a barangay on their profile to load the scoped map.'
-            : OPERATOR_BARANGAY_REQUIRED,
+            : actor.role === UserRole.BARANGAY_CHAIRMAN
+              ? 'Chairman accounts need a barangay on their profile to load the scoped map.'
+              : OPERATOR_BARANGAY_REQUIRED,
         );
       }
       incidentWhere = {

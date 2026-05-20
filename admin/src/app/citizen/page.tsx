@@ -17,6 +17,7 @@ import {
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { PasswordInput } from "@/components/password-input";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
+import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
 import { loadBarangayPickList, barangayRegisterFields } from "@/lib/public-barangays";
@@ -900,6 +901,19 @@ export default function CitizenPage(): ReactElement {
                 </div>
               </div>
             </form>
+
+            {tokens ? (
+              <div className="rounded-2xl border border-orange-500/20 overflow-hidden">
+                <p className="px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80 bg-black/40 border-b border-orange-500/12">
+                  Evacuation & weather — your barangay
+                </p>
+                <EocUnifiedMap
+                  mode="citizen"
+                  accessToken={tokens.accessToken}
+                  mapHeight="min-h-[360px] h-[50vh]"
+                />
+              </div>
+            ) : null}
 
             {sosPanel && tokens ? (
               <div className="rounded-xl border border-orange-500/30 bg-orange-950/25 px-4 py-4 text-sm text-orange-100 space-y-1">

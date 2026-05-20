@@ -3,8 +3,7 @@
 import type { ReactElement } from "react";
 import Link from "next/link";
 import { useResponderSession, isResponderRole } from "@/components/responder/responder-session-context";
-import { EocLeafletMap } from "@/components/ops/eoc-leaflet-map";
-import { OpsPanelCard } from "@/components/ops/ops-widgets";
+import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
 
 export default function ResponderMapPage(): ReactElement {
   const { tokens } = useResponderSession();
@@ -27,10 +26,9 @@ export default function ResponderMapPage(): ReactElement {
   }
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <OpsPanelCard title="Responder map" subtitle="Barangay-scoped live layers · OSRM ETA">
-        <EocLeafletMap accessToken={access} />
-      </OpsPanelCard>
+    <div className="p-4 max-w-7xl mx-auto">
+      <h1 className="text-sm font-semibold text-white mb-3">Responder EOC map</h1>
+      <EocUnifiedMap mode="responder" accessToken={access} />
     </div>
   );
 }

@@ -249,4 +249,35 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   emitIncidentClosed(payload: { incidentId: string }): void {
     this.server.to('ops').emit('incident_closed', payload);
   }
+
+  emitEvacuationCenterAdded(payload: {
+    id: string;
+    name: string;
+    barangayId: string | null;
+    barangayName: string | null;
+    latitude: number;
+    longitude: number;
+    capacity: number | null;
+    occupancy: number;
+    contactPhone: string | null;
+    isActive: boolean;
+    createdAt: string;
+  }): void {
+    this.server.emit('evacuation_center_added', payload);
+  }
+
+  emitEvacuationCenterUpdated(payload: {
+    id: string;
+    name: string;
+    barangayId: string | null;
+    barangayName: string | null;
+    latitude: number;
+    longitude: number;
+    capacity: number | null;
+    occupancy: number;
+    contactPhone: string | null;
+    isActive: boolean;
+  }): void {
+    this.server.emit('evacuation_center_updated', payload);
+  }
 }

@@ -24,6 +24,7 @@ export function connectOpsRealtime(
   handlers: {
     onIncidentCreated: (p: IncidentCreatedPayload) => void;
     onIncidentUpdated?: (p: IncidentUpdatedPayload) => void;
+    onEvacuationCenterAdded?: (p: import("./eoc-realtime").EvacuationCenterWsPayload) => void;
     onConnectError: (err: Error) => void;
   },
 ): Socket {
@@ -39,6 +40,9 @@ export function connectOpsRealtime(
   socket.on("incident_created", handlers.onIncidentCreated);
   if (handlers.onIncidentUpdated) {
     socket.on("incident_updated", handlers.onIncidentUpdated);
+  }
+  if (handlers.onEvacuationCenterAdded) {
+    socket.on("evacuation_center_added", handlers.onEvacuationCenterAdded);
   }
   socket.on("connect_error", handlers.onConnectError);
   return socket;

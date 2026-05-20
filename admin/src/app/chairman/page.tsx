@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { ChairmanLeafletMap } from "@/components/chairman/chairman-leaflet-map";
+import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
 import {
   clearChairmanTokens,
   loadChairmanTokens,
@@ -362,6 +363,15 @@ export default function ChairmanDashboardPage(): ReactElement {
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Loading incidents…
           </p>
+        ) : null}
+
+        {tokens?.accessToken ? (
+          <section className="rounded-2xl icd-surface overflow-hidden">
+            <div className="border-b border-orange-500/12 px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80">
+              Barangay EOC map · weather · PAGASA · shelters
+            </div>
+            <EocUnifiedMap mode="chairman" accessToken={tokens.accessToken} mapHeight="min-h-[400px] h-[45vh]" />
+          </section>
         ) : null}
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-5">
