@@ -263,7 +263,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
               title="Isabela City weather forecast"
             />
             <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Meteogram and timeline controls are inside the viewer.{" "}
+              Radar on <span className="text-zinc-400">Rain</span> tab · Open-Meteo metrics in desk chrome.{" "}
               <Link href="/ops/weather" className="text-orange-400 hover:underline">
                 Open full desk map
               </Link>

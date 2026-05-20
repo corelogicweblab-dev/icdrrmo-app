@@ -64,8 +64,8 @@ export default function OpsWeatherPage(): ReactElement {
                   onClick={() => setOverlay(o.id)}
                   className={
                     active
-                      ? "min-h-[2.5rem] rounded-xl border border-cyan-400/50 bg-gradient-to-br from-cyan-500/25 via-cyan-950/50 to-black px-3 py-1.5 text-left ring-2 ring-cyan-400/40 shadow-[0_0_14px_rgba(34,211,238,0.25)]"
-                      : "min-h-[2.5rem] rounded-xl border border-orange-500/15 bg-zinc-900/40 px-3 py-1.5 text-left text-zinc-400 hover:border-white/15 hover:bg-zinc-800/50 hover:text-zinc-200"
+                      ? "min-h-[2.5rem] rounded-xl border border-orange-400/50 bg-gradient-to-br from-orange-500/25 via-orange-950/50 to-black px-3 py-1.5 text-left ring-2 ring-orange-400/40 shadow-[0_0_14px_rgba(249,115,22,0.25)]"
+                      : "min-h-[2.5rem] rounded-xl border border-orange-500/15 bg-zinc-900/40 px-3 py-1.5 text-left text-zinc-400 hover:border-orange-500/25 hover:bg-zinc-800/50 hover:text-zinc-200"
                   }
                 >
                   <span className="block text-[11px] font-semibold text-white">{o.label}</span>
@@ -145,8 +145,8 @@ export default function OpsWeatherPage(): ReactElement {
               <span>
                 <strong className="text-zinc-300">RainViewer</strong> on <strong className="text-zinc-300">Ops → Map</strong>{" "}
                 stays tuned for <strong className="text-zinc-300">radar mosaic</strong> and cell playback. This page
-                uses a <strong className="text-zinc-300">forecast desk embed</strong> so you get wind particles,
-                temperature shading, and city readouts similar to national briefing maps.
+                uses the <strong className="text-zinc-300">ICDRRMO weather desk</strong> (Leaflet + Open-Meteo +
+                RainViewer radar) — no third-party map branding in the viewer.
               </span>
             </li>
             <li className="flex gap-3">
