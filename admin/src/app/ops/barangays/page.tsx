@@ -128,9 +128,9 @@ export default function OpsBarangaysPage(): ReactElement {
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading…
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <div className="overflow-x-auto rounded-xl border border-orange-500/12">
             <table className="w-full min-w-[720px] text-left text-[13px] text-zinc-300">
-              <thead className="border-b border-white/[0.06] bg-black/30 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <thead className="border-b border-orange-500/12 bg-black/30 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 <tr>
                   <th className="px-3 py-2">Barangay</th>
                   <th className="px-3 py-2">Code</th>
@@ -162,7 +162,7 @@ export default function OpsBarangaysPage(): ReactElement {
                               }))
                             }
                           />
-                          <Waves className="h-4 w-4 text-sky-400" aria-hidden />
+                          <Waves className="h-4 w-4 text-orange-400" aria-hidden />
                         </label>
                       </td>
                       <td className="px-3 py-2">
@@ -184,7 +184,7 @@ export default function OpsBarangaysPage(): ReactElement {
                       </td>
                       <td className="px-3 py-2">
                         <textarea
-                          className="mb-1 w-full min-h-[52px] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600"
+                          className="mb-1 w-full min-h-[52px] rounded-lg border border-orange-500/20 bg-black/40 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600"
                           placeholder="Flood message (routes, evacuation, avoid areas)…"
                           value={m.opsFloodMessage ?? ""}
                           disabled={dis}
@@ -196,7 +196,7 @@ export default function OpsBarangaysPage(): ReactElement {
                           }
                         />
                         <textarea
-                          className="w-full min-h-[52px] rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600"
+                          className="w-full min-h-[52px] rounded-lg border border-orange-500/20 bg-black/40 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600"
                           placeholder="Red zone message (stay out, checkpoints)…"
                           value={m.opsRedZoneMessage ?? ""}
                           disabled={dis}

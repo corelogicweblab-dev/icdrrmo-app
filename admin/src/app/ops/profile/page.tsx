@@ -156,7 +156,7 @@ export default function OpsProfilePage(): ReactElement {
           </p>
         </div>
         {me ? (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-wide text-zinc-400">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-wide text-zinc-400">
             <Shield className="h-3.5 w-3.5 text-rose-400" aria-hidden />
             {me.role}
           </span>
@@ -164,7 +164,7 @@ export default function OpsProfilePage(): ReactElement {
       </div>
 
       {err ? <p className="text-sm text-rose-300/90">{err}</p> : null}
-      {saved ? <p className="text-xs text-emerald-400/90">Profile saved.</p> : null}
+      {saved ? <p className="text-xs text-orange-400/90">Profile saved.</p> : null}
 
       {!me ? (
         <div className="flex items-center gap-2 text-zinc-500 text-sm">
@@ -181,7 +181,7 @@ export default function OpsProfilePage(): ReactElement {
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                     required
                   />
                 </label>
@@ -198,7 +198,7 @@ export default function OpsProfilePage(): ReactElement {
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                     placeholder="+639…"
                   />
                 </label>
@@ -207,7 +207,7 @@ export default function OpsProfilePage(): ReactElement {
                   <select
                     value={barangayId}
                     onChange={(e) => setBarangayId(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                   >
                     <option value="">— Select —</option>
                     {barangays.map((b) => (
@@ -222,7 +222,7 @@ export default function OpsProfilePage(): ReactElement {
                   <input
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                   />
                 </label>
               </div>
@@ -235,7 +235,7 @@ export default function OpsProfilePage(): ReactElement {
                   <select
                     value={bloodType}
                     onChange={(e) => setBloodType(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100"
                   >
                     {BLOOD.map((b) => (
                       <option key={b} value={b}>
@@ -249,7 +249,7 @@ export default function OpsProfilePage(): ReactElement {
                   <select
                     value={availabilityStatus}
                     onChange={(e) => setAvailabilityStatus(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100"
                   >
                     {AVAIL.map((a) => (
                       <option key={a} value={a}>
@@ -264,7 +264,7 @@ export default function OpsProfilePage(): ReactElement {
                     value={allergies}
                     onChange={(e) => setAllergies(e.target.value)}
                     rows={2}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                   />
                 </label>
                 <label className="block space-y-1.5 sm:col-span-2">
@@ -273,7 +273,7 @@ export default function OpsProfilePage(): ReactElement {
                     value={medicalConditions}
                     onChange={(e) => setMedicalConditions(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                   />
                 </label>
                 <label className="block space-y-1.5 sm:col-span-2">
@@ -282,7 +282,7 @@ export default function OpsProfilePage(): ReactElement {
                     value={emergencyNotes}
                     onChange={(e) => setEmergencyNotes(e.target.value)}
                     rows={2}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                   />
                 </label>
                 <label className="block space-y-1.5 sm:col-span-2">
@@ -292,7 +292,7 @@ export default function OpsProfilePage(): ReactElement {
                   <input
                     value={profilePhotoUrl}
                     onChange={(e) => setProfilePhotoUrl(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs font-mono text-zinc-200 outline-none focus:border-rose-500/40"
+                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-xs font-mono text-zinc-200 outline-none focus:border-rose-500/40"
                     placeholder="https://…"
                   />
                 </label>
@@ -304,7 +304,7 @@ export default function OpsProfilePage(): ReactElement {
                 <dl className="grid gap-2 text-sm text-zinc-300">
                   <div className="flex justify-between gap-4">
                     <dt className="text-zinc-500">Field status</dt>
-                    <dd className="font-mono text-xs text-sky-200">{me.responder.status}</dd>
+                    <dd className="font-mono text-xs text-orange-200">{me.responder.status}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
                     <dt className="text-zinc-500">Vehicle</dt>
@@ -343,7 +343,7 @@ export default function OpsProfilePage(): ReactElement {
               <ul className="space-y-3 max-h-[420px] overflow-y-auto text-xs">
                 {me.notifications?.length ? (
                   me.notifications.map((n) => (
-                    <li key={n.id} className="rounded-lg border border-white/[0.06] bg-black/30 p-2.5">
+                    <li key={n.id} className="rounded-lg border border-orange-500/12 bg-black/30 p-2.5">
                       <p className="font-medium text-zinc-200">{n.title}</p>
                       <p className="text-zinc-500 mt-1 leading-snug">{n.body}</p>
                       <p className="text-[10px] text-zinc-600 mt-1.5">

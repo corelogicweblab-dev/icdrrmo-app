@@ -10,10 +10,10 @@ export default function OpsMediaPage(): ReactElement {
       <OpsPanelCard title="Evidence vault" subtitle="Photos · video · OCR documents · ID verification">
         <ul className="space-y-3 text-sm text-zinc-300">
           <li className="flex gap-3">
-            <FileImage className="h-5 w-5 text-sky-400 shrink-0" aria-hidden /> EXIF-preserving originals + signed URLs
+            <FileImage className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> EXIF-preserving originals + signed URLs
           </li>
           <li className="flex gap-3">
-            <Video className="h-5 w-5 text-emerald-400 shrink-0" aria-hidden /> HLS chunked playback for bodycam offload
+            <Video className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> HLS chunked playback for bodycam offload
           </li>
           <li className="flex gap-3">
             <FolderArchive className="h-5 w-5 text-amber-400 shrink-0" aria-hidden /> Bundle export for legal discovery

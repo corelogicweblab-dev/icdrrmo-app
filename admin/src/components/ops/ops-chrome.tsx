@@ -76,8 +76,8 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
       data-icdrrmo-console="ops-v2-command-board"
     >
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-orange-500/15 bg-[#050505]">
-        <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10 overflow-hidden p-0.5">
+        <div className="flex items-center gap-3 border-b border-orange-500/12 px-4 py-3.5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl icd-logo-ring overflow-hidden p-0.5">
             <IcdrrmoLogo size={36} className="rounded-lg" />
           </div>
           <div className="min-w-0">
@@ -102,10 +102,8 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                       key={item.href}
                       href={item.href}
                       prefetch
-                      className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition outline-none ring-rose-500/30 focus-visible:ring-2 ${
-                        active
-                          ? "bg-white/[0.08] font-medium text-white ring-1 ring-rose-500/30 shadow-[inset_3px_0_0_rgba(225,29,72,0.9)]"
-                          : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+                      className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 ${
+                        active ? "icd-ops-nav-active" : "icd-ops-nav-idle"
                       }`}
                       aria-current={active ? "page" : undefined}
                     >
@@ -118,7 +116,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
             </div>
           ))}
         </div>
-        <div className="border-t border-white/[0.06] p-3 text-[9px] leading-relaxed text-zinc-600">
+        <div className="border-t border-orange-500/12 p-3 text-[9px] leading-relaxed text-zinc-600">
           Isabela City DRRMO · Multi-module EOC
           <span className="mt-1 block text-zinc-500">Powered by: CoreLogic</span>
         </div>
@@ -171,7 +169,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                     <span className="ml-1 rounded bg-black/35 px-1 font-mono tabular-nums">{sosAlerts || openCount}</span>
                   </span>
                 ) : (
-                  <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-500">
+                  <span className="inline-flex rounded-lg border border-orange-500/20 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-500">
                     Clear
                   </span>
                 )}
@@ -179,12 +177,12 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                   type="button"
                   aria-label={soundMuted ? "Enable alert sound" : "Mute alert sound"}
                   onClick={() => setSoundMuted(!soundMuted)}
-                  className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] p-2 text-zinc-300 hover:bg-white/[0.08]"
+                  className="inline-flex items-center rounded-lg border border-orange-500/20 bg-white/[0.04] p-2 text-zinc-300 hover:bg-white/[0.08]"
                 >
                   {soundMuted ? (
                     <VolumeX className="h-4 w-4 text-rose-400" aria-hidden />
                   ) : (
-                    <Volume2 className="h-4 w-4 text-emerald-300" aria-hidden />
+                    <Volume2 className="h-4 w-4 text-orange-300" aria-hidden />
                   )}
                 </button>
                 <span className="hidden md:inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-950/15 px-2 py-1 text-[10px] text-amber-100/90">
@@ -193,14 +191,14 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                   </span>
                   31°C · HI 36
                 </span>
-                <span className="hidden xl:inline-flex max-w-[200px] truncate rounded-lg border border-white/10 bg-zinc-950/80 px-2 py-1 text-[10px] text-zinc-400">
+                <span className="hidden xl:inline-flex max-w-[200px] truncate rounded-lg border border-orange-500/20 bg-zinc-950/80 px-2 py-1 text-[10px] text-zinc-400">
                   {sessionLabel}
                 </span>
                 <button
                   type="button"
                   aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
                   onClick={() => void toggleFullscreen()}
-                  className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] p-2 text-zinc-300 hover:bg-white/[0.08]"
+                  className="inline-flex items-center rounded-lg border border-orange-500/20 bg-white/[0.04] p-2 text-zinc-300 hover:bg-white/[0.08]"
                 >
                   {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
@@ -208,7 +206,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                   type="button"
                   onClick={() => tokens?.accessToken && void refreshQueue(tokens.accessToken)}
                   disabled={queueLoading || !tokens}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-medium text-zinc-200 hover:bg-white/[0.07] disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg border border-orange-500/20 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-medium text-zinc-200 hover:bg-white/[0.07] disabled:opacity-40"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${queueLoading ? "animate-spin" : ""}`} aria-hidden />
                   Sync
@@ -228,7 +226,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
 
         <nav
           aria-label="Operational modules"
-          className="lg:hidden shrink-0 border-b border-white/[0.06] bg-[#09090c] overflow-x-auto scroll-ops"
+          className="lg:hidden shrink-0 border-b border-orange-500/12 bg-ops-rail overflow-x-auto scroll-ops"
         >
           <ul className="flex gap-px px-1 py-2 min-w-max">
             {navSections.flatMap((sec) => sec.items).map((item) => {

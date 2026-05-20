@@ -38,7 +38,7 @@ export function OpsShellGate({ children }: { children: ReactNode }): ReactElemen
         <button
           type="button"
           onClick={() => logout()}
-          className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-zinc-100 hover:bg-white/[0.1]"
+          className="rounded-lg border border-orange-500/20 bg-white/[0.06] px-4 py-2 text-sm text-zinc-100 hover:bg-white/[0.1]"
         >
           Sign out
         </button>

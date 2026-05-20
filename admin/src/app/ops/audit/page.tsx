@@ -15,7 +15,7 @@ export default function OpsAuditPage(): ReactElement {
       <OpsPanelCard title="Immutable audit ledger" subtitle="Admin edits · dispatch · sessions" className="lg:col-span-8">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-[11px]">
-            <thead className="text-zinc-500 uppercase tracking-wider border-b border-white/[0.06]">
+            <thead className="text-zinc-500 uppercase tracking-wider border-b border-orange-500/12">
               <tr>
                 <th className="py-2 pr-4 font-medium">UTC</th>
                 <th className="py-2 pr-4 font-medium">Actor</th>
@@ -45,10 +45,10 @@ export default function OpsAuditPage(): ReactElement {
             <KeyRound className="h-4 w-4 text-rose-400" aria-hidden /> Login attempts + MFA rollout
           </li>
           <li className="flex gap-2">
-            <UserCog className="h-4 w-4 text-sky-400" aria-hidden /> Role mutation trail
+            <UserCog className="h-4 w-4 text-orange-400" aria-hidden /> Role mutation trail
           </li>
           <li className="flex gap-2">
-            <Globe className="h-4 w-4 text-emerald-400" aria-hidden /> External API bearer usage
+            <Globe className="h-4 w-4 text-orange-400" aria-hidden /> External API bearer usage
           </li>
           <li className="flex gap-2">
             <Shield className="h-4 w-4 text-zinc-500" aria-hidden /> SIEM webhook (planned)

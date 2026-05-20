@@ -103,9 +103,9 @@ export default function OpsSystemPage(): ReactElement {
         <ul className="space-y-3 text-sm text-zinc-300">
           <li className="flex justify-between gap-4">
             <span className="flex items-center gap-2">
-              <Server className="h-4 w-4 text-sky-400" aria-hidden /> Emergency API (browser)
+              <Server className="h-4 w-4 text-orange-400" aria-hidden /> Emergency API (browser)
             </span>
-            <span className={apiReachable ? "text-emerald-400 font-mono text-xs" : "text-rose-400 font-mono text-xs"}>
+            <span className={apiReachable ? "text-orange-400 font-mono text-xs" : "text-rose-400 font-mono text-xs"}>
               {apiReachable === null ? "…" : apiReachable ? "UP" : "DOWN"}
             </span>
           </li>
@@ -115,7 +115,7 @@ export default function OpsSystemPage(): ReactElement {
             </span>
             <span
               className={
-                metrics?.database?.reachable ? "text-emerald-400 font-mono text-xs" : "text-zinc-500 font-mono text-xs"
+                metrics?.database?.reachable ? "text-orange-400 font-mono text-xs" : "text-zinc-500 font-mono text-xs"
               }
             >
               {metrics == null ? "…" : metrics.database?.reachable ? "reachable" : "unreachable"}
@@ -131,7 +131,7 @@ export default function OpsSystemPage(): ReactElement {
           </li>
           <li className="flex justify-between gap-4">
             <span className="flex items-center gap-2">
-              <Wifi className="h-4 w-4 text-emerald-400" aria-hidden /> Live channel
+              <Wifi className="h-4 w-4 text-orange-400" aria-hidden /> Live channel
             </span>
             <span className="font-mono text-xs text-zinc-400">{socketState === "live" ? "connected" : socketState}</span>
           </li>
@@ -154,7 +154,7 @@ export default function OpsSystemPage(): ReactElement {
             type="button"
             onClick={() => void load()}
             disabled={busy || !tokens?.accessToken}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
             Refresh
@@ -162,14 +162,14 @@ export default function OpsSystemPage(): ReactElement {
         </div>
         <ul className="space-y-2 text-xs text-zinc-400 font-mono">
           <li className="flex gap-2">
-            <Cpu className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden />
+            <Cpu className="h-4 w-4 text-orange-400 shrink-0" aria-hidden />
             PID {metrics?.pid ?? "—"} · mode {metrics?.env?.nodeEnv ?? "—"}
           </li>
           <li className="flex gap-2">
-            <HardDrive className="h-4 w-4 text-sky-400 shrink-0" aria-hidden />
+            <HardDrive className="h-4 w-4 text-orange-400 shrink-0" aria-hidden />
             Uptime {metrics?.uptimeSec != null ? `${metrics.uptimeSec}s` : "—"}
           </li>
-          <li className="flex flex-col gap-1 border-t border-white/[0.06] pt-2">
+          <li className="flex flex-col gap-1 border-t border-orange-500/12 pt-2">
             <span className="text-zinc-500">Memory</span>
             <span>RSS {formatBytes(mem?.rss)}</span>
             <span>Heap {formatBytes(mem?.heapUsed)} / {formatBytes(mem?.heapTotal)}</span>
@@ -188,7 +188,7 @@ export default function OpsSystemPage(): ReactElement {
       <OpsPanelCard title="Merged log tail" subtitle="Recent audit and incident activity" className="lg:col-span-3">
         {logsMeta ? <p className="mb-2 text-[10px] text-zinc-600">{logsMeta}</p> : null}
         {logsErr ? <p className="mb-2 text-xs text-rose-400/90">{logsErr}</p> : null}
-        <pre className="max-h-[min(52vh,480px)] overflow-auto rounded-lg border border-white/[0.06] bg-black/50 p-3 text-[10px] leading-relaxed text-zinc-300 font-mono whitespace-pre-wrap break-all">
+        <pre className="max-h-[min(52vh,480px)] overflow-auto rounded-lg border border-orange-500/12 bg-black/50 p-3 text-[10px] leading-relaxed text-zinc-300 font-mono whitespace-pre-wrap break-all">
           {logs.length === 0 && !busy ? "No log lines returned." : null}
           {logs.map((line, i) => (
             <div key={`${String(line.at)}-${i}`} className="border-b border-white/[0.04] py-1.5 last:border-0">

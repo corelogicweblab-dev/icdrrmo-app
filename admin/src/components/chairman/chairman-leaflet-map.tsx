@@ -109,17 +109,17 @@ export function ChairmanLeafletMap(props: Props): ReactElement {
           type="button"
           onClick={() => void drawRoute()}
           disabled={routeBusy}
-          className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-500 disabled:opacity-50"
         >
           <Navigation className="h-3.5 w-3.5" aria-hidden />
           {routeBusy ? "Routing…" : "Directions to incident"}
         </button>
         {routeEtaMin != null ? (
-          <span className="text-xs text-sky-300">~{routeEtaMin} min drive (estimate)</span>
+          <span className="text-xs text-orange-300">~{routeEtaMin} min drive (estimate)</span>
         ) : null}
       </div>
       {geoError ? <p className="text-xs text-amber-300">{geoError}</p> : null}
-      <div ref={mapEl} className="h-[min(52vh,420px)] w-full rounded-xl border border-white/10 overflow-hidden" />
+      <div ref={mapEl} className="h-[min(52vh,420px)] w-full rounded-xl border border-orange-500/20 overflow-hidden" />
     </div>
   );
 }

@@ -24,7 +24,7 @@ export default function OpsDispatchPage(): ReactElement {
       <OpsPanelCard title="911-style dispatch stack" subtitle="Nearest-unit suggestions + route optimization" className="lg:col-span-8">
         <div className="grid sm:grid-cols-2 gap-3">
           {TILES.map(({ label, icon: Icon }) => (
-            <div key={label} className="flex gap-3 rounded-xl border border-white/[0.06] bg-black/35 p-4">
+            <div key={label} className="flex gap-3 rounded-xl border border-orange-500/12 bg-black/35 p-4">
               <Icon className="h-5 w-5 text-rose-400 shrink-0" aria-hidden />
               <p className="text-sm text-zinc-300">{label}</p>
             </div>

@@ -50,8 +50,8 @@ export function CitizenSosVoiceLive(props: {
   }, [remoteStream]);
 
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/40 p-4 space-y-3">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300/90">
+    <div className="mt-4 rounded-xl border border-orange-500/15 bg-black/40 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-orange-300/90">
         <Radio className="h-4 w-4 shrink-0" aria-hidden />
         Browser voice to ops
       </div>
@@ -70,12 +70,12 @@ export function CitizenSosVoiceLive(props: {
           <span
             className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium ${
               status === "live"
-                ? "bg-emerald-950/50 text-emerald-200"
+                ? "bg-orange-950/50 text-orange-200"
                 : "bg-amber-950/40 text-amber-100 border border-amber-500/25"
             }`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full shrink-0 ${status === "live" ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`}
+              className={`h-1.5 w-1.5 rounded-full shrink-0 ${status === "live" ? "bg-orange-400 animate-pulse" : "bg-amber-400 animate-pulse"}`}
               aria-hidden
             />
             {status === "live" ? "Connected" : "Mic on"}

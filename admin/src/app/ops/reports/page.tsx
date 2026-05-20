@@ -19,7 +19,7 @@ export default function OpsReportsPage(): ReactElement {
             </button>
           ))}
         </div>
-        <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-sm text-zinc-500 flex flex-col items-center gap-3">
+        <div className="rounded-xl border border-dashed border-orange-500/20 p-12 text-center text-sm text-zinc-500 flex flex-col items-center gap-3">
           <History className="h-10 w-10 opacity-60" aria-hidden />
           Incident summaries and exports connect to the reporting service when enabled.
           <button
@@ -32,7 +32,7 @@ export default function OpsReportsPage(): ReactElement {
       </OpsPanelCard>
       <OpsPanelCard title="Heatmap replay">
         <p className="text-sm text-zinc-400 flex gap-2">
-          <Radar className="h-5 w-5 text-sky-400 shrink-0" aria-hidden /> Timeline GIS scrubber — hydrate Mapbox temporal
+          <Radar className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Timeline GIS scrubber — hydrate Mapbox temporal
           layer from archived coordinates.
         </p>
       </OpsPanelCard>

@@ -198,7 +198,7 @@ export function SituationMap(props: SituationMapProps): ReactElement {
 
   const gisHud =
     layerToggles !== undefined ? (
-      <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[200px] rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-[9px] font-mono text-zinc-400 backdrop-blur-sm">
+      <div className="pointer-events-none absolute right-3 top-3 z-10 max-w-[200px] rounded-lg border border-orange-500/20 bg-black/60 px-2.5 py-1.5 text-[9px] font-mono text-zinc-400 backdrop-blur-sm">
         Layers follow queue · {pins.length} geo pin{pins.length === 1 ? "" : "s"}
       </div>
     ) : null;
@@ -208,7 +208,7 @@ export function SituationMap(props: SituationMapProps): ReactElement {
       <div ref={containerRef} className="absolute inset-0 min-h-[400px]" />
       {gisHud}
       {pins.length > 0 ? (
-        <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 text-[10px] font-mono text-zinc-300 backdrop-blur-sm">
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-lg border border-orange-500/20 bg-black/55 px-2.5 py-1.5 text-[10px] font-mono text-zinc-300 backdrop-blur-sm">
           {pins.length} incident pin{pins.length === 1 ? "" : "s"}
         </div>
       ) : null}

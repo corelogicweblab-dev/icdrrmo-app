@@ -88,7 +88,7 @@ export function MapDispatchPanel(): ReactElement {
           <select
             value={incidentId}
             onChange={(e) => setIncidentId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
           >
             {incidents.map((i) => (
               <option key={i.id} value={i.id}>
@@ -102,7 +102,7 @@ export function MapDispatchPanel(): ReactElement {
           <select
             value={responderId}
             onChange={(e) => setResponderId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
           >
             <option value="">— Unassign / skip —</option>
             {responders.map((r) => (
@@ -117,7 +117,7 @@ export function MapDispatchPanel(): ReactElement {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
           >
             <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
             <option value="DISPATCHED">DISPATCHED</option>

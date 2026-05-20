@@ -134,7 +134,7 @@ export default function OpsRespondersPage(): ReactElement {
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200"
+            className="inline-flex items-center gap-2 rounded-lg border border-orange-500/20 px-3 py-1.5 text-xs text-zinc-200"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
             Refresh
@@ -149,7 +149,7 @@ export default function OpsRespondersPage(): ReactElement {
           </button>
         </div>
         {err ? <p className="mb-2 text-xs text-rose-300">{err}</p> : null}
-        <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+        <div className="overflow-x-auto rounded-lg border border-orange-500/12">
           <table className="min-w-full text-left text-xs">
             <thead className="bg-black/40 text-[10px] uppercase text-zinc-500">
               <tr>
@@ -168,7 +168,7 @@ export default function OpsRespondersPage(): ReactElement {
                   <td className="px-3 py-2 text-amber-200/90">{r.status}</td>
                   <td className="px-3 py-2 font-mono text-zinc-500">{r.vehicle?.plateNumber ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
-                    <button type="button" onClick={() => openEdit(r)} className="mr-2 p-1 text-sky-300 hover:bg-white/10">
+                    <button type="button" onClick={() => openEdit(r)} className="mr-2 p-1 text-orange-300 hover:bg-white/10">
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button type="button" onClick={() => void remove(r.id)} className="p-1 text-rose-300 hover:bg-white/10">
@@ -184,7 +184,7 @@ export default function OpsRespondersPage(): ReactElement {
 
       {modal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c0c0f] p-5">
+          <div className="w-full max-w-md rounded-2xl border border-orange-500/20 bg-ops-panel p-5">
             <div className="mb-4 flex items-center gap-2 text-white">
               <Users className="h-5 w-5 text-rose-400" aria-hidden />
               <h2 className="text-sm font-semibold">{modal === "create" ? "Link responder" : "Edit responder"}</h2>
@@ -196,7 +196,7 @@ export default function OpsRespondersPage(): ReactElement {
                   <select
                     value={userId}
                     onChange={(e) => setUserId(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                    className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                   >
                     <option value="">— select —</option>
                     {users
@@ -218,7 +218,7 @@ export default function OpsRespondersPage(): ReactElement {
                 <input
                   value={badge}
                   onChange={(e) => setBadge(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
@@ -226,7 +226,7 @@ export default function OpsRespondersPage(): ReactElement {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 >
                   {RESPONDER_STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -240,7 +240,7 @@ export default function OpsRespondersPage(): ReactElement {
                 <select
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 >
                   <option value="">— none —</option>
                   {vehicles.map((v) => (
@@ -252,7 +252,7 @@ export default function OpsRespondersPage(): ReactElement {
               </label>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setModal(null)} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-zinc-300">
+              <button type="button" onClick={() => setModal(null)} className="rounded-lg border border-orange-500/20 px-4 py-2 text-xs text-zinc-300">
                 Cancel
               </button>
               <button type="button" onClick={() => void submit()} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white">

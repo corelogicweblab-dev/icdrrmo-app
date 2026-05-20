@@ -335,7 +335,7 @@ export default function OpsIncidentsPage(): ReactElement {
                   className={`w-full text-left rounded-xl border px-3 py-3 transition border-l-[3px] ${
                     selectedId === row.id
                       ? "border-white/15 bg-white/[0.06] ring-1 ring-rose-500/30"
-                      : "border-white/[0.06] bg-black/25"
+                      : "border-orange-500/12 bg-black/25"
                   } ${incidentBorderClass(row.type)}`}
                 >
                   <div className="flex justify-between gap-2 items-start">
@@ -380,7 +380,7 @@ export default function OpsIncidentsPage(): ReactElement {
               <select
                 value={cType}
                 onChange={(e) => setCType(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm text-white"
               >
                 {EMERGENCY_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -394,7 +394,7 @@ export default function OpsIncidentsPage(): ReactElement {
               <input
                 value={cLat}
                 onChange={(e) => setCLat(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               />
             </label>
             <label className="block text-[10px] uppercase text-zinc-500">
@@ -402,7 +402,7 @@ export default function OpsIncidentsPage(): ReactElement {
               <input
                 value={cLng}
                 onChange={(e) => setCLng(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               />
             </label>
             <label className="block text-[10px] uppercase text-zinc-500 sm:col-span-2">
@@ -410,7 +410,7 @@ export default function OpsIncidentsPage(): ReactElement {
               <input
                 value={cTitle}
                 onChange={(e) => setCTitle(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm text-white"
               />
             </label>
             <label className="block text-[10px] uppercase text-zinc-500">
@@ -418,7 +418,7 @@ export default function OpsIncidentsPage(): ReactElement {
               <select
                 value={cStatus}
                 onChange={(e) => setCStatus(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm text-white"
               >
                 {["OPEN", "ACKNOWLEDGED", "DISPATCHED", "IN_PROGRESS"].map((s) => (
                   <option key={s} value={s}>
@@ -432,7 +432,7 @@ export default function OpsIncidentsPage(): ReactElement {
               <select
                 value={cBarangay}
                 onChange={(e) => setCBarangay(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm text-white"
               >
                 <option value="">—</option>
                 {barangays.map((b) => (
@@ -448,7 +448,7 @@ export default function OpsIncidentsPage(): ReactElement {
                 value={cDesc}
                 onChange={(e) => setCDesc(e.target.value)}
                 rows={2}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-2 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-2 py-2 text-sm text-white"
               />
             </label>
           </div>
@@ -474,7 +474,7 @@ export default function OpsIncidentsPage(): ReactElement {
           ].map(([title, sub, Icon]) => (
             <div
               key={title as string}
-              className="rounded-xl border border-white/[0.06] bg-zinc-950/60 px-4 py-3 flex gap-3"
+              className="rounded-xl icd-surface px-4 py-3 flex gap-3"
             >
               <Icon className="h-5 w-5 text-rose-400/90 shrink-0 mt-0.5" aria-hidden />
               <div>
@@ -496,7 +496,7 @@ export default function OpsIncidentsPage(): ReactElement {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <LocateFixed className="h-5 w-5 text-sky-400 shrink-0" aria-hidden />
+                  <LocateFixed className="h-5 w-5 text-orange-400 shrink-0" aria-hidden />
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-zinc-500">GPS coordinates</p>
                     <p className="font-mono text-sm text-zinc-200">
@@ -507,7 +507,7 @@ export default function OpsIncidentsPage(): ReactElement {
                   </div>
                 </div>
                 {selected.assigned?.user?.email ? (
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/15 px-3 py-2 text-[11px] text-emerald-100/90">
+                  <div className="rounded-lg border border-orange-500/20 bg-orange-950/15 px-3 py-2 text-[11px] text-orange-100/90">
                     <span className="text-zinc-500 uppercase text-[9px] tracking-wider">Assigned unit</span>
                     <p className="mt-1 font-medium">{selected.assigned.user.email}</p>
                   </div>
@@ -518,7 +518,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     Battery {selected.batteryLevel != null ? `${selected.batteryLevel}%` : "—"}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-zinc-400">
-                    <Crosshair className="h-4 w-4 text-emerald-300" aria-hidden />
+                    <Crosshair className="h-4 w-4 text-orange-300" aria-hidden />
                     Signal {selected.signalStrength != null ? `${selected.signalStrength}%` : "—"}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-zinc-400">
@@ -526,7 +526,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     Channel {(selected.channel ?? "—").replace(/_/g, " ")}
                   </div>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border border-white/[0.06] bg-black/30 p-3">
+                <div className="flex items-start gap-3 rounded-lg border border-orange-500/12 bg-black/30 p-3">
                   <UserCircle className="h-12 w-12 text-zinc-600 shrink-0" aria-hidden />
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-zinc-500">Reporter</p>
@@ -543,7 +543,7 @@ export default function OpsIncidentsPage(): ReactElement {
                     emergencyLabel={`${(selected.type ?? "UNKNOWN").replace(/_/g, " ")}${selected.title ? ` · ${selected.title}` : ""}`}
                   />
                 ) : (
-                  <p className="text-xs text-zinc-500 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-xs text-zinc-500 rounded-lg border border-orange-500/20 bg-black/20 px-3 py-2">
                     No GPS fix on this incident — EOC routing unavailable.
                   </p>
                 )}
@@ -554,7 +554,7 @@ export default function OpsIncidentsPage(): ReactElement {
                   socketLive={socketState === "live"}
                   autoJoinVoice={autoJoinVoiceOnce}
                 />
-                <div className="rounded-lg border border-dashed border-white/10 p-3 text-[11px] text-zinc-500">
+                <div className="rounded-lg border border-dashed border-orange-500/20 p-3 text-[11px] text-zinc-500">
                   <Binoculars className="inline h-4 w-4 mr-1 text-zinc-600 align-text-bottom" aria-hidden />
                   Evidence viewer: attach photos / video / documents (Media & Evidence panel). Document chain via audit
                   trail.
@@ -573,7 +573,7 @@ export default function OpsIncidentsPage(): ReactElement {
                         step.current
                           ? "border-rose-500/40 bg-rose-950/30 text-rose-100"
                           : step.done
-                            ? "border-emerald-500/20 bg-emerald-950/15 text-emerald-200/90"
+                            ? "border-orange-500/20 bg-orange-950/15 text-orange-200/90"
                             : "border-white/[0.05] text-zinc-600"
                       }`}
                     >
@@ -590,7 +590,7 @@ export default function OpsIncidentsPage(): ReactElement {
                   subscribed consoles.
                 </p>
 
-                <div className="mt-4 space-y-3 rounded-xl border border-white/[0.06] bg-black/30 p-4">
+                <div className="mt-4 space-y-3 rounded-xl border border-orange-500/12 bg-black/30 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">
                     Operations actions
                   </p>
@@ -645,7 +645,7 @@ export default function OpsIncidentsPage(): ReactElement {
                       type="button"
                       disabled={!selected}
                       onClick={() => void copyDispatchBrief()}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-950/30 px-3 py-2 text-[11px] font-medium text-sky-100 hover:bg-sky-950/50 disabled:opacity-40"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-[11px] font-medium text-orange-100 hover:bg-orange-950/50 disabled:opacity-40"
                     >
                       <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       Copy dispatch brief
@@ -690,7 +690,7 @@ export default function OpsIncidentsPage(): ReactElement {
                       onClick={() =>
                         void patchIncident({ status: statusDraft, ...(notifySms ? { notifyReporterSms: true } : {}) })
                       }
-                      className="rounded-lg border border-emerald-500/30 bg-emerald-950/35 px-3 py-2 text-[11px] text-emerald-100 disabled:opacity-40"
+                      className="rounded-lg border border-orange-500/30 bg-orange-950/35 px-3 py-2 text-[11px] text-orange-100 disabled:opacity-40"
                     >
                       Apply terminal status
                     </button>

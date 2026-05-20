@@ -15,7 +15,7 @@ export default function OpsAnalyticsPage(): ReactElement {
           {bars.map((v, i) => (
             <div
               key={i}
-              className="flex-1 rounded-t-sm bg-gradient-to-t from-emerald-900/30 to-emerald-500/55"
+              className="flex-1 rounded-t-sm bg-gradient-to-t from-orange-900/30 to-orange-500/55"
               style={{ height: `${(v / max) * 100}%` }}
             />
           ))}
@@ -30,10 +30,10 @@ export default function OpsAnalyticsPage(): ReactElement {
             <Landmark className="h-5 w-5 text-rose-400 shrink-0" aria-hidden /> High-risk barangay matrix
           </li>
           <li className="flex gap-2">
-            <Timer className="h-5 w-5 text-sky-400 shrink-0" aria-hidden /> Median arrival / clearance times
+            <Timer className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Median arrival / clearance times
           </li>
           <li className="flex gap-2">
-            <Activity className="h-5 w-5 text-emerald-400 shrink-0" aria-hidden /> Responder SLA scorecards
+            <Activity className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Responder SLA scorecards
           </li>
           <li className="flex gap-2">
             <Radar className="h-5 w-5 text-amber-400 shrink-0" aria-hidden /> Disaster trend composites

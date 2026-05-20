@@ -21,7 +21,7 @@ export default function OpsSettingsPage(): ReactElement {
             role="switch"
             aria-checked={!soundMuted}
             onClick={() => setSoundMuted(!soundMuted)}
-            className={`relative h-7 w-12 rounded-full transition ${soundMuted ? "bg-zinc-800" : "bg-emerald-600"}`}
+            className={`relative h-7 w-12 rounded-full transition ${soundMuted ? "bg-zinc-800" : "bg-orange-600"}`}
           >
             <span
               className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${soundMuted ? "left-1" : "left-6"}`}

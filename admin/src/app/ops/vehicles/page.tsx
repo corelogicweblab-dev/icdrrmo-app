@@ -132,7 +132,7 @@ export default function OpsVehiclesPage(): ReactElement {
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/[0.05]"
+            className="inline-flex items-center gap-2 rounded-lg border border-orange-500/20 px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/[0.05]"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
             Refresh
@@ -147,7 +147,7 @@ export default function OpsVehiclesPage(): ReactElement {
           </button>
         </div>
         {err ? <p className="mb-2 text-xs text-rose-300">{err}</p> : null}
-        <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+        <div className="overflow-x-auto rounded-lg border border-orange-500/12">
           <table className="min-w-full text-left text-xs">
             <thead className="bg-black/40 text-[10px] uppercase tracking-wider text-zinc-500">
               <tr>
@@ -178,7 +178,7 @@ export default function OpsVehiclesPage(): ReactElement {
                     <button
                       type="button"
                       onClick={() => openEdit(v)}
-                      className="mr-2 rounded p-1 text-sky-300 hover:bg-white/10"
+                      className="mr-2 rounded p-1 text-orange-300 hover:bg-white/10"
                       aria-label="Edit"
                     >
                       <Pencil className="h-4 w-4" />
@@ -201,7 +201,7 @@ export default function OpsVehiclesPage(): ReactElement {
 
       {modal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0c0c0f] p-5 shadow-panel">
+          <div className="w-full max-w-lg rounded-2xl border border-orange-500/20 bg-ops-panel p-5 shadow-panel">
             <div className="mb-4 flex items-center gap-2 text-white">
               <Truck className="h-5 w-5 text-rose-400" aria-hidden />
               <h2 className="text-sm font-semibold">{modal === "create" ? "New vehicle" : "Edit vehicle"}</h2>
@@ -213,7 +213,7 @@ export default function OpsVehiclesPage(): ReactElement {
                   value={form.plateNumber}
                   onChange={(e) => setForm((f) => ({ ...f, plateNumber: e.target.value }))}
                   disabled={modal === "edit"}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white disabled:opacity-50"
                 />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
@@ -221,7 +221,7 @@ export default function OpsVehiclesPage(): ReactElement {
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
@@ -229,7 +229,7 @@ export default function OpsVehiclesPage(): ReactElement {
                 <input
                   value={form.type}
                   onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
@@ -237,7 +237,7 @@ export default function OpsVehiclesPage(): ReactElement {
                 <select
                   value={form.fleetStatus}
                   onChange={(e) => setForm((f) => ({ ...f, fleetStatus: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 >
                   {VEHICLE_FLEET_STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -260,7 +260,7 @@ export default function OpsVehiclesPage(): ReactElement {
                 <input
                   value={form.latitude}
                   onChange={(e) => setForm((f) => ({ ...f, latitude: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 font-mono text-sm text-white"
                 />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
@@ -268,7 +268,7 @@ export default function OpsVehiclesPage(): ReactElement {
                 <input
                   value={form.longitude}
                   onChange={(e) => setForm((f) => ({ ...f, longitude: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 font-mono text-sm text-white"
                 />
               </label>
             </div>
@@ -276,7 +276,7 @@ export default function OpsVehiclesPage(): ReactElement {
               <button
                 type="button"
                 onClick={() => setModal(null)}
-                className="rounded-lg border border-white/10 px-4 py-2 text-xs text-zinc-300 hover:bg-white/[0.05]"
+                className="rounded-lg border border-orange-500/20 px-4 py-2 text-xs text-zinc-300 hover:bg-white/[0.05]"
               >
                 Cancel
               </button>

@@ -13,13 +13,13 @@ export default function OpsVoicePage(): ReactElement {
             <Mic className="h-5 w-5 text-rose-400 shrink-0" aria-hidden /> Responder duplex voice rooms
           </li>
           <li className="flex gap-3">
-            <Headphones className="h-5 w-5 text-sky-400 shrink-0" aria-hidden /> Command headset patch groups
+            <Headphones className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Command headset patch groups
           </li>
           <li className="flex gap-3">
             <MonitorSpeaker className="h-5 w-5 text-amber-400 shrink-0" aria-hidden /> Emergency conferencing (moderated)
           </li>
           <li className="flex gap-3">
-            <Signal className="h-5 w-5 text-emerald-400 shrink-0" aria-hidden /> PSTN failover bridge (planned)
+            <Signal className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> PSTN failover bridge (planned)
           </li>
           <li className="flex gap-3">
             <Speech className="h-5 w-5 text-zinc-500 shrink-0" aria-hidden /> Push-to-talk (PTT via WebRTC datachannels)
@@ -32,7 +32,7 @@ export default function OpsVoicePage(): ReactElement {
             <button
               key={ch}
               type="button"
-              className="rounded-xl border border-white/[0.08] bg-zinc-900/70 py-12 text-xs font-mono uppercase text-zinc-500 hover:border-rose-500/30 hover:text-rose-200 transition"
+              className="rounded-xl border border-orange-500/15 bg-zinc-900/70 py-12 text-xs font-mono uppercase text-zinc-500 hover:border-rose-500/30 hover:text-rose-200 transition"
             >
               {ch}
             </button>

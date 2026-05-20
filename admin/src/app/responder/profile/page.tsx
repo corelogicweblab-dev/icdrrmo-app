@@ -139,7 +139,7 @@ export default function ResponderProfilePage(): ReactElement {
   if (!access) {
     return (
       <div className="p-8 text-center text-sm text-zinc-400">
-        <Link href="/" className="text-sky-400 underline">
+        <Link href="/" className="text-orange-400 underline">
           Sign in
         </Link>
       </div>
@@ -153,7 +153,7 @@ export default function ResponderProfilePage(): ReactElement {
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-6">
       {err ? <p className="text-sm text-rose-300">{err}</p> : null}
-      {saved ? <p className="text-xs text-emerald-400">Saved.</p> : null}
+      {saved ? <p className="text-xs text-orange-400">Saved.</p> : null}
       {!me ? (
         <Loader2 className="h-6 w-6 animate-spin text-zinc-500" aria-hidden />
       ) : (
@@ -165,7 +165,7 @@ export default function ResponderProfilePage(): ReactElement {
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm"
                   required
                 />
               </label>
@@ -174,7 +174,7 @@ export default function ResponderProfilePage(): ReactElement {
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm"
                 />
               </label>
               <label className="block space-y-1 text-xs sm:col-span-2">
@@ -182,7 +182,7 @@ export default function ResponderProfilePage(): ReactElement {
                 <select
                   value={barangayId}
                   onChange={(e) => setBarangayId(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm"
                 >
                   <option value="">— Select —</option>
                   {barangays.map((b) => (
@@ -198,7 +198,7 @@ export default function ResponderProfilePage(): ReactElement {
                   value={medicalConditions}
                   onChange={(e) => setMedicalConditions(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm"
                 />
               </label>
               <label className="block space-y-1 text-xs">
@@ -206,7 +206,7 @@ export default function ResponderProfilePage(): ReactElement {
                 <select
                   value={bloodType}
                   onChange={(e) => setBloodType(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm"
                 >
                   {BLOOD.map((b) => (
                     <option key={b} value={b}>
@@ -220,7 +220,7 @@ export default function ResponderProfilePage(): ReactElement {
                 <select
                   value={availabilityStatus}
                   onChange={(e) => setAvailabilityStatus(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm"
                 >
                   {AVAIL.map((a) => (
                     <option key={a} value={a}>
@@ -234,7 +234,7 @@ export default function ResponderProfilePage(): ReactElement {
           {me.responder ? (
             <OpsPanelCard title="Dispatch snapshot">
               <p className="text-xs text-zinc-400">
-                Status <span className="text-sky-300 font-mono">{me.responder.status}</span> · Vehicle{" "}
+                Status <span className="text-orange-300 font-mono">{me.responder.status}</span> · Vehicle{" "}
                 {me.responder.vehicle?.plateNumber ?? "—"}
               </p>
             </OpsPanelCard>
@@ -242,7 +242,7 @@ export default function ResponderProfilePage(): ReactElement {
           <button
             type="submit"
             disabled={busy}
-            className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save

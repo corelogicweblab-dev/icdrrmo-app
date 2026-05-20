@@ -30,8 +30,8 @@ export default function OpsWeatherPage(): ReactElement {
 
   return (
     <div className="flex flex-col gap-5 p-4 lg:p-6">
-      <section className="overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950/45 shadow-[0_24px_80px_-40px_rgba(14,165,233,0.35)] backdrop-blur-md">
-        <div className="border-b border-white/[0.06] bg-gradient-to-r from-[#06080f] via-[#0a0c12] to-sky-950/25 px-4 py-3">
+      <section className="overflow-hidden rounded-2xl border border-orange-500/15 bg-zinc-950/45 shadow-[0_24px_80px_-40px_rgba(14,165,233,0.35)] backdrop-blur-md">
+        <div className="border-b border-orange-500/12 bg-gradient-to-r from-[#06080f] via-[#0a0c12] to-orange-950/25 px-4 py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h1 className="text-sm font-semibold tracking-tight text-white sm:text-base">Situational weather map</h1>
@@ -43,7 +43,7 @@ export default function OpsWeatherPage(): ReactElement {
                 viewer).
               </p>
             </div>
-            <p className="shrink-0 rounded-lg border border-sky-500/35 bg-sky-950/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-sky-200/95">
+            <p className="shrink-0 rounded-lg border border-orange-500/35 bg-orange-950/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-orange-200/95">
               Live embed · overlay tabs
             </p>
           </div>
@@ -65,7 +65,7 @@ export default function OpsWeatherPage(): ReactElement {
                   className={
                     active
                       ? "min-h-[2.5rem] rounded-xl border border-cyan-400/50 bg-gradient-to-br from-cyan-500/25 via-cyan-950/50 to-black px-3 py-1.5 text-left ring-2 ring-cyan-400/40 shadow-[0_0_14px_rgba(34,211,238,0.25)]"
-                      : "min-h-[2.5rem] rounded-xl border border-white/[0.08] bg-zinc-900/40 px-3 py-1.5 text-left text-zinc-400 hover:border-white/15 hover:bg-zinc-800/50 hover:text-zinc-200"
+                      : "min-h-[2.5rem] rounded-xl border border-orange-500/15 bg-zinc-900/40 px-3 py-1.5 text-left text-zinc-400 hover:border-white/15 hover:bg-zinc-800/50 hover:text-zinc-200"
                   }
                 >
                   <span className="block text-[11px] font-semibold text-white">{o.label}</span>
@@ -108,7 +108,7 @@ export default function OpsWeatherPage(): ReactElement {
             {WEATHER_SOURCES.map((s) => (
               <span
                 key={s}
-                className="rounded-lg border border-sky-400/40 bg-gradient-to-br from-sky-500/25 to-sky-950/60 px-2.5 py-1 text-[11px] font-semibold text-sky-100 ring-1 ring-inset ring-sky-400/30"
+                className="rounded-lg border border-orange-400/40 bg-gradient-to-br from-orange-500/25 to-orange-950/60 px-2.5 py-1 text-[11px] font-semibold text-orange-100 ring-1 ring-inset ring-orange-400/30"
               >
                 {s}
               </span>
@@ -116,11 +116,11 @@ export default function OpsWeatherPage(): ReactElement {
           </div>
           <ul className="space-y-2 text-sm text-zinc-400">
             <li className="flex items-center gap-2">
-              <CloudRain className="h-4 w-4 shrink-0 text-sky-400" aria-hidden />
+              <CloudRain className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               Rainfall accumulation layers
             </li>
             <li className="flex items-center gap-2">
-              <Wind className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <Wind className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               Tropical cyclone tracks · wind radii
             </li>
             <li className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function OpsWeatherPage(): ReactElement {
         <OpsPanelCard title="Using this map" subtitle="EOC workflow" className="lg:col-span-7">
           <ul className="space-y-3 text-sm leading-relaxed text-zinc-400">
             <li className="flex gap-3">
-              <Layers className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" aria-hidden />
+              <Layers className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               <span>
                 <strong className="text-zinc-300">RainViewer</strong> on <strong className="text-zinc-300">Ops → Map</strong>{" "}
                 stays tuned for <strong className="text-zinc-300">radar mosaic</strong> and cell playback. This page
@@ -150,7 +150,7 @@ export default function OpsWeatherPage(): ReactElement {
               </span>
             </li>
             <li className="flex gap-3">
-              <Wind className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <Wind className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               <span>
                 Cross-check severe weather with <strong className="text-zinc-300">PAGASA</strong> bulletins before
                 dispatch decisions; any third-party map is an advisory aid only.

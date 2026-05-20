@@ -69,8 +69,8 @@ export function OpsIncidentVoicePanel(props: {
   }, [remoteStream]);
 
   return (
-    <div className="rounded-xl border border-sky-500/25 bg-sky-950/20 p-4 space-y-3">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200/90">
+    <div className="rounded-xl border border-orange-500/25 bg-orange-950/20 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-orange-200/90">
         <Headphones className="h-4 w-4 shrink-0" aria-hidden />
         Citizen browser voice (WebRTC)
       </div>
@@ -92,7 +92,7 @@ export function OpsIncidentVoicePanel(props: {
             type="button"
             disabled={!socketLive}
             onClick={() => setActive(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-sky-600/90 px-3 py-2 text-[11px] font-semibold text-white hover:bg-sky-500 disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600/90 px-3 py-2 text-[11px] font-semibold text-white hover:bg-orange-500 disabled:opacity-40"
           >
             <Radio className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Join live voice

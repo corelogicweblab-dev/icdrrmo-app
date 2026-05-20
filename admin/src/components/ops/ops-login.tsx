@@ -17,19 +17,16 @@ type OpsLoginProps = {
 export function OpsLoginView(props: OpsLoginProps): ReactElement {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-transparent">
-      <div className="relative hidden lg:flex lg:w-[46%] flex-col justify-between overflow-hidden px-11 py-12 border-r border-white/[0.06]">
-        <div className="absolute inset-0 bg-gradient-to-br from-rose-950/90 via-[#0a0a10] to-[#020208]/95" />
-        <div className="absolute inset-0 ops-grid-bg opacity-40 mix-blend-overlay" aria-hidden />
+      <div className="relative hidden lg:flex lg:w-[46%] flex-col justify-between overflow-hidden px-11 py-12 icd-login-hero">
+        <div className="absolute inset-0 ops-grid-bg opacity-35 mix-blend-overlay" aria-hidden />
         <div className="relative z-10 flex flex-col gap-10">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-black/40 ring-1 ring-white/10 p-1">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center icd-logo-ring p-1">
               <IcdrrmoLogo size={56} priority className="rounded-xl" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-rose-300/95">
-                Isabela City
-              </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+              <p className="icd-eyebrow">Isabela City</p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white icd-text-safe">
                 ICDRRMO Operation Center
               </h1>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
@@ -40,15 +37,15 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
           </div>
           <ul className="grid gap-4 text-sm text-zinc-500 max-w-md">
             <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500 icd-live-dot" aria-hidden />
               Eighteen operational modules · single tactical console.
             </li>
             <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" aria-hidden />
               Realtime incident feed · REST-backed queue · PWA installable.
             </li>
             <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-600" aria-hidden />
               RBAC: Super Admin, Operations, Dispatcher, Responder, Analyst, Barangay roles.
             </li>
           </ul>
@@ -59,7 +56,7 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
       </div>
 
       <div className="flex flex-1 items-center justify-center p-8 lg:p-12">
-        <div className="w-full max-w-[420px] rounded-2xl border border-white/[0.07] bg-zinc-950/85 p-9 shadow-panel backdrop-blur-xl">
+        <div className="w-full max-w-[420px] icd-surface p-9 shadow-panel">
           <div className="mb-8">
             <h2 className="text-xl font-semibold tracking-tight text-white">Secure sign-in</h2>
             <p className="mt-2 text-sm text-zinc-500">
@@ -88,7 +85,7 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
                 Email
               </span>
               <input
-                className="w-full rounded-xl border border-zinc-700/90 bg-black/40 px-4 py-3 text-sm text-white outline-none ring-rose-500/40 transition-shadow placeholder:text-zinc-600 focus:border-rose-500/55 focus:ring-2"
+                className="icd-input"
                 value={props.email}
                 onChange={(ev) => props.setEmail(ev.target.value)}
                 autoComplete="username"
@@ -101,16 +98,13 @@ export function OpsLoginView(props: OpsLoginProps): ReactElement {
               </span>
               <input
                 type="password"
-                className="w-full rounded-xl border border-zinc-700/90 bg-black/40 px-4 py-3 text-sm text-white outline-none ring-rose-500/40 transition-shadow focus:border-rose-500/55 focus:ring-2"
+                className="icd-input"
                 value={props.password}
                 onChange={(ev) => props.setPassword(ev.target.value)}
                 autoComplete="current-password"
               />
             </label>
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 py-3.5 text-sm font-semibold text-white shadow-[0_8px_30px_-8px_rgba(225,29,72,0.55)] transition hover:from-rose-500 hover:to-rose-500 active:scale-[0.99]"
-            >
+            <button type="submit" className="icd-btn-primary py-3.5">
               Enter command console
             </button>
           </form>

@@ -160,7 +160,7 @@ export default function OpsEvacuationPage(): ReactElement {
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-200"
+            className="inline-flex items-center gap-2 rounded-lg border border-orange-500/20 px-3 py-1.5 text-xs text-zinc-200"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
             Refresh
@@ -181,11 +181,11 @@ export default function OpsEvacuationPage(): ReactElement {
         {err ? <p className="mb-2 text-xs text-rose-300">{err}</p> : null}
         <ul className="space-y-3">
           {rows.map((s) => (
-            <li key={s.id} className="rounded-xl border border-white/[0.06] bg-black/30 p-4">
+            <li key={s.id} className="rounded-xl border border-orange-500/12 bg-black/30 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Home className="h-4 w-4 text-emerald-400" aria-hidden />
+                    <Home className="h-4 w-4 text-orange-400" aria-hidden />
                     {s.name}
                   </p>
                   <p className="text-[11px] text-zinc-500 mt-1">
@@ -204,7 +204,7 @@ export default function OpsEvacuationPage(): ReactElement {
                   <div className="mt-2 flex justify-end gap-1">
                     {canManageEvacuation ? (
                       <>
-                        <button type="button" onClick={() => openEdit(s)} className="p-1 text-sky-300 hover:bg-white/10">
+                        <button type="button" onClick={() => openEdit(s)} className="p-1 text-orange-300 hover:bg-white/10">
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button type="button" onClick={() => void deactivate(s.id)} className="p-1 text-rose-300 hover:bg-white/10">
@@ -217,7 +217,7 @@ export default function OpsEvacuationPage(): ReactElement {
               </div>
               <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-emerald-500/45"
+                  className="h-full rounded-full bg-orange-500/45"
                   style={{
                     width: `${s.capacity ? Math.min(100, (s.occupancy / s.capacity) * 100) : 0}%`,
                   }}
@@ -230,7 +230,7 @@ export default function OpsEvacuationPage(): ReactElement {
 
       {modal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0c0c0f] p-5 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl border border-orange-500/20 bg-ops-panel p-5 max-h-[90vh] overflow-y-auto">
             <h2 className="mb-4 text-sm font-semibold text-white">{modal === "create" ? "New center" : "Edit center"}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-[10px] uppercase text-zinc-500 sm:col-span-2">
@@ -238,32 +238,32 @@ export default function OpsEvacuationPage(): ReactElement {
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white"
                 />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
                 Latitude
-                <input value={lat} onChange={(e) => setLat(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white" />
+                <input value={lat} onChange={(e) => setLat(e.target.value)} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 font-mono text-sm text-white" />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
                 Longitude
-                <input value={lng} onChange={(e) => setLng(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white" />
+                <input value={lng} onChange={(e) => setLng(e.target.value)} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 font-mono text-sm text-white" />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
                 Capacity
-                <input value={capacity} onChange={(e) => setCapacity(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white" />
+                <input value={capacity} onChange={(e) => setCapacity(e.target.value)} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white" />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
                 Occupancy
-                <input value={occupancy} onChange={(e) => setOccupancy(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white" />
+                <input value={occupancy} onChange={(e) => setOccupancy(e.target.value)} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white" />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
                 Contact phone
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white" />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white" />
               </label>
               <label className="block text-[10px] uppercase text-zinc-500">
                 Barangay
-                <select value={barangayId} onChange={(e) => setBarangayId(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white">
+                <select value={barangayId} onChange={(e) => setBarangayId(e.target.value)} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white">
                   <option value="">—</option>
                   {barangays.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -274,7 +274,7 @@ export default function OpsEvacuationPage(): ReactElement {
               </label>
               <label className="block text-[10px] uppercase text-zinc-500 sm:col-span-2">
                 Notes
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white" />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 text-sm text-white" />
               </label>
               <label className="flex items-center gap-2 text-xs text-zinc-400 sm:col-span-2">
                 <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded border-zinc-600" />
@@ -282,7 +282,7 @@ export default function OpsEvacuationPage(): ReactElement {
               </label>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setModal(null)} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-zinc-300">
+              <button type="button" onClick={() => setModal(null)} className="rounded-lg border border-orange-500/20 px-4 py-2 text-xs text-zinc-300">
                 Cancel
               </button>
               <button type="button" onClick={() => void submit()} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white">

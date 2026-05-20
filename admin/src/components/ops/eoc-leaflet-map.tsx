@@ -261,7 +261,7 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
         ) : null}
       </div>
       {error && data ? <p className="text-[10px] text-rose-300/90">{error}</p> : null}
-      <div ref={mapEl} className="h-[420px] w-full overflow-hidden rounded-xl border border-white/[0.08] bg-black/40" />
+      <div ref={mapEl} className="h-[420px] w-full overflow-hidden rounded-xl border border-orange-500/15 bg-black/40" />
       <p className="text-[10px] text-zinc-500">
         Leaflet + Esri World Street (English labels) · EOC: {ISABELA_EOC_ADDRESS} · Live incident and asset layers load
         from the emergency services server. ETA uses a public routing service; your administrator may configure a

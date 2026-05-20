@@ -198,19 +198,19 @@ export default function OpsCommandDashboardPage(): ReactElement {
         <div className="ml-auto flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-zinc-400 max-w-3xl justify-end">
           <span>
             <span className="text-zinc-500">Sheltered (DB headcount)</span>
-            <span className="ml-2 font-mono text-emerald-300">{shelteredTotal}</span>
+            <span className="ml-2 font-mono text-orange-300">{shelteredTotal}</span>
           </span>
             <span className="min-w-[10rem]">
             <span className="text-zinc-500">Rain next ~6h (reference)</span>
             <span
-              className={`ml-2 font-semibold ${weather?.rainOutlook6h.willRainLikely ? "text-amber-200" : "text-sky-200"}`}
+              className={`ml-2 font-semibold ${weather?.rainOutlook6h.willRainLikely ? "text-amber-200" : "text-orange-200"}`}
             >
               {weather ? (weather.rainOutlook6h.willRainLikely ? "Likely" : "Unlikely") : "—"}
             </span>
           </span>
           <span>
             <span className="text-zinc-500">Hazard reference barangays</span>
-            <span className="ml-2 text-sky-200">{proneBarangayCount ? `${proneBarangayCount} flagged` : "—"}</span>
+            <span className="ml-2 text-orange-200">{proneBarangayCount ? `${proneBarangayCount} flagged` : "—"}</span>
           </span>
         </div>
       </div>
@@ -264,7 +264,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
             />
             <p className="text-[10px] text-zinc-500 leading-relaxed">
               Meteogram and timeline controls are inside the viewer.{" "}
-              <Link href="/ops/weather" className="text-sky-400 hover:underline">
+              <Link href="/ops/weather" className="text-orange-400 hover:underline">
                 Open full desk map
               </Link>
               .
@@ -284,7 +284,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
                 </p>
               ) : null}
               {weather.hazardZones.map((z) => (
-                <div key={z.type} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
+                <div key={z.type} className="rounded-lg border border-orange-500/12 bg-black/25 px-3 py-2">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-rose-200/80">{z.label}</p>
                   <p className="mt-1 text-[11px] text-zinc-500 leading-snug">{z.description}</p>
                   <p className="mt-2 text-[10px] text-zinc-500">
@@ -312,7 +312,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
                   <li key={row.id} className="text-xs">
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2 text-zinc-300 min-w-0">
-                        <Home className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden />
+                        <Home className="h-4 w-4 text-orange-400 shrink-0" aria-hidden />
                         <span className="truncate">{row.name}</span>
                       </span>
                       <span className="font-mono text-zinc-400 shrink-0">
@@ -324,7 +324,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
                       <p className="mt-0.5 pl-6 text-[10px] text-zinc-600">{row.barangay.name}</p>
                     ) : null}
                     <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
-                      <div className="h-full rounded-full bg-emerald-500/60 transition-all" style={{ width: `${pct}%` }} />
+                      <div className="h-full rounded-full bg-orange-500/60 transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </li>
                 );
@@ -333,7 +333,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
           )}
           {evacDisplay.length > 8 ? (
             <p className="mt-3 text-[10px] text-zinc-600">
-              +{evacDisplay.length - 8} more — open <Link href="/ops/evacuation" className="text-sky-400 hover:underline">Evacuation</Link>
+              +{evacDisplay.length - 8} more — open <Link href="/ops/evacuation" className="text-orange-400 hover:underline">Evacuation</Link>
             </p>
           ) : null}
         </OpsPanelCard>
@@ -345,13 +345,13 @@ export default function OpsCommandDashboardPage(): ReactElement {
           subtitle="Illustrative trend until dispatch timestamps feed analytics"
           className="xl:col-span-6"
         >
-          <SparkBars values={mockDispatchLatency.map((x) => 20 - x)} color="bg-sky-500/55" />
+          <SparkBars values={mockDispatchLatency.map((x) => 20 - x)} color="bg-orange-500/55" />
         </OpsPanelCard>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <section className="xl:col-span-5 flex min-h-[440px] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
-          <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-black/25 px-4 py-3">
+        <section className="xl:col-span-5 flex min-h-[440px] min-h-0 flex-col overflow-hidden rounded-2xl icd-surface shadow-panel">
+          <div className="flex shrink-0 items-center justify-between border-b border-orange-500/12 bg-black/25 px-4 py-3">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
               <Map className="h-4 w-4 text-rose-400/90" aria-hidden />
               Tactical map — layers in GIS panel
@@ -363,8 +363,8 @@ export default function OpsCommandDashboardPage(): ReactElement {
           </div>
         </section>
 
-        <section className="xl:col-span-4 flex min-h-[360px] flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
-          <div className="border-b border-white/[0.06] px-4 py-3 bg-black/25 flex items-center justify-between">
+        <section className="xl:col-span-4 flex min-h-[360px] flex-col overflow-hidden rounded-2xl icd-surface shadow-panel">
+          <div className="border-b border-orange-500/12 px-4 py-3 bg-black/25 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
               <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden />
               Active incident queue
@@ -394,7 +394,7 @@ export default function OpsCommandDashboardPage(): ReactElement {
               return (
                 <li
                   key={r.id}
-                  className={`rounded-xl border border-white/[0.06] border-l-[3px] bg-black/35 p-4 ${incidentBorderClass(r.type)}`}
+                  className={`rounded-xl border border-orange-500/12 border-l-[3px] bg-black/35 p-4 ${incidentBorderClass(r.type)}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-xs font-bold uppercase tracking-[0.12em] text-rose-200/95">
@@ -416,10 +416,10 @@ export default function OpsCommandDashboardPage(): ReactElement {
           </ul>
         </section>
 
-        <section className="xl:col-span-3 flex min-h-[360px] flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel">
-          <div className="border-b border-white/[0.06] px-4 py-3 bg-black/25">
+        <section className="xl:col-span-3 flex min-h-[360px] flex-col overflow-hidden rounded-2xl icd-surface shadow-panel">
+          <div className="border-b border-orange-500/12 px-4 py-3 bg-black/25">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <Activity className="h-4 w-4 text-emerald-400" aria-hidden />
+              <Activity className="h-4 w-4 text-orange-400" aria-hidden />
               Realtime notifications
             </h2>
             <p className="mt-1 text-[11px] text-zinc-500">Ops channel ingest</p>

@@ -203,7 +203,7 @@ export default function OpsNotificationsPage(): ReactElement {
               type="button"
               disabled={broadcastBusy}
               onClick={() => void submitBroadcast()}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600/85 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl bg-orange-600/85 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-500 disabled:opacity-40"
             >
               {broadcastBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Megaphone className="h-4 w-4" aria-hidden />}
               Send broadcast
@@ -301,7 +301,7 @@ export default function OpsNotificationsPage(): ReactElement {
             type="button"
             onClick={() => void loadList()}
             disabled={listLoading || !tokens?.accessToken}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${listLoading ? "animate-spin" : ""}`} aria-hidden />
             Refresh
@@ -312,7 +312,7 @@ export default function OpsNotificationsPage(): ReactElement {
           {list.map((n) => (
             <li
               key={n.id}
-              className="rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2 text-zinc-300"
+              className="rounded-lg border border-orange-500/12 bg-black/30 px-3 py-2 text-zinc-300"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-medium text-white">{n.title}</span>
@@ -337,7 +337,7 @@ export default function OpsNotificationsPage(): ReactElement {
             In-app broadcast creates per-user notification rows; mobile clients should poll or subscribe when wired.
           </li>
           <li className="flex gap-2">
-            <Send className="h-5 w-5 text-sky-400 shrink-0" aria-hidden />
+            <Send className="h-5 w-5 text-orange-400 shrink-0" aria-hidden />
             SMS uses the API job queue when <span className="font-mono text-zinc-500">REDIS_URL</span> and workers are running.
           </li>
           <li className="flex gap-2">

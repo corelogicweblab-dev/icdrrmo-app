@@ -100,16 +100,16 @@ export function UnifiedLoginPage(): ReactElement {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-transparent text-zinc-100">
-      <header className="border-b border-white/[0.06] bg-black/35 backdrop-blur-md">
+      <header className="icd-header-bar">
         <div className="mx-auto flex max-w-md flex-col gap-5 px-5 py-10 text-center md:py-12">
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-black/30 shadow-[0_20px_50px_-20px_rgba(225,29,72,0.45)] ring-1 ring-white/12 p-2">
+          <div className="mx-auto flex h-24 w-24 items-center justify-center icd-logo-ring p-2">
             <IcdrrmoLogo size={88} priority className="h-full w-full object-contain" />
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-rose-300/95">
-              Isabela City · Basilan
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">ICDRRMO SMART Emergency Response</h1>
+            <p className="icd-eyebrow">Isabela City · Basilan</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white icd-text-safe">
+              ICDRRMO SMART Emergency Response
+            </h1>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-400">
               One sign-in for all roles. After login you are sent to the citizen portal, responder console, or
               operations desk based on your account.
@@ -138,7 +138,7 @@ export function UnifiedLoginPage(): ReactElement {
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/75 p-7 shadow-panel">
+        <div className="icd-surface p-7 shadow-panel">
           <h2 className="text-lg font-semibold text-white">Sign in</h2>
           <p className="mt-1 text-xs text-zinc-500">Use the email and password issued for your role.</p>
 
@@ -150,7 +150,7 @@ export function UnifiedLoginPage(): ReactElement {
                 autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2.5 text-sm outline-none focus:border-rose-500/40"
+                className="icd-input"
                 required
               />
             </label>
@@ -160,7 +160,7 @@ export function UnifiedLoginPage(): ReactElement {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                inputClassName="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2.5 text-sm outline-none focus:border-rose-500/40"
+                inputClassName="icd-input"
                 required
               />
             </label>
@@ -169,18 +169,14 @@ export function UnifiedLoginPage(): ReactElement {
                 {msg}
               </p>
             ) : null}
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-50 transition-colors"
-            >
+            <button type="submit" disabled={busy} className="icd-btn-primary">
               {busy ? "Signing in…" : "Continue"}
             </button>
           </form>
 
           <p className="mt-6 text-center text-xs text-zinc-500">
             New resident?{" "}
-            <Link href="/citizen" className="text-emerald-400/90 hover:text-emerald-300 underline-offset-2 hover:underline">
+            <Link href="/citizen" className="icd-link">
               Create a citizen account
             </Link>
           </p>

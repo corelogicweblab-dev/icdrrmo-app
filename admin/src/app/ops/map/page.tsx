@@ -71,7 +71,7 @@ export default function OpsMapPage(): ReactElement {
                 </ul>
               </div>
             ))}
-            <p className="border-t border-white/[0.06] px-1 pt-2 text-[10px] leading-relaxed text-zinc-600">
+            <p className="border-t border-orange-500/12 px-1 pt-2 text-[10px] leading-relaxed text-zinc-600">
               AOI: {ISABELA_EOC_ADDRESS}. Layer toggles apply when premium map styling is enabled; otherwise the main
               map uses a standard street basemap with the same incident pins.
             </p>
@@ -88,7 +88,7 @@ export default function OpsMapPage(): ReactElement {
               Flood / landslide barangay (reference)
             </li>
             <li className="flex items-center gap-2">
-              <Truck className="h-4 w-4 shrink-0 text-sky-400" aria-hidden />
+              <Truck className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               Field unit
             </li>
             <li className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export default function OpsMapPage(): ReactElement {
               Fire / HAZMAT
             </li>
             <li className="flex items-center gap-2">
-              <Wind className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+              <Wind className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               Wind / typhoon
             </li>
             <li className="flex items-center gap-2">
@@ -114,8 +114,8 @@ export default function OpsMapPage(): ReactElement {
           </ul>
         </OpsPanelCard>
       </aside>
-      <section className="flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-950/50 shadow-panel lg:min-h-[calc(100vh-156px)]">
-        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-black/30 px-4 py-3">
+      <section className="flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-2xl icd-surface shadow-panel lg:min-h-[calc(100vh-156px)]">
+        <div className="flex shrink-0 items-center justify-between border-b border-orange-500/12 bg-black/30 px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
             <Radar className="h-4 w-4 text-rose-400" aria-hidden />
             Realtime GIS — Isabela City AOI (CDRRMO EOC)
@@ -136,7 +136,7 @@ export default function OpsMapPage(): ReactElement {
           <OpsPanelCard title="Weather radar (RainViewer)" subtitle="Composite viewport — embed">
             <iframe
               title="RainViewer radar"
-              className="h-[420px] w-full rounded-lg border border-white/10 bg-black/40"
+              className="h-[420px] w-full rounded-lg border border-orange-500/20 bg-black/40"
               src={`https://www.rainviewer.com/map.html?loc=${ISABELA_EOC_LAT},${ISABELA_EOC_LNG},8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&rmt=1&c=1&o=83&lm=0&th=0&sm=0&sn=1&lang=en`}
               loading="lazy"
             />

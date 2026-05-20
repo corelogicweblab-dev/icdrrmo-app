@@ -10,10 +10,10 @@ export default function OpsSmsPage(): ReactElement {
       <OpsPanelCard title="SMS fallback operations" subtitle="Disaster-survivable ingestion">
         <ul className="space-y-3 text-sm text-zinc-300">
           <li className="flex gap-3">
-            <Satellite className="h-5 w-5 text-sky-400 shrink-0" aria-hidden /> Incoming SMS SOS parser + geocode
+            <Satellite className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Incoming SMS SOS parser + geocode
           </li>
           <li className="flex gap-3">
-            <Rows3 className="h-5 w-5 text-emerald-400 shrink-0" aria-hidden /> Message logs + searchable archive
+            <Rows3 className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Message logs + searchable archive
           </li>
           <li className="flex gap-3">
             <RefreshCwOff className="h-5 w-5 text-amber-400 shrink-0" aria-hidden /> Delivery receipts + adaptive retry queues

@@ -84,7 +84,7 @@ export default function OpsUsersPage(): ReactElement {
                   setReloadNonce((n) => n + 1);
                 }
               }}
-              className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100 w-56"
+              className="rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 w-56"
               placeholder="fragment…"
             />
           </label>
@@ -97,7 +97,7 @@ export default function OpsUsersPage(): ReactElement {
                 setPage(1);
                 setReloadNonce((n) => n + 1);
               }}
-              className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+              className="rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100"
             >
               <option value="">All</option>
               <option value="CITIZEN">CITIZEN</option>
@@ -123,7 +123,7 @@ export default function OpsUsersPage(): ReactElement {
         {err ? (
           <p className="text-sm text-rose-300">{err}</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+          <div className="overflow-x-auto rounded-lg border border-orange-500/12">
             <table className="min-w-full text-left text-xs">
               <thead className="bg-black/40 text-[10px] uppercase tracking-widest text-zinc-500">
                 <tr>
@@ -160,7 +160,7 @@ export default function OpsUsersPage(): ReactElement {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded border border-white/10 px-2 py-1 disabled:opacity-30"
+              className="rounded border border-orange-500/20 px-2 py-1 disabled:opacity-30"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
             </button>
@@ -168,7 +168,7 @@ export default function OpsUsersPage(): ReactElement {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded border border-white/10 px-2 py-1 disabled:opacity-30"
+              className="rounded border border-orange-500/20 px-2 py-1 disabled:opacity-30"
             >
               <ChevronRight className="h-4 w-4" aria-hidden />
             </button>

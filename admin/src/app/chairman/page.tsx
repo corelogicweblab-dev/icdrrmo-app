@@ -248,9 +248,9 @@ export default function ChairmanDashboardPage(): ReactElement {
   if (!tokens?.accessToken) {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center px-4 text-zinc-100">
-        <div className="w-full max-w-md rounded-2xl border border-amber-500/25 bg-zinc-950/90 p-8 shadow-panel">
+        <div className="w-full max-w-md icd-surface p-8 shadow-panel">
           <div className="flex items-center gap-3 mb-6">
-            <Shield className="h-10 w-10 text-amber-400" aria-hidden />
+            <Shield className="h-10 w-10 text-orange-400" aria-hidden />
             <div>
               <h1 className="text-lg font-semibold">Barangay Chairman</h1>
               <p className="text-xs text-zinc-500">First-responder emergency dashboard</p>
@@ -262,7 +262,7 @@ export default function ChairmanDashboardPage(): ReactElement {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2.5 text-sm"
+              className="icd-input"
               required
             />
             <input
@@ -270,15 +270,11 @@ export default function ChairmanDashboardPage(): ReactElement {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2.5 text-sm"
+              className="icd-input"
               required
             />
             {loginMsg ? <p className="text-xs text-rose-300">{loginMsg}</p> : null}
-            <button
-              type="submit"
-              disabled={loginBusy}
-              className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
-            >
+            <button type="submit" disabled={loginBusy} className="icd-btn-primary">
               {loginBusy ? "Signing in…" : "Enter dashboard"}
             </button>
           </form>
@@ -322,7 +318,7 @@ export default function ChairmanDashboardPage(): ReactElement {
         </div>
       ) : null}
 
-      <header className="border-b border-white/[0.06] bg-black/40 backdrop-blur-md">
+      <header className="icd-header-bar">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <IcdrrmoLogo size={40} className="rounded-lg" />
@@ -339,7 +335,7 @@ export default function ChairmanDashboardPage(): ReactElement {
             <button
               type="button"
               onClick={logout}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
+              className="inline-flex items-center gap-1 rounded-lg border border-orange-500/20 px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
             >
               <LogOut className="h-3.5 w-3.5" aria-hidden />
               Sign out
@@ -369,8 +365,8 @@ export default function ChairmanDashboardPage(): ReactElement {
         ) : null}
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-5">
-          <section className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 overflow-hidden">
-            <div className="border-b border-white/[0.06] px-4 py-3 flex items-center gap-2">
+          <section className="rounded-2xl icd-surface overflow-hidden">
+            <div className="border-b border-orange-500/12 px-4 py-3 flex items-center gap-2">
               <Radio className="h-4 w-4 text-amber-400" aria-hidden />
               <h2 className="text-sm font-semibold">Live incident feed</h2>
             </div>
@@ -383,7 +379,7 @@ export default function ChairmanDashboardPage(): ReactElement {
                     <button
                       type="button"
                       onClick={() => setSelectedId(inc.id)}
-                      className={`w-full text-left px-4 py-3 transition hover:bg-white/[0.04] ${
+                      className={`w-full text-left px-4 py-3 transition hover:bg-orange-500/08 ${
                         selected?.id === inc.id ? "bg-amber-950/30 border-l-2 border-amber-500" : ""
                       }`}
                     >
@@ -406,7 +402,7 @@ export default function ChairmanDashboardPage(): ReactElement {
           <section className="space-y-4">
             {selected ? (
               <>
-                <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-4 space-y-3">
+                <div className="rounded-2xl icd-surface p-4 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <h2 className="text-lg font-semibold text-white">{selected.title ?? selected.type}</h2>
@@ -457,7 +453,7 @@ export default function ChairmanDashboardPage(): ReactElement {
                 />
               </>
             ) : (
-              <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-10 text-center text-sm text-zinc-500">
+              <div className="rounded-2xl icd-surface p-10 text-center text-sm text-zinc-500">
                 Select an incident from the feed.
               </div>
             )}
@@ -473,10 +469,10 @@ function HealthPill({ health }: { health: SystemHealth | null }): ReactElement {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-        online ? "bg-emerald-950/60 text-emerald-300 ring-1 ring-emerald-500/30" : "bg-rose-950/60 text-rose-300 ring-1 ring-rose-500/30"
+        online ? "bg-orange-950/60 text-orange-300 ring-1 ring-orange-500/30" : "bg-rose-950/60 text-rose-300 ring-1 ring-rose-500/30"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-400" : "bg-rose-400 animate-pulse"}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-orange-400" : "bg-rose-400 animate-pulse"}`} />
       Alerts {online ? "online" : "offline"}
     </span>
   );
@@ -491,11 +487,11 @@ function StatCard(props: {
   const colors = {
     rose: "text-rose-300",
     amber: "text-amber-300",
-    emerald: "text-emerald-300",
-    sky: "text-sky-300",
+    emerald: "text-orange-300",
+    sky: "text-orange-300",
   };
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-zinc-950/60 px-3 py-3">
+    <div className="rounded-xl icd-surface px-3 py-3">
       <p className="text-[10px] uppercase tracking-wider text-zinc-500">{props.label}</p>
       <p className={`text-xl font-semibold mt-1 ${colors[props.tone]}`}>{props.display ?? props.value}</p>
     </div>
@@ -506,7 +502,7 @@ function FeedBadge(props: { status: FeedStatus; large?: boolean }): ReactElement
   const map = {
     new: "bg-rose-600/90 text-white",
     ongoing: "bg-amber-600/90 text-white",
-    resolved: "bg-emerald-800/90 text-emerald-100",
+    resolved: "bg-orange-800/90 text-orange-100",
   };
   return (
     <span className={`rounded-md px-2 py-0.5 font-semibold uppercase ${props.large ? "text-xs" : "text-[10px]"} ${map[props.status]}`}>
@@ -534,8 +530,8 @@ function ActionBtn(props: {
   const Icon = props.icon;
   const tones = {
     amber: "bg-amber-600 hover:bg-amber-500",
-    sky: "bg-sky-600 hover:bg-sky-500",
-    emerald: "bg-emerald-600 hover:bg-emerald-500",
+    sky: "bg-orange-600 hover:bg-orange-500",
+    emerald: "bg-orange-600 hover:bg-orange-500",
   };
   return (
     <button

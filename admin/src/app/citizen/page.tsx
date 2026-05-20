@@ -466,7 +466,7 @@ export default function CitizenPage(): ReactElement {
 
   return (
     <div className="min-h-[100dvh] bg-transparent text-zinc-100">
-      <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/50 backdrop-blur-lg">
+      <header className="sticky top-0 z-20 border-b border-orange-500/12 bg-black/50 backdrop-blur-lg">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3.5">
           <Link
             href="/"
@@ -490,7 +490,7 @@ export default function CitizenPage(): ReactElement {
               <button
                 type="button"
                 onClick={logout}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.06]"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.06]"
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden />
                 Sign out
@@ -523,7 +523,7 @@ export default function CitizenPage(): ReactElement {
         ) : null}
 
         {!tokens ? (
-          <section className="rounded-2xl border border-white/[0.06] bg-zinc-950/60 p-5 shadow-panel">
+          <section className="rounded-2xl icd-surface p-5 shadow-panel">
             <div className="flex gap-2 rounded-xl bg-black/35 p-1">
               <button
                 type="button"
@@ -690,7 +690,7 @@ export default function CitizenPage(): ReactElement {
                       <img
                         src={registerProfilePhotoUrl}
                         alt="Profile preview"
-                        className="h-28 w-28 rounded-2xl border border-white/10 object-cover"
+                        className="h-28 w-28 rounded-2xl border border-orange-500/20 object-cover"
                       />
                     </div>
                   ) : null}
@@ -735,10 +735,10 @@ export default function CitizenPage(): ReactElement {
               </div>
             ) : null}
 
-            <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-4 shadow-panel">
+            <div className="rounded-2xl icd-surface p-4 shadow-panel">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/90">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400/90">
                     Account &amp; medical
                   </p>
                   <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
@@ -772,7 +772,7 @@ export default function CitizenPage(): ReactElement {
                     </div>
                   </dl>
                   {me.profile ? (
-                    <dl className="mt-4 grid gap-2 border-t border-white/[0.06] pt-4 text-xs text-zinc-300">
+                    <dl className="mt-4 grid gap-2 border-t border-orange-500/12 pt-4 text-xs text-zinc-300">
                       <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
                         <dt className="text-zinc-500">Full name</dt>
                         <dd className="font-medium text-white text-right">{me.profile.fullName}</dd>
@@ -793,7 +793,7 @@ export default function CitizenPage(): ReactElement {
                       </div>
                       <div className="flex justify-between gap-3 pb-1">
                         <dt className="text-zinc-500">Status</dt>
-                        <dd className="text-right text-emerald-200/90">{me.profile.availabilityStatus}</dd>
+                        <dd className="text-right text-orange-200/90">{me.profile.availabilityStatus}</dd>
                       </div>
                       {(me.profile.allergies || me.profile.medicalConditions) && (
                         <div className="rounded-lg bg-black/30 p-2.5 text-[11px] text-zinc-400 leading-snug">
@@ -824,7 +824,7 @@ export default function CitizenPage(): ReactElement {
 
               <Link
                 href="/citizen/profile"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-900/35 transition-colors"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-950/30 py-3 text-sm font-semibold text-orange-100 hover:bg-orange-900/35 transition-colors"
               >
                 Open full profile &amp; evacuation
                 <ChevronRight className="h-4 w-4" aria-hidden />
@@ -835,7 +835,7 @@ export default function CitizenPage(): ReactElement {
               onSubmit={sendSos}
               className="overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-b from-rose-950/40 to-black/55 shadow-panel"
             >
-              <div className="border-b border-white/[0.06] bg-black/30 px-4 py-4">
+              <div className="border-b border-orange-500/12 bg-black/30 px-4 py-4">
                 <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-rose-200/85">
                   Emergency type
                 </label>
@@ -879,14 +879,14 @@ export default function CitizenPage(): ReactElement {
                   )}
                 </button>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-4 bg-black/25">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-orange-500/12 px-4 py-4 bg-black/25">
                 <button
                   type="button"
                   onClick={captureLocation}
                   disabled={geoBusy}
                   className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-4 py-2.5 text-xs font-semibold text-zinc-200 hover:bg-white/[0.08] disabled:opacity-50"
                 >
-                  <LocateFixed className="h-4 w-4 text-emerald-400" aria-hidden />
+                  <LocateFixed className="h-4 w-4 text-orange-400" aria-hidden />
                   {geoBusy ? "Locating…" : "Capture GPS"}
                 </button>
                 <div className="font-mono text-[11px] text-zinc-500">
@@ -902,7 +902,7 @@ export default function CitizenPage(): ReactElement {
             </form>
 
             {sosPanel && tokens ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-4 py-4 text-sm text-emerald-100 space-y-1">
+              <div className="rounded-xl border border-orange-500/30 bg-orange-950/25 px-4 py-4 text-sm text-orange-100 space-y-1">
                 <CitizenSosRouteCard
                   incidentId={sosPanel.incidentId}
                   deduplicated={sosPanel.deduplicated}
@@ -912,7 +912,7 @@ export default function CitizenPage(): ReactElement {
                 />
                 <CitizenSosVoiceLive incidentId={sosPanel.incidentId} accessToken={tokens.accessToken} />
                 {getOpsVoiceHotline() ? (
-                  <p className="text-[10px] text-zinc-500 pt-2 border-t border-white/[0.06]">
+                  <p className="text-[10px] text-zinc-500 pt-2 border-t border-orange-500/12">
                     Phone fallback:{" "}
                     <a className="text-rose-400 underline-offset-2 hover:underline" href={`tel:${getOpsVoiceHotline()}`}>
                       call ops hotline

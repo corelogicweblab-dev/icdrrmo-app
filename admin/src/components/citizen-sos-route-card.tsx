@@ -68,11 +68,11 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
         if (!map || !overlay) return;
         overlay.clearLayers();
 
-        const poly = L.polyline(coords, { color: "#f43f5e", weight: 5, opacity: 0.85 }).addTo(overlay);
+        const poly = L.polyline(coords, { color: "#f97316", weight: 5, opacity: 0.9 }).addTo(overlay);
         L.marker(eoc, {
           icon: L.divIcon({
             className: "eoc-sos-marker",
-            html: `<div style="width:12px;height:12px;border-radius:9999px;background:#f43f5e;border:2px solid #fff"></div>`,
+            html: `<div style="width:12px;height:12px;border-radius:9999px;background:#dc2626;border:2px solid #fff"></div>`,
             iconSize: [12, 12],
             iconAnchor: [6, 6],
           }),
@@ -82,7 +82,7 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
         L.marker(user, {
           icon: L.divIcon({
             className: "user-sos-marker",
-            html: `<div style="width:12px;height:12px;border-radius:9999px;background:#34d399;border:2px solid #fff"></div>`,
+            html: `<div style="width:12px;height:12px;border-radius:9999px;background:#f97316;border:2px solid #fff"></div>`,
             iconSize: [12, 12],
             iconAnchor: [6, 6],
           }),
@@ -113,13 +113,13 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
 
   return (
     <div className="space-y-4 text-left">
-      <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-100">
+      <div className="rounded-xl border border-orange-500/25 bg-orange-950/20 px-4 py-3 text-sm text-orange-100">
         <p className="font-semibold text-white">{props.emergencyLabel}</p>
-        <p className="mt-1 text-xs text-emerald-200/90">
+        <p className="mt-1 text-xs text-orange-200/90">
           {props.deduplicated ? "Linked to an existing open report." : "Submitted to the operations center."} Reference:{" "}
-          <span className="font-mono text-emerald-100">{shortId}</span>
+          <span className="font-mono text-orange-100">{shortId}</span>
         </p>
-        <p className="mt-1 text-[11px] text-emerald-200/70">{when}</p>
+        <p className="mt-1 text-[11px] text-orange-200/70">{when}</p>
         {etaMin != null ? (
           <p className="mt-2 text-sm text-white">
             Estimated from EOC: ~{etaMin} min drive
@@ -128,16 +128,16 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
         ) : routeErr ? (
           <p className="mt-2 text-xs text-amber-200/90">{routeErr}</p>
         ) : (
-          <p className="mt-2 text-xs text-emerald-200/70">Fetching route…</p>
+          <p className="mt-2 text-xs text-orange-200/70">Fetching route…</p>
         )}
       </div>
-      <div ref={mapEl} className="h-48 w-full overflow-hidden rounded-xl border border-white/10 bg-black/40" />
+      <div ref={mapEl} className="h-48 w-full overflow-hidden rounded-xl border border-orange-500/20 bg-black/40" />
       <div className="flex flex-col gap-2 sm:flex-row">
         <a
           href={externalDirectionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-xs font-semibold text-white hover:bg-white/15"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-950/30 px-4 py-3 text-xs font-semibold text-orange-50 hover:bg-orange-900/40"
         >
           <MapPin className="h-4 w-4 shrink-0" aria-hidden />
           Driving directions (EOC → you)
@@ -147,7 +147,7 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
           href={externalNavigationUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600/90 px-4 py-3 text-xs font-semibold text-white hover:bg-sky-600"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600/90 px-4 py-3 text-xs font-semibold text-white hover:bg-orange-600"
         >
           Turn-by-turn navigation
           <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
