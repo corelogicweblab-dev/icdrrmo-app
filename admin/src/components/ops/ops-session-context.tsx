@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { Socket } from "socket.io-client";
 import { useRouter } from "next/navigation";
+import { ApiTimeoutError, fetchWithTimeout } from "@/lib/api-fetch";
 import { getApiBaseUrl, getApiConfigWarning, getHealthCheckUrl } from "@/lib/env";
 import { API_INCIDENTS_QUEUE_PATH } from "@/lib/ops-api-paths";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -263,7 +264,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     setLoginError(null);
     const url = `${getApiBaseUrl()}/auth/login`;
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -309,15 +310,25 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       setFeed((f) => [`${new Date().toISOString()} · SESSION_ESTABLISHED`, ...f].slice(0, 80));
     } catch (err: unknown) {
       const api = getApiBaseUrl();
-      const detail = err instanceof Error ? err.message : "Network error";
+      const detail =
+        err instanceof ApiTimeoutError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Network error";
       const mixed =
         typeof window !== "undefined" &&
         window.location.protocol === "https:" &&
         api.startsWith("http:");
+      const onLocal =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
       setLoginError(
         mixed
           ? "This page uses a secure connection, but the emergency services link may need to use HTTPS as well. Contact your technical administrator."
-          : `Cannot reach the emergency services server (${detail}). Check your connection or try again later.`,
+          : onLocal
+            ? `Cannot reach the API (${detail}). Run npm run db:setup, then npm run dev:api and npm run dev:admin.`
+            : `Cannot reach the emergency services server (${detail}). Check your connection or try again later.`,
       );
       setFeed((f) => [`${new Date().toISOString()} · AUTH_NETWORK_ERROR`, ...f].slice(0, 80));
     }

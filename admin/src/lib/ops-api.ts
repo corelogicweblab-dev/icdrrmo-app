@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "@/lib/api-fetch";
 import { getApiBaseUrl } from "@/lib/env";
 
 export class OpsApiError extends Error {
@@ -35,7 +36,7 @@ export async function opsFetchJson<T>(
   if (init?.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetchWithTimeout(url, { ...init, headers });
   const text = await res.text();
   if (!res.ok) {
     throw new OpsApiError(`HTTP ${res.status}`, res.status, text);

@@ -7,10 +7,17 @@ export function hasMapboxToken(): boolean {
   return getMapboxToken().length > 0;
 }
 
-/** Browser-safe public configuration (set at build time for Docker). */
+/**
+ * Browser-safe API base (set at build time for Docker / Firebase).
+ * When unset in the browser, use same-origin `/api/v1` so Next dev rewrites proxy to Nest.
+ * Server-side fallback keeps a direct localhost URL for SSR.
+ */
 export function getApiBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (raw) return raw.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    return "/api/v1";
+  }
   return "http://127.0.0.1:4000/api/v1";
 }
 

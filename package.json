@@ -12,6 +12,7 @@
     "start:admin": "npm --prefix admin run start",
     "dev:api": "npm --prefix backend run start:dev",
     "dev:admin": "npm --prefix admin run dev",
+    "dev": "npx -y concurrently@9.1.2 -n api,admin -c blue,magenta \"npm run dev:api\" \"npm run dev:admin\"",
     "prisma:generate": "npm --prefix backend exec -- prisma generate",
     "migrate": "npm run db:migrate",
     "prisma": "npm --prefix backend exec -- prisma",

@@ -6,11 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { PasswordInput } from "@/components/password-input";
+import { pingApiHealth, type ApiReachability } from "@/lib/api-fetch";
 import { getApiConfigWarning } from "@/lib/env";
 import {
   dashboardPathForToken,
   loadCitizenTokens,
   loginWithRoleRouting,
+  navigateAfterLogin,
+  purgeInvalidStoredSessions,
 } from "@/lib/unified-auth";
 import { loadOpsTokens } from "@/components/ops/ops-storage";
 
@@ -20,9 +23,12 @@ export function UnifiedLoginPage(): ReactElement {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [apiReach, setApiReach] = useState<ApiReachability | null>(null);
+  const [checkingApi, setCheckingApi] = useState(true);
   const apiWarning = getApiConfigWarning();
 
   useEffect(() => {
+    purgeInvalidStoredSessions();
     const citizen = loadCitizenTokens();
     if (citizen?.accessToken) {
       const path = dashboardPathForToken(citizen.accessToken);
@@ -40,19 +46,44 @@ export function UnifiedLoginPage(): ReactElement {
     }
   }, [router]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCheckingApi(true);
+      const result = await pingApiHealth();
+      if (!cancelled) {
+        setApiReach(result);
+        setCheckingApi(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function onSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     setMsg(null);
     setBusy(true);
     try {
+      if (apiReach && !apiReach.ok) {
+        const again = await pingApiHealth(8_000);
+        setApiReach(again);
+        if (!again.ok) {
+          setMsg(again.message);
+          return;
+        }
+      }
+
       const result = await loginWithRoleRouting(email, password);
       if (!result.ok) {
         setMsg(result.message);
         return;
       }
-      router.push(result.redirectTo);
+      router.replace(result.redirectTo);
+      navigateAfterLogin(result.redirectTo);
     } catch {
-      setMsg("Network error — check that the API is running and reachable.");
+      setMsg("Unexpected error during sign-in. Refresh the page and try again.");
     } finally {
       setBusy(false);
     }
@@ -85,6 +116,16 @@ export function UnifiedLoginPage(): ReactElement {
             role="status"
           >
             {apiWarning}
+          </div>
+        ) : null}
+
+        {!checkingApi && apiReach && !apiReach.ok ? (
+          <div
+            className="mb-4 rounded-xl border border-rose-500/35 bg-rose-950/45 px-4 py-3 text-sm text-rose-100"
+            role="alert"
+          >
+            <p className="font-medium">Backend offline</p>
+            <p className="mt-1 text-rose-200/90">{apiReach.message}</p>
           </div>
         ) : null}
 
