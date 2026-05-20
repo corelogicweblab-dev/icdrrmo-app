@@ -6,7 +6,7 @@ import { Clock4, LocateFixed, Send, Truck } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { isOpsAuditor } from "@/lib/decode-jwt-role";
-import { opsFetchJson } from "@/lib/ops-api";
+import { loadDispatchSuggestions } from "@/lib/command-center-snapshot";
 
 type Suggestions = {
   incidentId: string;
@@ -43,10 +43,7 @@ export default function OpsDispatchPage(): ReactElement {
     if (!token || !selectedId) return;
     setBusy(true);
     try {
-      const data = await opsFetchJson<Suggestions>(
-        `/command-center/dispatch/suggestions?incidentId=${encodeURIComponent(selectedId)}`,
-        token,
-      );
+      const data = await loadDispatchSuggestions(token, selectedId);
       setSuggestions(data);
     } finally {
       setBusy(false);
@@ -130,6 +127,12 @@ export default function OpsDispatchPage(): ReactElement {
             </ul>
           </div>
         </div>
+        {!suggestions?.suggestedResponders.length && !busy ? (
+          <p className="mt-4 text-[11px] text-amber-200/90">
+            Dispatch suggestions need the latest API on Render. Assign responders manually on Live incidents until deploy
+            completes.
+          </p>
+        ) : null}
         {readOnly ? (
           <p className="mt-4 text-[11px] text-amber-200/90">Auditor role: suggestions are view-only.</p>
         ) : (

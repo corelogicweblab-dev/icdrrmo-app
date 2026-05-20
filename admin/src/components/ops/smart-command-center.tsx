@@ -18,46 +18,11 @@ import {
 } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsKpiCard, OpsPanelCard } from "@/components/ops/ops-widgets";
-import { opsFetchJson } from "@/lib/ops-api";
+import {
+  loadCommandCenterSnapshot,
+  type CommandCenterSnapshot,
+} from "@/lib/command-center-snapshot";
 import { isOpsGlobalAdmin } from "@/lib/decode-jwt-role";
-
-type CommandSnapshot = {
-  generatedAt: string;
-  readOnly: boolean;
-  summary: {
-    openIncidents: number;
-    activeResponders: number;
-    activeVehicles: number;
-    evacuationSites: number;
-  };
-  liveIncidents: Array<{
-    id: string;
-    type: string;
-    status: string;
-    isCritical: boolean;
-    urgency: "critical" | "high" | "moderate";
-    createdAt: string;
-    barangay: { name: string } | null;
-    assignedEmail: string | null;
-  }>;
-  resources: {
-    vehicles: { available: number; deployed: number; maintenance: number };
-    responders: { available: number; onMission: number; offDuty: number };
-  };
-  evacuation: {
-    sites: number;
-    alerts: Array<{ name: string; occupancyPct: number | null; alert: string }>;
-  };
-  intelligence: {
-    rainOutlook: { headline: string; willRainLikely: boolean } | null;
-    riskMatrix: Array<{ name: string; score: number; level: string }>;
-    heatmapPoints: Array<{ id: string; lat: number; lon: number; weight: number }>;
-  };
-  communications: {
-    recentAudit: Array<{ id: string; at: string; action: string; actor: string }>;
-  };
-  federation: { ssoEnabled: boolean; provider: string };
-};
 
 function urgencyClass(u: string): string {
   if (u === "critical") return "border-rose-500/50 bg-rose-950/40 text-rose-100 animate-alert-blink";
@@ -67,8 +32,9 @@ function urgencyClass(u: string): string {
 
 export function SmartCommandCenter(): ReactElement {
   const { tokens, queue } = useOpsSession();
-  const [snap, setSnap] = useState<CommandSnapshot | null>(null);
+  const [snap, setSnap] = useState<CommandCenterSnapshot | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -76,11 +42,27 @@ export function SmartCommandCenter(): ReactElement {
     if (!token) return;
     setLoading(true);
     try {
-      const data = await opsFetchJson<CommandSnapshot>("/command-center/snapshot", token);
-      setSnap(data);
+      const { snapshot, usedLegacyFallback } = await loadCommandCenterSnapshot(token);
+      setSnap(snapshot);
       setErr(null);
+      const missingBg = snapshot.summary.operatorBarangayMissing === true;
+      setNotice(
+        missingBg
+          ? "Your operator profile has no barangay assigned — city-wide counts are hidden. Ask an admin to set profile.barangayId."
+          : usedLegacyFallback
+            ? "Using dashboard fallback — redeploy the Nest API on Render for full command-center analytics."
+            : null,
+      );
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to load command center");
+      setSnap(null);
+      setNotice(null);
+      setErr(
+        e instanceof Error
+          ? e.message.startsWith("HTTP ")
+            ? "Command desk data is unavailable. Confirm the API is online and redeployed (Render), then use Sync."
+            : e.message
+          : "Failed to load command center",
+      );
     } finally {
       setLoading(false);
     }
@@ -128,6 +110,11 @@ export function SmartCommandCenter(): ReactElement {
           {err}
         </p>
       ) : null}
+      {notice && !err ? (
+        <p className="text-sm text-amber-200/90" role="status">
+          {notice}
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <OpsKpiCard
@@ -167,7 +154,14 @@ export function SmartCommandCenter(): ReactElement {
       <div className="grid gap-4 xl:grid-cols-12">
         <OpsPanelCard title="Live incidents" subtitle="Severity · location · status" className="xl:col-span-5">
           <ul className="space-y-2 max-h-[320px] overflow-y-auto scroll-ops">
-            {(snap?.liveIncidents ?? []).map((inc) => (
+            {(snap?.liveIncidents.length ? snap.liveIncidents : queue.map((i) => ({
+              id: i.id,
+              type: i.type,
+              status: i.status,
+              urgency: i.status === "OPEN" ? ("high" as const) : ("moderate" as const),
+              barangay: null,
+              assignedEmail: i.assigned?.user.email ?? null,
+            }))).map((inc) => (
               <li key={inc.id}>
                 <Link
                   href={`/ops/incidents?id=${encodeURIComponent(inc.id)}`}
@@ -183,7 +177,7 @@ export function SmartCommandCenter(): ReactElement {
                 </Link>
               </li>
             ))}
-            {!loading && !snap?.liveIncidents.length ? (
+            {!loading && !snap?.liveIncidents.length && !queue.length ? (
               <p className="text-xs text-zinc-500">No open incidents in scope.</p>
             ) : null}
           </ul>

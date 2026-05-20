@@ -5,31 +5,21 @@ import { useEffect, useState } from "react";
 import { Activity, Cpu, Landmark, Radar, Timer } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import { opsFetchJson } from "@/lib/ops-api";
-
-type Snapshot = {
-  intelligence: {
-    riskMatrix: Array<{
-      name: string;
-      score: number;
-      level: string;
-      factors: string[];
-      engine?: string;
-    }>;
-    heatmapPoints: Array<{ id: string; weight: number }>;
-    rainOutlook: { headline: string; willRainLikely: boolean; maxPrecipProbPct: number } | null;
-  };
-  liveIncidents: Array<{ urgency: string }>;
-};
+import {
+  loadCommandCenterSnapshot,
+  type CommandCenterSnapshot,
+} from "@/lib/command-center-snapshot";
 
 export default function OpsAnalyticsPage(): ReactElement {
   const { tokens } = useOpsSession();
-  const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [snap, setSnap] = useState<CommandCenterSnapshot | null>(null);
 
   useEffect(() => {
     const token = tokens?.accessToken;
     if (!token) return;
-    void opsFetchJson<Snapshot>("/command-center/snapshot", token).then(setSnap).catch(() => {});
+    void loadCommandCenterSnapshot(token)
+      .then(({ snapshot }) => setSnap(snapshot))
+      .catch(() => setSnap(null));
   }, [tokens?.accessToken]);
 
   const risks = snap?.intelligence.riskMatrix ?? [];
@@ -69,9 +59,7 @@ export default function OpsAnalyticsPage(): ReactElement {
           . Features: barangay hazard flags, EOC toggles, rain outlook, open incident load.
         </p>
         {snap?.intelligence.rainOutlook ? (
-          <p className="mt-2 text-xs text-orange-200/90">
-            {snap.intelligence.rainOutlook.headline} · max prob {snap.intelligence.rainOutlook.maxPrecipProbPct}%
-          </p>
+          <p className="mt-2 text-xs text-orange-200/90">{snap.intelligence.rainOutlook.headline}</p>
         ) : null}
       </OpsPanelCard>
       <OpsPanelCard title="KPI catalog" className="lg:col-span-4">

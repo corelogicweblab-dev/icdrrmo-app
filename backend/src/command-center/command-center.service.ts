@@ -191,6 +191,21 @@ export class CommandCenterService {
       status: i.status,
     }));
 
+    const summaryKpis = {
+      openIncidents: Number(summary.openIncidents ?? 0),
+      activeResponders: Number(summary.activeResponders ?? 0),
+      activeVehicles: Number(summary.activeVehicles ?? 0),
+      evacuationSites: Number(summary.evacuationSites ?? 0),
+      ...(typeof summary === 'object' && summary !== null
+        ? {
+            scoped: (summary as { scoped?: boolean }).scoped,
+            operatorBarangayMissing: (summary as { operatorBarangayMissing?: boolean })
+              .operatorBarangayMissing,
+            message: (summary as { message?: string }).message,
+          }
+        : {}),
+    };
+
     return {
       generatedAt: new Date().toISOString(),
       readOnly: (actor.role as string) === 'AUDITOR',
@@ -199,7 +214,7 @@ export class CommandCenterService {
         scoped: !isDeskGlobalView(actor),
         description: 'Each barangay is an isolated tenant; city-wide admins see unified platform data.',
       },
-      summary,
+      summary: summaryKpis,
       liveIncidents: incidents.map((i) => ({
         id: i.id,
         type: i.type,
