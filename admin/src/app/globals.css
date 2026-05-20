@@ -3,11 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --background: #060608;
-  --foreground: #f4f4f5;
-  --ops-accent: #e11d48;
-  --ops-accent-dim: rgba(225, 29, 72, 0.12);
-  --ops-grid: rgba(255, 255, 255, 0.03);
+  --background: #030303;
+  --foreground: #fafafa;
+  --icd-orange: #f97316;
+  --icd-red: #dc2626;
+  --icd-black: #030303;
+  --ops-accent: #ea580c;
+  --ops-accent-dim: rgba(249, 115, 22, 0.14);
+  --ops-grid: rgba(249, 115, 22, 0.06);
+  --icd-panel-bg: rgba(8, 8, 8, 0.92);
+  --icd-text-shadow: 0 1px 14px rgba(0, 0, 0, 0.92);
 }
 
 html {
@@ -16,55 +21,50 @@ html {
 
 body {
   color: var(--foreground);
-  background: transparent;
+  background: var(--icd-black);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/**
- * Global “futuristic” backdrop — deep space base, rose/sky/violet mesh, HUD grid, soft drift.
- * Sits fixed under app content (see root layout). Respects reduced motion.
- */
+/* Decorative layer only — never captures clicks or covers readable UI */
 .icdrrmo-app-backdrop {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  background-color: #020208;
+  background-color: #030303;
   background-image:
-    radial-gradient(ellipse 130% 90% at 15% -5%, rgba(225, 29, 72, 0.22), transparent 52%),
-    radial-gradient(ellipse 100% 70% at 95% 8%, rgba(6, 182, 212, 0.14), transparent 48%),
-    radial-gradient(ellipse 90% 60% at 50% 105%, rgba(139, 92, 246, 0.16), transparent 55%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, transparent 42%, rgba(255, 255, 255, 0.015) 100%),
-    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
-  background-size: auto, auto, auto, auto, 36px 36px, 36px 36px;
+    radial-gradient(ellipse 120% 85% at 12% -8%, rgba(249, 115, 22, 0.28), transparent 50%),
+    radial-gradient(ellipse 95% 70% at 92% 5%, rgba(220, 38, 38, 0.22), transparent 48%),
+    radial-gradient(ellipse 80% 55% at 50% 110%, rgba(234, 88, 12, 0.14), transparent 58%),
+    linear-gradient(180deg, rgba(3, 3, 3, 0.4) 0%, rgba(3, 3, 3, 0.95) 72%),
+    linear-gradient(var(--ops-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ops-grid) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 40px 40px, 40px 40px;
 }
 
 .icdrrmo-app-backdrop::before {
   content: "";
   position: absolute;
-  inset: -25%;
-  background:
-    radial-gradient(circle at 35% 45%, rgba(255, 255, 255, 0.04), transparent 38%),
-    repeating-linear-gradient(
-      -18deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 255, 255, 0.012) 2px,
-      rgba(255, 255, 255, 0.012) 3px
-    );
-  opacity: 0.65;
-  animation: icdrrmo-backdrop-drift 32s ease-in-out infinite;
+  inset: -20%;
+  background: repeating-linear-gradient(
+    -14deg,
+    transparent,
+    transparent 3px,
+    rgba(249, 115, 22, 0.03) 3px,
+    rgba(249, 115, 22, 0.03) 4px
+  );
+  opacity: 0.7;
+  animation: icdrrmo-backdrop-drift 36s ease-in-out infinite;
 }
 
 .icdrrmo-app-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 40% at 50% 120%, rgba(225, 29, 72, 0.08), transparent 60%);
+  background: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(249, 115, 22, 0.1), transparent 65%);
   mix-blend-mode: screen;
-  animation: icdrrmo-backdrop-pulse 14s ease-in-out infinite alternate;
+  animation: icdrrmo-backdrop-pulse 12s ease-in-out infinite alternate;
 }
 
 @keyframes icdrrmo-backdrop-drift {
@@ -72,20 +72,17 @@ body {
   100% {
     transform: translate(0, 0) rotate(0deg);
   }
-  40% {
-    transform: translate(2.5%, -1.5%) rotate(1.2deg);
-  }
-  70% {
-    transform: translate(-1.8%, 2%) rotate(-0.8deg);
+  50% {
+    transform: translate(1.5%, -1%) rotate(0.6deg);
   }
 }
 
 @keyframes icdrrmo-backdrop-pulse {
   0% {
-    opacity: 0.35;
+    opacity: 0.4;
   }
   100% {
-    opacity: 0.85;
+    opacity: 0.75;
   }
 }
 
@@ -94,16 +91,74 @@ body {
   .icdrrmo-app-backdrop::after {
     animation: none;
   }
-  .icdrrmo-app-backdrop::before {
-    transform: none;
-    opacity: 0.45;
-  }
-  .icdrrmo-app-backdrop::after {
-    opacity: 0.55;
-  }
 }
 
-/* Subtle tactical grid for command surfaces */
+/* App shell — all interactive UI sits above backdrop with safe spacing */
+.icd-app-shell {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.icd-app-main {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Clear fixed footer + optional install strip */
+  padding-bottom: max(3.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+.icd-app-footer {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(249, 115, 22, 0.2);
+  background: rgba(3, 3, 3, 0.94);
+  backdrop-filter: blur(10px);
+}
+
+/* Readable text on busy backgrounds */
+.icd-text-safe {
+  text-shadow: var(--icd-text-shadow);
+}
+
+.icd-panel {
+  border-radius: 1rem;
+  border: 1px solid rgba(249, 115, 22, 0.14);
+  background: var(--icd-panel-bg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 12px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+}
+
+.icd-page-pad {
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
+/* Prevent long headers / badges from clipping each other */
+.icd-header-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.icd-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  max-width: 100%;
+}
+
 .ops-grid-bg {
   background-image:
     linear-gradient(var(--ops-grid) 1px, transparent 1px),
@@ -111,30 +166,28 @@ body {
   background-size: 28px 28px;
 }
 
-/* Scrollbar — low-profile, operations-friendly */
 .scroll-ops {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: rgba(249, 115, 22, 0.35) transparent;
 }
 .scroll-ops::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 .scroll-ops::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(249, 115, 22, 0.35);
   border-radius: 3px;
 }
 
-/* Route change — logo pulse (see RouteLogoTransition) */
 @keyframes icdrrmo-logo-route-flash {
   0% {
     opacity: 0;
-    transform: scale(0.82);
+    transform: scale(0.88);
     filter: blur(6px);
   }
   42% {
     opacity: 1;
-    transform: scale(1.06);
+    transform: scale(1.04);
     filter: blur(0);
   }
   72% {
@@ -143,24 +196,24 @@ body {
   }
   100% {
     opacity: 0;
-    transform: scale(0.94);
+    transform: scale(0.96);
     filter: blur(2px);
   }
 }
 
 .icdrrmo-route-logo-overlay {
-  animation: icdrrmo-logo-route-flash 0.52s ease-out forwards;
+  animation: icdrrmo-logo-route-flash 0.45s ease-out forwards;
 }
 
 @keyframes chairman-alert-flash-keyframes {
   0%,
   100% {
-    background-color: rgba(69, 10, 10, 0.95);
-    border-color: rgba(244, 63, 94, 0.5);
+    background-color: rgba(69, 10, 10, 0.96);
+    border-color: rgba(249, 115, 22, 0.55);
   }
   50% {
-    background-color: rgba(127, 29, 29, 0.98);
-    border-color: rgba(251, 113, 133, 0.85);
+    background-color: rgba(124, 45, 18, 0.98);
+    border-color: rgba(251, 146, 60, 0.9);
   }
 }
 
@@ -172,4 +225,11 @@ body {
   .chairman-alert-flash {
     animation: none;
   }
+}
+
+/* Truncate helpers — never let labels spill under siblings */
+.icd-truncate-safe {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

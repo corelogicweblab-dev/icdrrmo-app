@@ -1,16 +1,12 @@
-"use client";
+﻿"use client";
 
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 
-const OVERLAY_MS = 580;
+const OVERLAY_MS = 420;
 
-/**
- * Brief centered logo flash on client-side route changes (SPA navigation).
- * Skips the first paint so the initial load is not covered.
- */
 export function RouteLogoTransition(): ReactElement | null {
   const pathname = usePathname();
   const [show, setShow] = useState(false);
@@ -30,14 +26,14 @@ export function RouteLogoTransition(): ReactElement | null {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[500] flex items-center justify-center bg-[#040406]/45 backdrop-blur-[2px]"
+      className="pointer-events-none fixed inset-0 z-[35] flex items-center justify-center bg-black/25"
       aria-hidden
     >
       <div
         key={pathname}
-        className="icdrrmo-route-logo-overlay rounded-2xl border border-rose-500/35 bg-zinc-950/92 p-6 shadow-[0_0_48px_-10px_rgba(225,29,72,0.5)] ring-1 ring-white/10"
+        className="icdrrmo-route-logo-overlay rounded-2xl border border-orange-500/40 bg-black/95 p-6 shadow-glow ring-1 ring-orange-500/25"
       >
-        <IcdrrmoLogo size={96} priority className="select-none drop-shadow-[0_4px_28px_rgba(225,29,72,0.4)]" />
+        <IcdrrmoLogo size={88} priority className="select-none drop-shadow-[0_4px_28px_rgba(249,115,22,0.5)]" />
       </div>
     </div>
   );

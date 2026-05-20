@@ -10,7 +10,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 /**
- * Optional PWA install control — only shown when the browser offers a native install prompt.
+ * Optional PWA install control — flows in document order (no sticky overlap).
  */
 export function AppInstallStrip(): ReactElement | null {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -34,12 +34,12 @@ export function AppInstallStrip(): ReactElement | null {
   if (!installEvent) return null;
 
   return (
-    <div className="sticky top-0 z-[60] border-b border-emerald-500/30 bg-emerald-950/50 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl flex-row items-center justify-end gap-3 px-3 py-2">
+    <div className="relative z-20 shrink-0 border-b border-orange-500/35 bg-black/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl flex-row items-center justify-end gap-3 px-3 py-2 icd-page-pad">
         <button
           type="button"
           onClick={() => void onInstall()}
-          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-600/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-50 hover:bg-emerald-600/45"
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-orange-400/45 bg-orange-600/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-orange-50 hover:bg-orange-600/40"
         >
           <Download className="h-3.5 w-3.5" aria-hidden />
           Install app

@@ -39,16 +39,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased relative min-h-dvh overflow-x-hidden bg-transparent text-zinc-100`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased min-h-dvh overflow-x-hidden text-zinc-100`}
       >
         <div className="icdrrmo-app-backdrop" aria-hidden />
         <PwaRegister />
-        <AppInstallStrip />
-        <RouteLogoTransition />
-        <div className="relative z-10 flex min-h-dvh flex-col">
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-          <footer className="shrink-0 border-t border-white/5 bg-black/20 py-2.5 text-center text-[11px] tracking-wide text-zinc-500 backdrop-blur-sm">
-            Powered by: CoreLogic
+        <div className="icd-app-shell">
+          <AppInstallStrip />
+          <RouteLogoTransition />
+          <div className="icd-app-main">{children}</div>
+          <footer className="icd-app-footer py-2.5 text-center text-[11px] tracking-wide text-zinc-500">
+            <span className="icd-text-safe">Powered by: CoreLogic</span>
           </footer>
         </div>
       </body>

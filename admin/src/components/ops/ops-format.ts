@@ -23,10 +23,10 @@ export function formatOpsSync(d: Date | null): string {
 export function incidentBorderClass(type: string | undefined | null): string {
   const t = (type ?? "UNKNOWN").toUpperCase();
   if (t.includes("FIRE")) return "border-l-orange-500";
-  if (t.includes("FLOOD") || t.includes("TYPHOON") || t.includes("LANDSLIDE")) return "border-l-sky-400";
-  if (t.includes("MEDICAL")) return "border-l-emerald-400";
-  if (t.includes("EARTHQUAKE")) return "border-l-amber-400";
-  return "border-l-rose-500";
+  if (t.includes("FLOOD") || t.includes("TYPHOON") || t.includes("LANDSLIDE")) return "border-l-red-500";
+  if (t.includes("MEDICAL")) return "border-l-orange-400";
+  if (t.includes("EARTHQUAKE")) return "border-l-amber-500";
+  return "border-l-rose-600";
 }
 
 /** Human-readable status for badges (avoid "OPEN" looking like a verb / button). */
@@ -48,12 +48,12 @@ export function humanIncidentStatus(status: string | undefined | null): string {
 export function statusBadgeClass(status: string | undefined | null): string {
   const s = (status ?? "OPEN").toUpperCase();
   if (s === "OPEN" || s === "ACKNOWLEDGED")
-    return "bg-amber-500/12 text-amber-200 ring-1 ring-amber-500/25";
+    return "bg-orange-500/15 text-orange-100 ring-1 ring-orange-500/30";
   if (s === "DISPATCHED" || s === "IN_PROGRESS")
-    return "bg-sky-500/12 text-sky-200 ring-1 ring-sky-500/25";
+    return "bg-red-500/12 text-red-100 ring-1 ring-red-500/28";
   if (s === "RESOLVED" || s === "CLOSED")
-    return "bg-zinc-500/10 text-zinc-400 ring-1 ring-zinc-500/20";
-  return "bg-zinc-800/80 text-zinc-300 ring-1 ring-zinc-600/30";
+    return "bg-zinc-800/80 text-zinc-400 ring-1 ring-zinc-600/25";
+  return "bg-black/60 text-zinc-300 ring-1 ring-orange-900/40";
 }
 
 /** Display-only decode of JWT payload (no verification). */

@@ -75,7 +75,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
       className="h-screen flex overflow-hidden bg-transparent text-zinc-100 font-sans"
       data-icdrrmo-console="ops-v2-command-board"
     >
-      <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-white/[0.06] bg-[#080809]">
+      <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-orange-500/15 bg-[#050505]">
         <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10 overflow-hidden p-0.5">
             <IcdrrmoLogo size={36} className="rounded-lg" />
@@ -125,20 +125,20 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="shrink-0 border-b border-white/[0.06] bg-black/50 backdrop-blur-md z-20">
-          <div className="flex flex-col gap-3 px-3 py-2.5 lg:px-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-[14px] font-semibold tracking-tight text-white md:text-[15px]">{title}</h1>
-                <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
+        <header className="shrink-0 border-b border-orange-500/15 bg-black/85 backdrop-blur-md z-20">
+          <div className="flex flex-col gap-3 px-3 py-2.5 lg:px-5 icd-page-pad">
+            <div className="icd-header-stack">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-[14px] font-semibold tracking-tight text-white md:text-[15px] icd-text-safe">{title}</h1>
+                <p className="text-[10px] text-zinc-400 mt-0.5 icd-truncate-safe">
                   {formatOpsClock(now)} · REST {getApiBaseUrl().replace(/^https?:\/\//, "")}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+              <div className="icd-badge-row">
                 <span
                   className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-mono uppercase tracking-wide ${
                     socketState === "live"
-                      ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200 animate-alert-blink"
+                      ? "border-orange-500/40 bg-orange-500/12 text-orange-100 animate-alert-blink"
                       : socketState === "error"
                         ? "border-rose-500/40 bg-rose-950/40 text-rose-200"
                         : "border-zinc-700/80 bg-zinc-950/80 text-zinc-500"
@@ -151,7 +151,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                 <span
                   className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] uppercase tracking-wide ${
                     apiReachable
-                      ? "border-emerald-500/28 bg-black/40 text-emerald-200/90"
+                      ? "border-orange-500/30 bg-black/50 text-orange-100/90"
                       : "border-amber-500/25 bg-amber-950/25 text-amber-200"
                   }`}
                 >
@@ -162,7 +162,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
                   )}
                   {apiReachable ? "Online" : "Offline"}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-lg border border-sky-500/25 bg-sky-950/20 px-2 py-1 font-mono text-[10px] text-sky-200 tabular-nums">
+                <span className="inline-flex items-center gap-1 rounded-lg border border-orange-500/25 bg-orange-950/25 px-2 py-1 font-mono text-[10px] text-orange-100 tabular-nums">
                   Cases {openCount}
                 </span>
                 {openCount > 0 ? (
@@ -255,7 +255,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
           </ul>
         </nav>
 
-        <main className="flex-1 overflow-auto scroll-ops">{children}</main>
+        <main className="flex-1 min-h-0 overflow-auto scroll-ops pb-6">{children}</main>
       </div>
       <OpsVoiceRingOverlay />
     </div>
