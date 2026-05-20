@@ -6,11 +6,12 @@ import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   AlertTriangle,
+  ChevronDown,
   Cloud,
   CloudRain,
   Home,
+  Info,
   Layers,
-  LocateFixed,
   MapPin,
   RefreshCw,
   Thermometer,
@@ -153,6 +154,8 @@ export function EocUnifiedMap({
   const [liveToast, setLiveToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"layers" | "pagasa" | "legend" | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
 
   const showResponders = mode === "ops" || mode === "responder";
   const showAllIncidents = mode === "ops" || mode === "responder" || mode === "chairman";
@@ -385,6 +388,17 @@ export function EocUnifiedMap({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const el = shellRef.current;
+    if (!map || !el) return;
+    const ro = new ResizeObserver(() => {
+      window.requestAnimationFrame(() => map.invalidateSize());
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapReady, mobilePanel]);
 
   const fitMapToData = useCallback(() => {
     const map = mapRef.current;
@@ -638,182 +652,265 @@ export function EocUnifiedMap({
 
   const heightClass =
     layout === "fullscreen"
-      ? "h-full min-h-[520px]"
-      : "min-h-[480px] h-[55vh] lg:h-[calc(100vh-220px)]";
+      ? "h-full min-h-0"
+      : "h-full min-h-[min(360px,50dvh)]";
+
+  const mobileTab = (id: "layers" | "pagasa" | "legend", label: string, Icon: typeof Layers): ReactElement => {
+    const active = mobilePanel === id;
+    return (
+      <button
+        type="button"
+        onClick={() => setMobilePanel(active ? null : id)}
+        className={
+          active
+            ? "shrink-0 inline-flex items-center gap-1 rounded-lg border border-orange-400/50 bg-orange-950/60 px-2.5 py-1 text-[10px] font-semibold text-orange-100"
+            : "shrink-0 inline-flex items-center gap-1 rounded-lg border border-orange-500/20 bg-zinc-900/60 px-2.5 py-1 text-[10px] text-zinc-400"
+        }
+      >
+        <Icon className="h-3 w-3" aria-hidden />
+        {label}
+      </button>
+    );
+  };
+
+  const layerControls = (
+    <div className="space-y-1">
+      <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10">
+        <input
+          type="checkbox"
+          checked={showGdacs}
+          onChange={() => setShowGdacs((v) => !v)}
+          className="rounded border-zinc-600 text-orange-500"
+        />
+        <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" aria-hidden />
+        <span className="text-[11px] text-zinc-200">GDACS ({gdacsCount})</span>
+      </label>
+      <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10">
+        <input
+          type="checkbox"
+          checked={showPagasaPins}
+          onChange={() => setShowPagasaPins((v) => !v)}
+          className="rounded border-zinc-600 text-orange-500"
+        />
+        <CloudRain className="h-3.5 w-3.5 text-sky-300 shrink-0" aria-hidden />
+        <span className="text-[11px] text-zinc-200">PAGASA pins ({pagasaAdvisories.length})</span>
+      </label>
+      {(Object.keys(LAYER_META) as WeatherLayerId[]).map((id) => {
+        const meta = LAYER_META[id];
+        const disabled = meta.needsOwm && !owmReady;
+        const on = activeLayers.has(id);
+        const Icon = meta.icon;
+        return (
+          <label
+            key={id}
+            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer ${
+              disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-orange-500/10"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={on}
+              disabled={disabled}
+              onChange={() => !disabled && toggleLayer(id)}
+              className="rounded border-zinc-600 text-orange-500"
+            />
+            <Icon className="h-3.5 w-3.5 text-orange-300 shrink-0" aria-hidden />
+            <span className="text-[11px] text-zinc-200">{meta.label}</span>
+          </label>
+        );
+      })}
+      {!owmReady ? (
+        <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
+          Rain radar: no key. Set OPENWEATHERMAP_API_KEY on API for OWM tiles.
+        </p>
+      ) : null}
+      {weather?.situation ? (
+        <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">
+          {weather.situation.current.weatherLabel}
+          {weather.situation.current.temperatureC != null
+            ? ` · ${weather.situation.current.temperatureC}°C`
+            : ""}
+          <span className="text-zinc-500 block">{weather.situation.rainOutlook6h.headline}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const pagasaList = (
+    <ul className="space-y-2 text-[11px] text-zinc-200">
+      {pagasaAdvisories.map((a) => (
+        <li key={a.id} className="rounded-lg bg-black/30 border border-sky-500/15 p-2">
+          <p className="font-medium text-sky-100 line-clamp-2">{a.title}</p>
+          <p className="text-[9px] text-zinc-600 uppercase">{a.kind}</p>
+          <p className="text-zinc-500 mt-1 line-clamp-2">{a.summary}</p>
+          {a.link ? (
+            <a
+              href={a.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sky-400 text-[10px] mt-1 inline-block hover:underline"
+            >
+              Official link →
+            </a>
+          ) : null}
+        </li>
+      ))}
+      {!pagasaAdvisories.length ? (
+        <li className="text-zinc-500 py-2">Loading PAGASA (portal + RSS)…</li>
+      ) : null}
+    </ul>
+  );
+
+  const legendBlock = (
+    <div className="text-[10px] text-zinc-300 space-y-1">
+      <p className="flex items-center gap-1.5">
+        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" /> Incidents ({incidents.length})
+      </p>
+      <p className="flex items-center gap-1.5">
+        <Home className="h-3 w-3 text-violet-400 shrink-0" aria-hidden /> Shelters ({evac.length})
+      </p>
+      {showResponders ? (
+        <p className="flex items-center gap-1.5">
+          <Users className="h-3 w-3 text-green-400 shrink-0" aria-hidden /> Responders ({responders.length})
+        </p>
+      ) : null}
+      {showVehicles ? (
+        <p className="flex items-center gap-1.5">
+          <Truck className="h-3 w-3 text-orange-400 shrink-0" aria-hidden /> Vehicles ({vehicles.length})
+        </p>
+      ) : null}
+      <p className="flex items-center gap-1.5">
+        <MapPin className="h-3 w-3 text-orange-400 shrink-0" aria-hidden /> EOC
+      </p>
+      <p className="flex items-center gap-1.5">
+        <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" aria-hidden /> GDACS ({gdacsCount})
+      </p>
+      <p className="flex items-center gap-1.5">
+        <CloudRain className="h-3 w-3 text-sky-400 shrink-0" aria-hidden /> PAGASA ({pagasaAdvisories.length})
+      </p>
+    </div>
+  );
 
   return (
     <div
-      className={`relative ${heightClass} ${className}`}
+      ref={shellRef}
+      className={`eoc-unified-map flex flex-col min-h-0 overflow-hidden bg-zinc-950 ${heightClass} ${className}`}
       data-eoc-map-build={EOC_MAP_BUILD}
     >
-      <div ref={mapEl} className="absolute inset-0 z-0 bg-zinc-950" />
+      {/* Toolbar — never overlays map */}
+      <header className="shrink-0 flex flex-col gap-1.5 border-b border-orange-500/15 bg-zinc-950/98 px-2 py-1.5 sm:px-3">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <span className="rounded-md border border-orange-500/35 bg-black/80 px-2 py-0.5 text-[9px] font-mono text-orange-200 truncate max-w-[140px] sm:max-w-none">
+            {EOC_MAP_BUILD}
+          </span>
+          <span className="hidden sm:inline text-[9px] text-zinc-500 truncate">
+            OWM · GDACS · PAGASA
+          </span>
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={busy}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-black/80 px-2 py-0.5 text-[10px] text-orange-100 hover:bg-orange-950/50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} aria-hidden />
+            Sync
+          </button>
+        </div>
+        {liveToast ? (
+          <p className="text-[10px] text-emerald-200 bg-emerald-950/80 border border-emerald-500/30 rounded-md px-2 py-1">
+            {liveToast}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="text-[10px] text-rose-200 bg-rose-950/80 border border-rose-500/30 rounded-md px-2 py-1">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex gap-1 overflow-x-auto scroll-ops pb-0.5 lg:hidden">
+          {mobileTab("layers", "Layers", Layers)}
+          {mobileTab("pagasa", "PAGASA", CloudRain)}
+          {mobileTab("legend", "Legend", Info)}
+        </div>
+      </header>
 
-      {/* Floating HUD */}
-      <div className="absolute top-3 left-3 z-[500] flex flex-wrap items-center gap-2 max-w-[calc(100%-1.5rem)]">
-        <span className="rounded-lg border border-orange-500/40 bg-black/85 px-2.5 py-1 text-[10px] font-mono text-orange-200 backdrop-blur-md">
-          EOC MAP · {EOC_MAP_BUILD}
-        </span>
-        <span className="rounded-lg border border-orange-500/25 bg-black/80 px-2.5 py-1 text-[10px] text-zinc-400 backdrop-blur-md">
-          OWM · GDACS · PAGASA · {hasMapboxToken() ? "Mapbox" : "OSM"}
-        </span>
-        <button
-          type="button"
-          onClick={() => void loadData()}
-          disabled={busy}
-          className="inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-black/85 px-2.5 py-1 text-[10px] text-orange-100 backdrop-blur-md hover:bg-orange-950/50 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} aria-hidden />
-          Sync
-        </button>
+      {/* Map + desktop side rail (no absolute overlays) */}
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
+        <div className="relative flex-1 min-h-[200px] sm:min-h-[260px] lg:min-h-[280px] min-w-0 order-1">
+          <div ref={mapEl} className="absolute inset-0 z-0 bg-zinc-950 eoc-map-canvas" />
+        </div>
+
+        <aside className="hidden lg:flex lg:flex-col lg:w-56 xl:w-64 shrink-0 order-2 border-t lg:border-t-0 lg:border-l border-orange-500/15 bg-zinc-950/98 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto scroll-ops divide-y divide-orange-500/10">
+            <section className="p-2">
+              <h3 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-orange-200 mb-1.5">
+                <Layers className="h-3.5 w-3.5" aria-hidden /> Layers
+              </h3>
+              {layerControls}
+            </section>
+            <section className="p-2 max-h-[28vh] overflow-y-auto scroll-ops">
+              <h3 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-sky-100 mb-1.5">
+                <CloudRain className="h-3.5 w-3.5" aria-hidden /> PAGASA
+              </h3>
+              {pagasaList}
+            </section>
+            <section className="p-2">
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-orange-200/90 mb-1.5">
+                Legend
+              </h3>
+              {legendBlock}
+            </section>
+          </div>
+        </aside>
       </div>
 
-      {liveToast ? (
-        <p className="absolute top-14 left-3 z-[500] text-xs text-emerald-200 bg-emerald-950/90 border border-emerald-500/40 rounded-lg px-3 py-2 backdrop-blur-md animate-pulse">
-          {liveToast}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="absolute top-14 left-3 z-[500] text-xs text-rose-200 bg-rose-950/90 border border-rose-500/40 rounded-lg px-3 py-2 max-w-md">
-          {error}
-        </p>
-      ) : null}
-
-      {/* Layer toggles ON the map */}
-      <div className="absolute top-3 right-3 z-[500] w-[min(100%,280px)] rounded-xl border border-orange-500/30 bg-black/88 backdrop-blur-md shadow-panel overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-orange-500/15 px-3 py-2">
-          <Layers className="h-4 w-4 text-orange-400" aria-hidden />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-200">
-            Weather layers
-          </span>
-        </div>
-        <div className="p-2 space-y-1 max-h-[200px] overflow-y-auto scroll-ops">
-          <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10">
-            <input
-              type="checkbox"
-              checked={showGdacs}
-              onChange={() => setShowGdacs((v) => !v)}
-              className="rounded border-zinc-600 text-orange-500"
-            />
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" aria-hidden />
-            <span className="text-[11px] text-zinc-200">GDACS alerts ({gdacsCount})</span>
-          </label>
-          <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10">
-            <input
-              type="checkbox"
-              checked={showPagasaPins}
-              onChange={() => setShowPagasaPins((v) => !v)}
-              className="rounded border-zinc-600 text-orange-500"
-            />
-            <CloudRain className="h-3.5 w-3.5 text-sky-300 shrink-0" aria-hidden />
-            <span className="text-[11px] text-zinc-200">PAGASA pins ({pagasaAdvisories.length})</span>
-          </label>
-          {(Object.keys(LAYER_META) as WeatherLayerId[]).map((id) => {
-            const meta = LAYER_META[id];
-            const disabled = meta.needsOwm && !owmReady;
-            const on = activeLayers.has(id);
-            const Icon = meta.icon;
-            return (
-              <label
-                key={id}
-                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer ${
-                  disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-orange-500/10"
-                }`}
+      {/* Mobile panels — below map, not on top */}
+      {mobilePanel ? (
+        <aside className="lg:hidden shrink-0 border-t border-orange-500/15 bg-zinc-950/98 max-h-[min(36dvh,240px)] overflow-y-auto scroll-ops">
+          {mobilePanel === "layers" ? (
+            <div className="p-2">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-[10px] font-semibold uppercase text-orange-200 mb-1"
+                onClick={() => setMobilePanel(null)}
               >
-                <input
-                  type="checkbox"
-                  checked={on}
-                  disabled={disabled}
-                  onChange={() => !disabled && toggleLayer(id)}
-                  className="rounded border-zinc-600 text-orange-500"
-                />
-                <Icon className="h-3.5 w-3.5 text-orange-300 shrink-0" aria-hidden />
-                <span className="text-[11px] text-zinc-200">{meta.label}</span>
-              </label>
-            );
-          })}
-        </div>
-        {!owmReady ? (
-          <p className="px-3 pb-2 text-[10px] text-zinc-500 border-t border-orange-500/10">
-            Rain radar works without a key. Add OPENWEATHERMAP_API_KEY on API for temp/wind/cloud OWM tiles.
-          </p>
-        ) : null}
-        {weather?.situation ? (
-          <p className="px-3 pb-2 text-[10px] text-orange-200/90 border-t border-orange-500/10 leading-relaxed">
-            {weather.situation.current.weatherLabel}
-            {weather.situation.current.temperatureC != null
-              ? ` · ${weather.situation.current.temperatureC}°C`
-              : ""}
-            <br />
-            <span className="text-zinc-500">{weather.situation.rainOutlook6h.headline}</span>
-          </p>
-        ) : null}
-      </div>
-
-      {/* PAGASA sidebar */}
-      <div className="absolute bottom-3 left-3 z-[500] w-[min(100%,320px)] max-h-[38vh] rounded-xl border border-sky-500/35 bg-sky-950/88 backdrop-blur-md shadow-panel flex flex-col">
-        <div className="shrink-0 border-b border-sky-500/20 px-3 py-2 flex items-center gap-2">
-          <CloudRain className="h-4 w-4 text-sky-300" aria-hidden />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-100">
-            PAGASA advisories
-          </span>
-        </div>
-        <ul className="overflow-y-auto scroll-ops p-2 space-y-2 text-[11px] text-zinc-200 flex-1">
-          {pagasaAdvisories.map((a) => (
-            <li key={a.id} className="rounded-lg bg-black/30 border border-sky-500/15 p-2">
-              <p className="font-medium text-sky-100">{a.title}</p>
-              <p className="text-[9px] text-zinc-600 uppercase">{a.kind}</p>
-              <p className="text-zinc-500 mt-1 line-clamp-3">{a.summary}</p>
-              {a.link ? (
-                <a
-                  href={a.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sky-400 text-[10px] mt-1 inline-block hover:underline"
-                >
-                  pagasa.dost.gov.ph →
-                </a>
-              ) : null}
-            </li>
-          ))}
-          {!pagasaAdvisories.length ? (
-            <li className="text-zinc-500 py-2">Loading PAGASA (portal + RSS)…</li>
+                <span className="flex items-center gap-1">
+                  <Layers className="h-3.5 w-3.5" aria-hidden /> Weather layers
+                </span>
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              {layerControls}
+            </div>
           ) : null}
-        </ul>
-      </div>
-
-      {/* Legend */}
-      <div className="absolute bottom-3 right-3 z-[500] rounded-xl border border-orange-500/25 bg-black/88 backdrop-blur-md px-3 py-2 text-[10px] text-zinc-300 space-y-1">
-        <p className="font-semibold text-orange-200/90 uppercase tracking-wider mb-1">Legend</p>
-        <p className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Incidents ({incidents.length})
-        </p>
-        <p className="flex items-center gap-1.5">
-          <Home className="h-3 w-3 text-violet-400" aria-hidden /> Shelters ({evac.length})
-        </p>
-        {showResponders ? (
-          <p className="flex items-center gap-1.5">
-            <Users className="h-3 w-3 text-green-400" aria-hidden /> Responders ({responders.length})
-          </p>
-        ) : null}
-        {showVehicles ? (
-          <p className="flex items-center gap-1.5">
-            <Truck className="h-3 w-3 text-orange-400" aria-hidden /> Vehicles ({vehicles.length})
-          </p>
-        ) : null}
-        <p className="flex items-center gap-1.5">
-          <MapPin className="h-3 w-3 text-orange-400" aria-hidden /> EOC pin
-        </p>
-        <p className="flex items-center gap-1.5">
-          <AlertTriangle className="h-3 w-3 text-amber-400" aria-hidden /> GDACS ({gdacsCount})
-        </p>
-        <p className="flex items-center gap-1.5">
-          <CloudRain className="h-3 w-3 text-sky-400" aria-hidden /> PAGASA ({pagasaAdvisories.length})
-        </p>
-        <p className="flex items-center gap-1.5 text-zinc-500 pt-1 border-t border-orange-500/15">
-          <LocateFixed className="h-3 w-3" aria-hidden />
-          Live shelters · GeoJSON merge
-        </p>
-      </div>
+          {mobilePanel === "pagasa" ? (
+            <div className="p-2">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-[10px] font-semibold uppercase text-sky-100 mb-1"
+                onClick={() => setMobilePanel(null)}
+              >
+                <span className="flex items-center gap-1">
+                  <CloudRain className="h-3.5 w-3.5" aria-hidden /> PAGASA advisories
+                </span>
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              {pagasaList}
+            </div>
+          ) : null}
+          {mobilePanel === "legend" ? (
+            <div className="p-2">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-[10px] font-semibold uppercase text-orange-200/90 mb-1"
+                onClick={() => setMobilePanel(null)}
+              >
+                Legend
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              {legendBlock}
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
     </div>
   );
 }

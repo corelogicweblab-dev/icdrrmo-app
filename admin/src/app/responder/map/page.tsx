@@ -26,9 +26,9 @@ export default function ResponderMapPage(): ReactElement {
   }
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
-      <h1 className="text-sm font-semibold text-white mb-3">Responder EOC map</h1>
-      <EocUnifiedMap mode="responder" accessToken={access} />
+    <div className="flex flex-col p-3 sm:p-4 max-w-7xl mx-auto h-[calc(100dvh-56px)] min-h-[480px]">
+      <h1 className="shrink-0 text-sm font-semibold text-white mb-2">Responder EOC map</h1>
+      <EocUnifiedMap mode="responder" accessToken={access} layout="fullscreen" className="flex-1 min-h-0" />
     </div>
   );
 }

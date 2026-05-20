@@ -366,11 +366,11 @@ export default function ChairmanDashboardPage(): ReactElement {
         ) : null}
 
         {tokens?.accessToken ? (
-          <section className="rounded-2xl icd-surface overflow-hidden">
-            <div className="border-b border-orange-500/12 px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80">
+          <section className="rounded-2xl icd-surface overflow-hidden flex flex-col min-h-[min(360px,50dvh)] h-[min(45dvh,520px)]">
+            <div className="shrink-0 border-b border-orange-500/12 px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80">
               Barangay EOC map · weather · PAGASA · shelters
             </div>
-            <EocUnifiedMap mode="chairman" accessToken={tokens.accessToken} className="min-h-[400px] h-[45vh]" />
+            <EocUnifiedMap mode="chairman" accessToken={tokens.accessToken} className="flex-1 min-h-0" />
           </section>
         ) : null}
 

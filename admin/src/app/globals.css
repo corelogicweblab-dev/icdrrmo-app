@@ -204,6 +204,22 @@ body {
   border-radius: 3px;
 }
 
+/* EOC unified map — controls stay in layout chrome, not over the canvas */
+.eoc-unified-map .eoc-map-canvas .leaflet-control-zoom {
+  border: 1px solid rgba(249, 115, 22, 0.25) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+.eoc-unified-map .eoc-map-canvas .leaflet-control-zoom a {
+  background: rgba(9, 9, 11, 0.92) !important;
+  color: #fdba74 !important;
+}
+@media (max-width: 1023px) {
+  .eoc-unified-map .eoc-map-canvas .leaflet-bottom.leaflet-right {
+    bottom: 6px;
+    right: 6px;
+  }
+}
+
 @keyframes icdrrmo-logo-route-flash {
   0% {
     opacity: 0;

@@ -903,14 +903,14 @@ export default function CitizenPage(): ReactElement {
             </form>
 
             {tokens ? (
-              <div className="rounded-2xl border border-orange-500/20 overflow-hidden">
-                <p className="px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80 bg-black/40 border-b border-orange-500/12">
+              <div className="rounded-2xl border border-orange-500/20 overflow-hidden flex flex-col min-h-[min(360px,55dvh)] h-[min(50dvh,560px)]">
+                <p className="shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80 bg-black/40 border-b border-orange-500/12">
                   Evacuation & weather — your barangay
                 </p>
                 <EocUnifiedMap
                   mode="citizen"
                   accessToken={tokens.accessToken}
-                  className="min-h-[360px] h-[50vh]"
+                  className="flex-1 min-h-0"
                 />
               </div>
             ) : null}
