@@ -204,6 +204,46 @@ async function main(): Promise<void> {
     console.log(
       `Seeded operator (barangay Binuangan): ${opEmail} — set SEED_OPERATOR_PASSWORD on first deploy`,
     );
+
+    const chairEmail =
+      process.env.SEED_CHAIRMAN_EMAIL ?? 'chairman.binuangan@icdrrmo.local';
+    const chairPasswordHash = await bcrypt.hash(
+      process.env.SEED_CHAIRMAN_PASSWORD ?? 'ChangeMe!Chairman12',
+      12,
+    );
+    const chairUser = await prisma.user.upsert({
+      where: { email: chairEmail },
+      create: {
+        email: chairEmail,
+        phone: '+639170000003',
+        passwordHash: chairPasswordHash,
+        role: UserRole.BARANGAY_CHAIRMAN,
+        profile: {
+          create: {
+            fullName: 'Barangay Chairman (Binuangan)',
+            setupCompleted: true,
+            barangayId: binuangan.id,
+          },
+        },
+      },
+      update: {
+        ...(repushPasswords ? { passwordHash: chairPasswordHash } : {}),
+        role: UserRole.BARANGAY_CHAIRMAN,
+      },
+    });
+    await prisma.userProfile.upsert({
+      where: { userId: chairUser.id },
+      create: {
+        userId: chairUser.id,
+        fullName: 'Barangay Chairman (Binuangan)',
+        setupCompleted: true,
+        barangayId: binuangan.id,
+      },
+      update: { barangayId: binuangan.id },
+    });
+    console.log(
+      `Seeded barangay chairman (Binuangan): ${chairEmail} — set SEED_CHAIRMAN_PASSWORD on first deploy`,
+    );
   }
 }
 

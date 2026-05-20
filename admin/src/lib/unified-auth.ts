@@ -1,6 +1,11 @@
 import { ApiTimeoutError, fetchWithTimeout } from "@/lib/api-fetch";
 import { getApiBaseUrl } from "@/lib/env";
 import { decodeJwtPayload, isAccessTokenUsable, OPS_CONSOLE_ROLES } from "@/lib/decode-jwt-role";
+import {
+  clearChairmanTokens,
+  loadChairmanTokens,
+  saveChairmanTokens,
+} from "@/components/chairman/chairman-storage";
 import { clearOpsTokens, loadOpsTokens, saveOpsTokens } from "@/components/ops/ops-storage";
 import type { TokenPair } from "@/components/ops/ops-types";
 
@@ -39,6 +44,10 @@ export function purgeInvalidStoredSessions(): void {
   if (ops?.accessToken && !isAccessTokenUsable(ops.accessToken)) {
     clearOpsTokens();
   }
+  const chairman = loadChairmanTokens();
+  if (chairman?.accessToken && !isAccessTokenUsable(chairman.accessToken)) {
+    clearChairmanTokens();
+  }
 }
 
 /** Resolve dashboard path from JWT role (client-side UX only). */
@@ -46,6 +55,7 @@ export function dashboardPathForRole(role: string | undefined): string | null {
   if (!role) return null;
   if (role === "CITIZEN") return "/citizen";
   if (role === "RESPONDER") return "/responder";
+  if (role === "BARANGAY_CHAIRMAN") return "/chairman";
   if (OPS_CONSOLE_ROLES.has(role)) return "/ops";
   return null;
 }
@@ -122,9 +132,15 @@ export async function loginWithRoleRouting(
   const pair: TokenPair = { accessToken: data.accessToken };
   if (role === "CITIZEN") {
     clearOpsTokens();
+    clearChairmanTokens();
     saveCitizenTokens(pair);
+  } else if (role === "BARANGAY_CHAIRMAN") {
+    clearCitizenTokens();
+    clearOpsTokens();
+    saveChairmanTokens(pair);
   } else {
     clearCitizenTokens();
+    clearChairmanTokens();
     saveOpsTokens(pair);
   }
 

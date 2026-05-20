@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/jwt_decode.dart';
 import '../../../core/firestore/citizen_firestore_sync.dart';
+import '../../../core/push/chairman_push.dart';
 import '../../../core/push/citizen_push.dart';
 import '../../../core/network/dio_provider.dart';
 import '../../../core/storage/token_storage.dart';
@@ -83,6 +84,9 @@ final class AuthRepository {
     if (role == 'CITIZEN') {
       await CitizenFirestoreSync.signInWithBackend(_dio);
       await CitizenPush.registerWithBackend(_dio);
+    } else if (role == 'BARANGAY_CHAIRMAN') {
+      await CitizenFirestoreSync.signOut();
+      await ChairmanPush.registerWithBackend(_dio);
     } else {
       await CitizenFirestoreSync.signOut();
     }

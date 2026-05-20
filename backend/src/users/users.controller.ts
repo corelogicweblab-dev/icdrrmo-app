@@ -48,13 +48,13 @@ export class UsersController {
     return this.users.patchMe(user.sub, dto);
   }
 
-  @Roles(UserRole.CITIZEN)
+  @Roles(UserRole.CITIZEN, UserRole.BARANGAY_CHAIRMAN)
   @Post('me/device-token')
   registerDeviceToken(@CurrentUser() user: JwtPayload, @Body() dto: RegisterDeviceTokenDto) {
     return this.users.upsertDeviceToken(user.sub, dto);
   }
 
-  @Roles(UserRole.CITIZEN)
+  @Roles(UserRole.CITIZEN, UserRole.BARANGAY_CHAIRMAN)
   @Delete('me/device-token')
   removeDeviceToken(@CurrentUser() user: JwtPayload, @Query('token') token?: string) {
     if (!token?.trim()) {

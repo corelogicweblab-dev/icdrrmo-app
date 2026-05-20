@@ -15,6 +15,7 @@ import {
   navigateAfterLogin,
   purgeInvalidStoredSessions,
 } from "@/lib/unified-auth";
+import { loadChairmanTokens } from "@/components/chairman/chairman-storage";
 import { loadOpsTokens } from "@/components/ops/ops-storage";
 
 export function UnifiedLoginPage(): ReactElement {
@@ -32,6 +33,14 @@ export function UnifiedLoginPage(): ReactElement {
     const citizen = loadCitizenTokens();
     if (citizen?.accessToken) {
       const path = dashboardPathForToken(citizen.accessToken);
+      if (path) {
+        router.replace(path);
+        return;
+      }
+    }
+    const chairman = loadChairmanTokens();
+    if (chairman?.accessToken) {
+      const path = dashboardPathForToken(chairman.accessToken);
       if (path) {
         router.replace(path);
         return;

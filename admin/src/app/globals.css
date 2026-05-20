@@ -151,3 +151,25 @@ body {
 .icdrrmo-route-logo-overlay {
   animation: icdrrmo-logo-route-flash 0.52s ease-out forwards;
 }
+
+@keyframes chairman-alert-flash-keyframes {
+  0%,
+  100% {
+    background-color: rgba(69, 10, 10, 0.95);
+    border-color: rgba(244, 63, 94, 0.5);
+  }
+  50% {
+    background-color: rgba(127, 29, 29, 0.98);
+    border-color: rgba(251, 113, 133, 0.85);
+  }
+}
+
+.chairman-alert-flash {
+  animation: chairman-alert-flash-keyframes 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chairman-alert-flash {
+    animation: none;
+  }
+}

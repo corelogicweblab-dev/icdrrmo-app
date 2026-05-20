@@ -26,6 +26,7 @@ import { SystemModule } from './system/system.module';
 import { FirestoreModule } from './firestore/firestore.module';
 import { RtcModule } from './rtc/rtc.module';
 import { PushModule } from './push/push.module';
+import { ChairmanModule } from './chairman/chairman.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { PushModule } from './push/push.module';
     AlertsModule,
     SystemModule,
     RtcModule,
+    ChairmanModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

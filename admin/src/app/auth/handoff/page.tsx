@@ -3,7 +3,9 @@
 import type { ReactElement } from "react";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { saveChairmanTokens } from "@/components/chairman/chairman-storage";
 import { saveOpsTokens } from "@/components/ops/ops-storage";
+import { decodeJwtPayload } from "@/lib/decode-jwt-role";
 
 /**
  * Mobile staff sign-in opens this URL with `#t=<Nest JWT>` so we can persist the same
@@ -16,7 +18,6 @@ function HandoffBody(): ReactElement {
 
   useEffect(() => {
     const targetRaw = search.get("target");
-    const target = targetRaw === "responder" ? "responder" : "ops";
     const hash = typeof window !== "undefined" ? window.location.hash : "";
     const raw = hash.startsWith("#") ? hash.slice(1) : "";
     const params = new URLSearchParams(raw);
@@ -25,13 +26,25 @@ function HandoffBody(): ReactElement {
       setNote("Missing token. Return to the mobile app and sign in again.");
       return;
     }
+    const accessToken = decodeURIComponent(t.trim());
+    const role = decodeJwtPayload(accessToken)?.role;
     try {
-      saveOpsTokens({ accessToken: decodeURIComponent(t.trim()) });
+      if (role === "BARANGAY_CHAIRMAN" || targetRaw === "chairman") {
+        saveChairmanTokens({ accessToken });
+      } else {
+        saveOpsTokens({ accessToken });
+      }
     } catch {
       setNote("Could not save session. Try signing in again on the web portal.");
       return;
     }
-    router.replace(target === "responder" ? "/responder" : "/ops");
+    const target =
+      targetRaw === "chairman" || role === "BARANGAY_CHAIRMAN"
+        ? "chairman"
+        : targetRaw === "responder"
+          ? "responder"
+          : "ops";
+    router.replace(target === "chairman" ? "/chairman" : target === "responder" ? "/responder" : "/ops");
   }, [router, search]);
 
   return (

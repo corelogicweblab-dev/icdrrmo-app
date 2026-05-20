@@ -45,7 +45,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           setState(() => error = 'Set ICDRRMO_WEB_URL for this build so we can open the web console.');
           return;
         }
-        final target = role == 'RESPONDER' ? 'responder' : 'ops';
+        final target = role == 'RESPONDER'
+            ? 'responder'
+            : role == 'BARANGAY_CHAIRMAN'
+                ? 'chairman'
+                : 'ops';
         final (access, _) = await ref.read(tokenStorageProvider).loadTokens();
         if (access == null || access.isEmpty) {
           setState(() => error = 'Missing access token after sign-in.');

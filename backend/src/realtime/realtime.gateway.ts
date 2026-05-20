@@ -21,6 +21,8 @@ const OPS_ROLES: ReadonlySet<UserRole> = new Set([
   UserRole.OPERATOR,
 ]);
 
+const CHAIRMAN_ROLES: ReadonlySet<UserRole> = new Set([UserRole.BARANGAY_CHAIRMAN]);
+
 @WebSocketGateway({
   namespace: '/realtime',
   cors: { origin: true, credentials: true },
@@ -51,6 +53,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       client.join(`user:${payload.sub}`);
       if (OPS_ROLES.has(payload.role)) {
         client.join('ops');
+      }
+      if (CHAIRMAN_ROLES.has(payload.role)) {
+        client.join('chairman');
+        const profile = await this.prisma.userProfile.findUnique({
+          where: { userId: payload.sub },
+          select: { barangayId: true },
+        });
+        if (profile?.barangayId) {
+          client.join(`chairman:${profile.barangayId}`);
+        }
       }
       if (payload.role === UserRole.RESPONDER) {
         client.join('responders');
@@ -178,11 +190,33 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     longitude?: number | null;
     type?: string;
     title?: string | null;
+    barangayId?: string | null;
   }): void {
     this.server.to('ops').emit('incident_created', payload);
+    this.server.to('chairman').emit('chairman_incident', {
+      ...payload,
+      feedStatus: 'new',
+    });
+    if (payload.barangayId) {
+      this.server.to(`chairman:${payload.barangayId}`).emit('chairman_incident', {
+        ...payload,
+        feedStatus: 'new',
+        alarm: true,
+      });
+    }
     if (payload.reporterId) {
       this.server.to(`user:${payload.reporterId}`).emit('incident_created', payload);
     }
+  }
+
+  emitChairmanIncident(payload: {
+    barangayId: string;
+    incidentId: string;
+    status: string;
+    feedStatus: string;
+  }): void {
+    this.server.to(`chairman:${payload.barangayId}`).emit('chairman_incident', payload);
+    this.server.to('chairman').emit('chairman_incident', payload);
   }
 
   emitIncidentUpdated(payload: {

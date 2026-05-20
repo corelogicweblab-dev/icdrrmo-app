@@ -27,6 +27,7 @@ import {
   isGlobalOpsRole,
   OPERATOR_BARANGAY_REQUIRED,
 } from '../common/ops-operator-scope';
+import { ChairmanAlertsService } from '../chairman/chairman-alerts.service';
 
 const DEDUPE_WINDOW_MS = 120_000;
 
@@ -38,6 +39,7 @@ export class IncidentsService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly jobs: JobsService,
+    private readonly chairmanAlerts: ChairmanAlertsService,
   ) {}
 
   async createSosFromApp(
@@ -89,6 +91,16 @@ export class IncidentsService {
       longitude: Number(incident.longitude),
       type: incident.type,
       title: incident.title,
+      barangayId: incident.barangayId,
+    });
+    void this.chairmanAlerts.notifyChairmenForIncident({
+      id: incident.id,
+      type: incident.type,
+      title: incident.title,
+      latitude: Number(incident.latitude),
+      longitude: Number(incident.longitude),
+      barangayId: incident.barangayId,
+      createdAt: incident.createdAt,
     });
     return { incidentId: incident.id, deduplicated: false };
   }
@@ -127,6 +139,21 @@ export class IncidentsService {
       longitude: Number(incident.longitude),
       type: incident.type,
       title: incident.title,
+    });
+    const profile = incident.reporterId
+      ? await this.prisma.userProfile.findUnique({
+          where: { userId: incident.reporterId },
+          select: { barangayId: true },
+        })
+      : null;
+    void this.chairmanAlerts.notifyChairmenForIncident({
+      id: incident.id,
+      type: incident.type,
+      title: incident.title,
+      latitude: Number(incident.latitude),
+      longitude: Number(incident.longitude),
+      barangayId: incident.barangayId ?? profile?.barangayId ?? null,
+      createdAt: incident.createdAt,
     });
     return { incidentId: incident.id };
   }
