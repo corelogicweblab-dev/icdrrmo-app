@@ -370,7 +370,7 @@ export default function ChairmanDashboardPage(): ReactElement {
             <div className="border-b border-orange-500/12 px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80">
               Barangay EOC map · weather · PAGASA · shelters
             </div>
-            <EocUnifiedMap mode="chairman" accessToken={tokens.accessToken} mapHeight="min-h-[400px] h-[45vh]" />
+            <EocUnifiedMap mode="chairman" accessToken={tokens.accessToken} className="min-h-[400px] h-[45vh]" />
           </section>
         ) : null}
 

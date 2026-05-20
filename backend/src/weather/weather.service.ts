@@ -26,6 +26,8 @@ export type EocWeatherBundle = {
     configured: boolean;
     layers: OpenWeatherLayerConfig[];
   };
+  /** Client can use RainViewer without API key */
+  rainViewer: { available: boolean };
 };
 
 /** CDRRMO reference point — Isabela City proper (WGS84). */
@@ -503,6 +505,7 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
       situation,
       pagasa,
       openWeather: this.getOpenWeatherLayers(),
+      rainViewer: { available: true },
     };
   }
 }

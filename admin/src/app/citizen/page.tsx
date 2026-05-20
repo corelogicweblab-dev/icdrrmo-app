@@ -910,7 +910,7 @@ export default function CitizenPage(): ReactElement {
                 <EocUnifiedMap
                   mode="citizen"
                   accessToken={tokens.accessToken}
-                  mapHeight="min-h-[360px] h-[50vh]"
+                  className="min-h-[360px] h-[50vh]"
                 />
               </div>
             ) : null}

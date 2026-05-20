@@ -19,6 +19,7 @@ export type EocWeatherBundle = {
     configured: boolean;
     layers: Array<{ id: string; label: string; urlTemplate: string }>;
   };
+  rainViewer?: { available: boolean };
 };
 
 export async function fetchEocWeather(accessToken: string): Promise<EocWeatherBundle> {
