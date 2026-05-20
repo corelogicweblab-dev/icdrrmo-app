@@ -1,162 +1,75 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useState } from "react";
-import { CloudRain, Globe2, Layers, Radio, Waves, Wind } from "lucide-react";
-import { IsabelaForecastEmbed } from "@/components/ops/isabela-forecast-embed";
+import Link from "next/link";
+import { CloudRain, Map } from "lucide-react";
+import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
+import { useOpsSession } from "@/components/ops/ops-session-context";
 import { WEATHER_SOURCES } from "@/components/ops/ops-nav";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
-import { PH_SYNOPTIC_LAT, PH_SYNOPTIC_LON, PH_SYNOPTIC_ZOOM } from "@/lib/isabela-forecast-embed";
 
-/**
- * Map overlay tabs — values match the embed provider’s `overlay` parameter (wind, rain, temp, …).
- */
-const EMBED_OVERLAYS = [
-  { id: "wind", label: "Wind", hint: "Particles + speed scale" },
-  { id: "temp", label: "Temperature", hint: "City °C labels" },
-  { id: "rain", label: "Rain", hint: "3h accumulation" },
-  { id: "clouds", label: "Clouds", hint: "Total cover" },
-  { id: "lclouds", label: "Low clouds", hint: "Fog / ceiling" },
-  { id: "pressure", label: "Pressure", hint: "MSL isobars" },
-  { id: "waves", label: "Waves", hint: "Swell height" },
-  { id: "gust", label: "Gusts", hint: "Peak wind" },
-] as const;
-
-type OverlayId = (typeof EMBED_OVERLAYS)[number]["id"];
-
+/** Same unified GIS as Ops → Map: OWM tiles + GDACS + PAGASA GeoJSON on one Leaflet desk. */
 export default function OpsWeatherPage(): ReactElement {
-  const [overlay, setOverlay] = useState<OverlayId>("wind");
+  const { tokens } = useOpsSession();
+
+  if (!tokens?.accessToken) {
+    return (
+      <p className="p-6 text-sm text-zinc-500">
+        Sign in to open the weather map.{" "}
+        <Link href="/" className="text-orange-400 underline">
+          Login
+        </Link>
+      </p>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-5 p-4 lg:p-6">
-      <section className="overflow-hidden rounded-2xl border border-orange-500/15 bg-zinc-950/45 shadow-[0_24px_80px_-40px_rgba(14,165,233,0.35)] backdrop-blur-md">
-        <div className="border-b border-orange-500/12 bg-gradient-to-r from-[#06080f] via-[#0a0c12] to-orange-950/25 px-4 py-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <h1 className="text-sm font-semibold tracking-tight text-white sm:text-base">Situational weather map</h1>
-              <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-zinc-500">
-                Live forecast map with wind motion, temperature fields, and place labels — same class of view as
-                professional desk tools. Use the{" "}
-                <span className="text-zinc-400">timeline and right-hand menus inside the map</span> for time and
-                altitude. Tabs below switch the <span className="text-zinc-400">main overlay</span> (reloads the
-                viewer).
-              </p>
-            </div>
-            <p className="shrink-0 rounded-lg border border-orange-500/35 bg-orange-950/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-orange-200/95">
-              Live embed · overlay tabs
-            </p>
-          </div>
-
-          <div
-            className="mt-3 flex flex-wrap gap-1.5"
-            role="tablist"
-            aria-label="Forecast map overlay"
-          >
-            {EMBED_OVERLAYS.map((o) => {
-              const active = overlay === o.id;
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setOverlay(o.id)}
-                  className={
-                    active
-                      ? "min-h-[2.5rem] rounded-xl border border-orange-400/50 bg-gradient-to-br from-orange-500/25 via-orange-950/50 to-black px-3 py-1.5 text-left ring-2 ring-orange-400/40 shadow-[0_0_14px_rgba(249,115,22,0.25)]"
-                      : "min-h-[2.5rem] rounded-xl border border-orange-500/15 bg-zinc-900/40 px-3 py-1.5 text-left text-zinc-400 hover:border-orange-500/25 hover:bg-zinc-800/50 hover:text-zinc-200"
-                  }
-                >
-                  <span className="block text-[11px] font-semibold text-white">{o.label}</span>
-                  <span className="block text-[9px] font-medium leading-tight text-zinc-500">{o.hint}</span>
-                </button>
-              );
-            })}
-          </div>
+    <div className="flex flex-col gap-4 p-3 lg:p-4 h-[calc(100dvh-52px)] min-h-[560px]">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-sm font-semibold text-white">Unified hazard & weather map</h1>
+          <p className="text-[11px] text-zinc-500 mt-0.5">
+            OpenWeatherMap · GDACS GeoRSS · PAGASA portal/RSS — single GeoJSON feed
+          </p>
         </div>
+        <Link
+          href="/ops/map"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/35 bg-orange-950/40 px-3 py-1.5 text-[11px] text-orange-100 hover:bg-orange-950/60"
+        >
+          <Map className="h-3.5 w-3.5" aria-hidden />
+          Ops realtime map
+        </Link>
+      </div>
 
-        <div className="relative z-0 bg-black">
-          <IsabelaForecastEmbed
-            variant="synoptic"
-            overlay={overlay}
-            title="Philippines situational weather map"
-          />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1 px-3 pb-2 text-center sm:flex-row sm:justify-between sm:text-left">
-            <p className="text-[10px] text-zinc-500">
-              Default view: <span className="text-zinc-400">{PH_SYNOPTIC_LAT.toFixed(2)}°N</span>
-              <span className="mx-1 text-zinc-600">·</span>
-              <span className="text-zinc-400">{PH_SYNOPTIC_LON.toFixed(2)}°E</span>
-              <span className="mx-1 text-zinc-600">·</span>
-              zoom {PH_SYNOPTIC_ZOOM}
-              <span className="mx-1 text-zinc-600">·</span>
-              EOC pin{" "}
-              <span className="font-mono text-zinc-400">
-                {ISABELA_EOC_LAT.toFixed(3)}°N {ISABELA_EOC_LNG.toFixed(3)}°E
-              </span>
-            </p>
-            <p className="text-[10px] text-zinc-600">
-              Map data © OpenStreetMap — forecast visualization via embed (not PAGASA official product).
-            </p>
-          </div>
-        </div>
-      </section>
+      <EocUnifiedMap
+        mode="ops"
+        accessToken={tokens.accessToken}
+        layout="fullscreen"
+        className="flex-1 min-h-0"
+      />
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <OpsPanelCard title="Data integrations" className="lg:col-span-5">
-          <div className="mb-6 flex flex-wrap gap-2">
+      <div className="shrink-0 grid gap-3 sm:grid-cols-2">
+        <OpsPanelCard title="Active sources">
+          <div className="flex flex-wrap gap-2">
             {WEATHER_SOURCES.map((s) => (
               <span
                 key={s}
-                className="rounded-lg border border-orange-400/40 bg-gradient-to-br from-orange-500/25 to-orange-950/60 px-2.5 py-1 text-[11px] font-semibold text-orange-100 ring-1 ring-inset ring-orange-400/30"
+                className="rounded-lg border border-orange-400/40 bg-orange-950/50 px-2 py-0.5 text-[10px] font-semibold text-orange-100"
               >
                 {s}
               </span>
             ))}
+            <span className="rounded-lg border border-amber-400/40 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-100">
+              GDACS
+            </span>
           </div>
-          <ul className="space-y-2 text-sm text-zinc-400">
-            <li className="flex items-center gap-2">
-              <CloudRain className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
-              Rainfall accumulation layers
-            </li>
-            <li className="flex items-center gap-2">
-              <Wind className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
-              Tropical cyclone tracks · wind radii
-            </li>
-            <li className="flex items-center gap-2">
-              <Globe2 className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
-              Heat index grids + public health triggers
-            </li>
-            <li className="flex items-center gap-2">
-              <Waves className="h-4 w-4 shrink-0 text-cyan-400" aria-hidden />
-              Tsunami / sea state (PHIVOLCS / NOAA feeds)
-            </li>
-            <li className="flex items-center gap-2">
-              <Radio className="h-4 w-4 shrink-0 text-rose-400" aria-hidden />
-              Push hazard bulletins → Notifications panel
-            </li>
-          </ul>
         </OpsPanelCard>
-
-        <OpsPanelCard title="Using this map" subtitle="EOC workflow" className="lg:col-span-7">
-          <ul className="space-y-3 text-sm leading-relaxed text-zinc-400">
-            <li className="flex gap-3">
-              <Layers className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" aria-hidden />
-              <span>
-                <strong className="text-zinc-300">RainViewer</strong> on <strong className="text-zinc-300">Ops → Map</strong>{" "}
-                stays tuned for <strong className="text-zinc-300">radar mosaic</strong> and cell playback. This page
-                uses the <strong className="text-zinc-300">ICDRRMO weather desk</strong> (Leaflet + Open-Meteo +
-                RainViewer radar) — no third-party map branding in the viewer.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <Wind className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" aria-hidden />
-              <span>
-                Cross-check severe weather with <strong className="text-zinc-300">PAGASA</strong> bulletins before
-                dispatch decisions; any third-party map is an advisory aid only.
-              </span>
-            </li>
-          </ul>
+        <OpsPanelCard title="Desk note">
+          <p className="text-[11px] text-zinc-500 leading-relaxed flex gap-2">
+            <CloudRain className="h-4 w-4 shrink-0 text-sky-400" aria-hidden />
+            Cross-check PAGASA official bulletins before dispatch. Raster overlays require{" "}
+            <code className="text-zinc-400">OPENWEATHERMAP_API_KEY</code> on the API service.
+          </p>
         </OpsPanelCard>
       </div>
     </div>

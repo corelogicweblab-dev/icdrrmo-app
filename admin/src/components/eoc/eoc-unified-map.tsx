@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
+  AlertTriangle,
   Cloud,
   CloudRain,
   Home,
@@ -20,6 +21,13 @@ import {
 import { getMapboxToken, hasMapboxToken } from "@/lib/env";
 import { opsFetchJson } from "@/lib/ops-api";
 import { fetchEocWeather, type EocWeatherBundle } from "@/lib/eoc-weather";
+import {
+  fetchEocHazardGeoJson,
+  gdacsAlertColor,
+  owmTileLayersFromGeoJson,
+  pagasaAdvisoriesFromGeoJson,
+  type MergedHazardGeoJson,
+} from "@/lib/eoc-weather-geojson";
 import {
   connectEocRealtime,
   type EvacuationCenterWsPayload,
@@ -121,10 +129,14 @@ export function EocUnifiedMap({
   const basemapRef = useRef<import("leaflet").TileLayer | null>(null);
   const markersRef = useRef<import("leaflet").LayerGroup | null>(null);
   const weatherLayersRef = useRef<Partial<Record<WeatherLayerId, import("leaflet").TileLayer>>>({});
-  const pagasaLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const gdacsGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
+  const pagasaGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const rainViewerUrlRef = useRef<string | null>(null);
 
   const [weather, setWeather] = useState<EocWeatherBundle | null>(null);
+  const [hazardGeo, setHazardGeo] = useState<MergedHazardGeoJson | null>(null);
+  const [showGdacs, setShowGdacs] = useState(true);
+  const [showPagasaPins, setShowPagasaPins] = useState(true);
   const [activeLayers, setActiveLayers] = useState<Set<WeatherLayerId>>(
     () => new Set<WeatherLayerId>(["rain-radar"]),
   );
@@ -145,7 +157,13 @@ export function EocUnifiedMap({
   const showResponders = mode === "ops" || mode === "responder";
   const showAllIncidents = mode === "ops" || mode === "responder" || mode === "chairman";
   const showVehicles = mode === "ops";
-  const owmReady = Boolean(weather?.openWeather.configured);
+  const owmLayers = owmTileLayersFromGeoJson(hazardGeo);
+  const owmReady =
+    Boolean(hazardGeo?.layers.openWeatherMap.properties?.configured) ||
+    Boolean(weather?.openWeather.configured) ||
+    owmLayers.length > 0;
+  const pagasaAdvisories = pagasaAdvisoriesFromGeoJson(hazardGeo);
+  const gdacsCount = hazardGeo?.layers.gdacs.features.length ?? 0;
 
   const loadData = useCallback(async () => {
     const token = accessToken;
@@ -153,8 +171,9 @@ export function EocUnifiedMap({
     setBusy(true);
     setError(null);
     try {
-      const [wx, live, rainUrl] = await Promise.all([
+      const [wx, geo, live, rainUrl] = await Promise.all([
         fetchEocWeather(token).catch(() => null),
+        fetchEocHazardGeoJson(token).catch(() => null),
         mode === "citizen"
           ? Promise.resolve(null)
           : opsFetchJson<OpsLive>("/map/ops-live", token).catch(() => null),
@@ -162,6 +181,7 @@ export function EocUnifiedMap({
       ]);
       rainViewerUrlRef.current = rainUrl;
       if (wx) setWeather(wx);
+      if (geo) setHazardGeo(geo);
 
       if (mode === "citizen") {
         type EvacRow = {
@@ -350,7 +370,6 @@ export function EocUnifiedMap({
       basemapRef.current = basemap;
 
       markersRef.current = L.layerGroup().addTo(map);
-      pagasaLayerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
 
       window.setTimeout(() => {
@@ -371,10 +390,20 @@ export function EocUnifiedMap({
     const map = mapRef.current;
     if (!map) return;
     void import("leaflet").then((L) => {
+      const gdacsPts =
+        hazardGeo?.layers.gdacs.features.flatMap((f) => {
+          const g = f.geometry;
+          if (g.type === "Point" && Array.isArray(g.coordinates) && g.coordinates.length >= 2) {
+            const [lng, lat] = g.coordinates as number[];
+            return [[lat, lng] as LatLngExpression];
+          }
+          return [];
+        }) ?? [];
       const pts: LatLngExpression[] = [
         [ISABELA_EOC_LAT, ISABELA_EOC_LNG],
         ...evac.map((e) => [e.latitude, e.longitude] as LatLngExpression),
         ...incidents.map((i) => [i.latitude, i.longitude] as LatLngExpression),
+        ...gdacsPts,
       ];
       if (pts.length < 2) {
         map.setView([ISABELA_CITY_LAT, ISABELA_CITY_LON], 11);
@@ -383,7 +412,7 @@ export function EocUnifiedMap({
       const bounds = L.latLngBounds(pts);
       map.fitBounds(bounds as LatLngBoundsExpression, { padding: [48, 48], maxZoom: 13 });
     });
-  }, [evac, incidents]);
+  }, [evac, incidents, hazardGeo]);
 
   useEffect(() => {
     if (mapReady) fitMapToData();
@@ -477,10 +506,11 @@ export function EocUnifiedMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !weather) return;
+    if (!map) return;
     void (async () => {
       const L = await import("leaflet");
       const allIds: WeatherLayerId[] = ["rain-radar", "precipitation", "clouds", "temp", "wind"];
+      const owmById = new Map(owmLayers.map((l) => [l.id, l]));
 
       for (const id of allIds) {
         const shouldShow = activeLayers.has(id);
@@ -499,7 +529,8 @@ export function EocUnifiedMap({
           url = rainViewerUrlRef.current;
           opacity = 0.55;
         } else if (owmReady) {
-          const owm = weather.openWeather.layers.find((l) => l.id === id);
+          const owm =
+            owmById.get(id) ?? weather?.openWeather.layers.find((l) => l.id === id);
           url = owm?.urlTemplate ?? null;
         }
 
@@ -518,29 +549,83 @@ export function EocUnifiedMap({
         tile.addTo(map);
       }
     })();
-  }, [activeLayers, weather, owmReady]);
+  }, [activeLayers, weather, owmReady, owmLayers]);
 
   useEffect(() => {
-    if (!pagasaLayerRef.current || !weather?.pagasa.items.length) return;
+    const map = mapRef.current;
+    if (!map || !mapReady || !hazardGeo) return;
     void (async () => {
       const L = await import("leaflet");
-      const g = pagasaLayerRef.current!;
-      g.clearLayers();
-      weather.pagasa.items.slice(0, 6).forEach((item, idx) => {
-        const lat = ISABELA_EOC_LAT + idx * 0.012;
-        const lng = ISABELA_EOC_LNG + idx * 0.008;
-        L.marker([lat, lng], {
-          icon: L.divIcon({
-            className: "",
-            html: `<div style="font-size:10px;padding:3px 6px;background:#0369a1;color:#e0f2fe;border:1px solid #38bdf8;border-radius:6px;font-weight:600">PAGASA</div>`,
-            iconAnchor: [24, 12],
-          }),
-        })
-          .bindPopup(`<b>${item.title}</b><br/><span style="font-size:11px">${item.summary}</span>`)
-          .addTo(g);
-      });
+
+      if (gdacsGeoLayerRef.current) {
+        map.removeLayer(gdacsGeoLayerRef.current);
+        gdacsGeoLayerRef.current = null;
+      }
+      if (showGdacs && hazardGeo.layers.gdacs.features.length > 0) {
+        gdacsGeoLayerRef.current = L.geoJSON(
+          hazardGeo.layers.gdacs as GeoJSON.FeatureCollection,
+          {
+            pointToLayer: (feature, latlng) => {
+              const level = String(feature.properties?.alertLevel ?? "");
+              const color = gdacsAlertColor(level);
+              return L.circleMarker(latlng, {
+                radius: 10,
+                color,
+                fillColor: color,
+                fillOpacity: 0.85,
+                weight: 2,
+              });
+            },
+            style: (feature) => {
+              const level = String(feature?.properties?.alertLevel ?? "");
+              const color = gdacsAlertColor(level);
+              return { color, weight: 2, fillOpacity: 0.25 };
+            },
+            onEachFeature: (feature, layer) => {
+              const p = feature.properties ?? {};
+              const title = String(p.title ?? "GDACS alert");
+              const desc = String(p.description ?? "").slice(0, 400);
+              const et = String(p.eventType ?? "");
+              const al = String(p.alertLevel ?? "");
+              layer.bindPopup(
+                `<b>${title}</b><br/><span style="font-size:11px">${et} · ${al}</span><br/><span style="font-size:10px">${desc}</span>`,
+              );
+            },
+          },
+        ).addTo(map);
+      }
+
+      if (pagasaGeoLayerRef.current) {
+        map.removeLayer(pagasaGeoLayerRef.current);
+        pagasaGeoLayerRef.current = null;
+      }
+      if (showPagasaPins && hazardGeo.layers.pagasa.features.length > 0) {
+        pagasaGeoLayerRef.current = L.geoJSON(
+          hazardGeo.layers.pagasa as GeoJSON.FeatureCollection,
+          {
+            pointToLayer: (_feature, latlng) =>
+              L.marker(latlng, {
+                icon: L.divIcon({
+                  className: "",
+                  html: `<div style="font-size:10px;padding:3px 6px;background:#0369a1;color:#e0f2fe;border:1px solid #38bdf8;border-radius:6px;font-weight:600">PAGASA</div>`,
+                  iconAnchor: [24, 12],
+                }),
+              }),
+            onEachFeature: (feature, layer) => {
+              const p = feature.properties ?? {};
+              const title = String(p.title ?? "PAGASA");
+              const body = String(p.excerpt ?? p.summary ?? "");
+              const link = String(p.link ?? "");
+              layer.bindPopup(
+                `<b>${title}</b><br/><span style="font-size:11px">${body}</span>` +
+                  (link ? `<br/><a href="${link}" target="_blank" rel="noopener">Official link</a>` : ""),
+              );
+            },
+          },
+        ).addTo(map);
+      }
     })();
-  }, [weather]);
+  }, [hazardGeo, showGdacs, showPagasaPins, mapReady]);
 
   const toggleLayer = (id: WeatherLayerId): void => {
     setActiveLayers((prev) => {
@@ -569,7 +654,7 @@ export function EocUnifiedMap({
           EOC MAP · {EOC_MAP_BUILD}
         </span>
         <span className="rounded-lg border border-orange-500/25 bg-black/80 px-2.5 py-1 text-[10px] text-zinc-400 backdrop-blur-md">
-          {hasMapboxToken() ? "Mapbox dark" : "Street basemap"} · Isabela City AOI
+          OWM · GDACS · PAGASA · {hasMapboxToken() ? "Mapbox" : "OSM"}
         </span>
         <button
           type="button"
@@ -602,6 +687,26 @@ export function EocUnifiedMap({
           </span>
         </div>
         <div className="p-2 space-y-1 max-h-[200px] overflow-y-auto scroll-ops">
+          <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10">
+            <input
+              type="checkbox"
+              checked={showGdacs}
+              onChange={() => setShowGdacs((v) => !v)}
+              className="rounded border-zinc-600 text-orange-500"
+            />
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" aria-hidden />
+            <span className="text-[11px] text-zinc-200">GDACS alerts ({gdacsCount})</span>
+          </label>
+          <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10">
+            <input
+              type="checkbox"
+              checked={showPagasaPins}
+              onChange={() => setShowPagasaPins((v) => !v)}
+              className="rounded border-zinc-600 text-orange-500"
+            />
+            <CloudRain className="h-3.5 w-3.5 text-sky-300 shrink-0" aria-hidden />
+            <span className="text-[11px] text-zinc-200">PAGASA pins ({pagasaAdvisories.length})</span>
+          </label>
           {(Object.keys(LAYER_META) as WeatherLayerId[]).map((id) => {
             const meta = LAYER_META[id];
             const disabled = meta.needsOwm && !owmReady;
@@ -653,9 +758,10 @@ export function EocUnifiedMap({
           </span>
         </div>
         <ul className="overflow-y-auto scroll-ops p-2 space-y-2 text-[11px] text-zinc-200 flex-1">
-          {(weather?.pagasa.items ?? []).map((a) => (
+          {pagasaAdvisories.map((a) => (
             <li key={a.id} className="rounded-lg bg-black/30 border border-sky-500/15 p-2">
               <p className="font-medium text-sky-100">{a.title}</p>
+              <p className="text-[9px] text-zinc-600 uppercase">{a.kind}</p>
               <p className="text-zinc-500 mt-1 line-clamp-3">{a.summary}</p>
               {a.link ? (
                 <a
@@ -669,8 +775,8 @@ export function EocUnifiedMap({
               ) : null}
             </li>
           ))}
-          {!weather?.pagasa.items.length ? (
-            <li className="text-zinc-500 py-2">Loading PAGASA RSS…</li>
+          {!pagasaAdvisories.length ? (
+            <li className="text-zinc-500 py-2">Loading PAGASA (portal + RSS)…</li>
           ) : null}
         </ul>
       </div>
@@ -697,9 +803,15 @@ export function EocUnifiedMap({
         <p className="flex items-center gap-1.5">
           <MapPin className="h-3 w-3 text-orange-400" aria-hidden /> EOC pin
         </p>
+        <p className="flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3 text-amber-400" aria-hidden /> GDACS ({gdacsCount})
+        </p>
+        <p className="flex items-center gap-1.5">
+          <CloudRain className="h-3 w-3 text-sky-400" aria-hidden /> PAGASA ({pagasaAdvisories.length})
+        </p>
         <p className="flex items-center gap-1.5 text-zinc-500 pt-1 border-t border-orange-500/15">
           <LocateFixed className="h-3 w-3" aria-hidden />
-          WebSocket live shelters
+          Live shelters · GeoJSON merge
         </p>
       </div>
     </div>

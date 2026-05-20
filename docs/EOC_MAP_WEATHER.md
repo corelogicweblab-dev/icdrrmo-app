@@ -5,6 +5,7 @@
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/v1/weather` | JWT (all desk roles + citizen + chairman) | Open-Meteo situation + PAGASA RSS + OWM tile layer URLs |
+| GET | `/api/v1/weather/geojson` | JWT (same roles) | **Merged GeoJSON**: OWM raster AOI + GDACS GeoRSS + PAGASA portal/RSS (see `docs/WEATHER_GEOJSON.md`) |
 | GET | `/api/v1/weather/situation` | Same | Open-Meteo only |
 | GET | `/api/v1/map/ops-live` | Ops, responder, chairman | Incidents, responders, vehicles, shelters |
 | GET | `/api/v1/evacuation-centers/nearest` | Citizen | Barangay-scoped shelters |

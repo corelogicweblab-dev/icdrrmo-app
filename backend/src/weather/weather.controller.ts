@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { WeatherService } from './weather.service';
+import { WeatherGeojsonMergeService } from './weather-geojson-merge.service';
 
 const EOC_WEATHER_ROLES = [
   UserRole.ADMIN,
@@ -18,7 +19,10 @@ const EOC_WEATHER_ROLES = [
 
 @Controller('weather')
 export class WeatherController {
-  constructor(private readonly weather: WeatherService) {}
+  constructor(
+    private readonly weather: WeatherService,
+    private readonly geoMerge: WeatherGeojsonMergeService,
+  ) {}
 
   /**
    * EOC weather desk bundle: Open-Meteo situation, PAGASA RSS advisories, OpenWeatherMap tile layers.
@@ -31,13 +35,26 @@ export class WeatherController {
     return this.weather.getEocWeatherBundle();
   }
 
+  /**
+   * Merged hazard layers as GeoJSON: OWM raster tile AOI, GDACS GeoRSS alerts, PAGASA portal + RSS advisories.
+   */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...EOC_WEATHER_ROLES)
+  @Get('geojson')
+  geojson() {
+    return this.geoMerge.buildMergedGeoJson();
+  }
+
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get('alerts')
-  alerts(): { source: string; message: string; integrated: boolean } {
+  alerts(): { source: string; message: string; integrated: boolean; geojsonPath: string } {
     return {
       source: 'integrated',
-      message: 'Use GET /weather for EOC bundle (Open-Meteo + PAGASA RSS + OWM layers).',
+      message:
+        'Use GET /weather/geojson for merged GeoJSON (OWM tiles + GDACS + PAGASA). Legacy bundle: GET /weather.',
       integrated: true,
+      geojsonPath: '/api/v1/weather/geojson',
     };
   }
 
