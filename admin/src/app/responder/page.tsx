@@ -23,10 +23,10 @@ export default function ResponderHomePage(): ReactElement {
       <div className="p-8 max-w-md mx-auto text-center space-y-4">
         <p className="text-sm text-zinc-400">Sign in on the responder portal to load your dashboard.</p>
         <Link
-          href="/signin/responder"
+          href="/"
           className="inline-block rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-500"
         >
-          Go to responder sign-in
+          Sign in
         </Link>
       </div>
     );
@@ -37,7 +37,7 @@ export default function ResponderHomePage(): ReactElement {
       <div className="p-8 flex flex-col items-center gap-4 text-center max-w-lg mx-auto">
         <ShieldAlert className="h-12 w-12 text-amber-400" aria-hidden />
         <p className="text-sm text-zinc-300">This area is for responder accounts. Your token role does not match.</p>
-        <Link href="/signin/responder" className="text-xs text-sky-400 underline">
+        <Link href="/" className="text-xs text-sky-400 underline">
           Use a different account
         </Link>
       </div>

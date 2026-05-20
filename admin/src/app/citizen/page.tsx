@@ -21,10 +21,11 @@ import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
 import { loadBarangayPickList, barangayRegisterFields } from "@/lib/public-barangays";
 import { opsFetchJson, OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
+import { CITIZEN_STORAGE_KEY } from "@/lib/unified-auth";
 
 type Tokens = { accessToken: string; refreshToken?: string };
 
-const STORAGE = "icdrrmo_citizen_tokens";
+const STORAGE = CITIZEN_STORAGE_KEY;
 
 const SOS_TYPES = [
   { id: "FIRE", label: "Fire" },
@@ -922,9 +923,9 @@ export default function CitizenPage(): ReactElement {
             ) : null}
 
             <p className="text-center text-[11px] leading-relaxed text-zinc-600">
-              ICDRRMO ops sees new incidents immediately; the desk is at{" "}
-              <Link href="/signin/operator" className="text-rose-400 underline-offset-4 hover:underline">
-                operator sign-in
+              ICDRRMO ops sees new incidents immediately; staff sign in at{" "}
+              <Link href="/" className="text-rose-400 underline-offset-4 hover:underline">
+                the home page
               </Link>
               .
             </p>

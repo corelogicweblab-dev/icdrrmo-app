@@ -139,7 +139,7 @@ export default function ResponderProfilePage(): ReactElement {
   if (!access) {
     return (
       <div className="p-8 text-center text-sm text-zinc-400">
-        <Link href="/signin/responder" className="text-sky-400 underline">
+        <Link href="/" className="text-sky-400 underline">
           Sign in
         </Link>
       </div>
