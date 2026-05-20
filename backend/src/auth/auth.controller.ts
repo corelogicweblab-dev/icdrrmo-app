@@ -1,4 +1,16 @@
-import { Body, Controller, Ip, Post, Req, Headers, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Ip,
+  Post,
+  Query,
+  Req,
+  Res,
+  Headers,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
@@ -7,10 +19,14 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from './types/jwt-payload.type';
+import { OidcAuthService } from './oidc-auth.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly oidc: OidcAuthService,
+  ) {}
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
@@ -38,5 +54,26 @@ export class AuthController {
     const clientIp =
       typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : ip;
     return this.auth.login(dto, { ip: clientIp, userAgent });
+  }
+
+  @Get('oidc/login')
+  async oidcLogin(@Res() res: Response): Promise<void> {
+    const url = await this.oidc.getLoginRedirectUrl();
+    res.redirect(url);
+  }
+
+  @Get('oidc/callback')
+  async oidcCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { redirectUrl } = await this.oidc.handleCallback(code, state);
+    res.redirect(redirectUrl);
+  }
+
+  @Get('oidc/status')
+  oidcStatus(): { enabled: boolean } {
+    return { enabled: this.oidc.isEnabled() };
   }
 }

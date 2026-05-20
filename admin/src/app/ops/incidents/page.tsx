@@ -30,6 +30,7 @@ import {
 } from "@/components/ops/ops-format";
 import type { OpsIncident } from "@/components/ops/ops-types";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
+import { IncidentTimeline } from "@/components/ops/incident-timeline";
 import { OpsIncidentVoicePanel } from "@/components/ops-incident-voice-panel";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
@@ -589,6 +590,12 @@ export default function OpsIncidentsPage(): ReactElement {
                   Timeline labels follow official incident stages. Updates are saved to the server and broadcast to
                   subscribed consoles.
                 </p>
+                <div className="mt-4 rounded-xl border border-orange-500/12 bg-black/30 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-3">
+                    Audit log (server)
+                  </p>
+                  <IncidentTimeline incidentId={selected.id} accessToken={tokens?.accessToken} />
+                </div>
 
                 <div className="mt-4 space-y-3 rounded-xl border border-orange-500/12 bg-black/30 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">

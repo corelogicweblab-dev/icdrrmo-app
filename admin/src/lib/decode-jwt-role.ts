@@ -24,7 +24,7 @@ export function isAccessTokenUsable(token: string | undefined): boolean {
   if (!p?.role) return false;
   if (typeof p.exp === "number" && p.exp * 1000 < Date.now() - 30_000) return false;
   if (p.role === "CITIZEN" || p.role === "RESPONDER" || p.role === "BARANGAY_CHAIRMAN") return true;
-  return OPS_CONSOLE_ROLES.has(p.role);
+  return OPS_CONSOLE_ROLES.has(p.role ?? "");
 }
 
 export function isBarangayChairman(accessToken: string | undefined): boolean {
@@ -32,7 +32,11 @@ export function isBarangayChairman(accessToken: string | undefined): boolean {
   return decodeJwtPayload(accessToken)?.role === "BARANGAY_CHAIRMAN";
 }
 
-export const OPS_CONSOLE_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "OPERATOR"]);
+export const OPS_CONSOLE_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "OPERATOR", "AUDITOR"]);
+
+export function isOpsAuditor(accessToken: string | undefined): boolean {
+  return decodeJwtPayload(accessToken ?? "")?.role === "AUDITOR";
+}
 
 export function canAccessOpsConsole(accessToken: string | undefined): boolean {
   if (!accessToken) return false;

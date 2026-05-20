@@ -8,5 +8,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
   imports: [NotificationsModule],
   controllers: [WeatherController],
   providers: [WeatherService, WeatherBroadcastScheduler],
+  exports: [WeatherService],
 })
 export class WeatherModule {}

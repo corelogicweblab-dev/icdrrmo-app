@@ -6,8 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IcdAuthShell } from "@/components/icd-auth-shell";
 import { PasswordInput } from "@/components/password-input";
-import { pingApiHealth, type ApiReachability } from "@/lib/api-fetch";
-import { getApiConfigWarning } from "@/lib/env";
+import { fetchWithTimeout, pingApiHealth, type ApiReachability } from "@/lib/api-fetch";
+import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
 import {
   dashboardPathForToken,
   loadCitizenTokens,
@@ -26,6 +26,7 @@ export function UnifiedLoginPage(): ReactElement {
   const [busy, setBusy] = useState(false);
   const [apiReach, setApiReach] = useState<ApiReachability | null>(null);
   const [checkingApi, setCheckingApi] = useState(true);
+  const [oidcEnabled, setOidcEnabled] = useState(false);
   const apiWarning = getApiConfigWarning();
 
   useEffect(() => {
@@ -59,9 +60,15 @@ export function UnifiedLoginPage(): ReactElement {
     let cancelled = false;
     (async () => {
       setCheckingApi(true);
-      const result = await pingApiHealth();
+      const [result, oidc] = await Promise.all([
+        pingApiHealth(),
+        fetchWithTimeout(`${getApiBaseUrl()}/auth/oidc/status`)
+          .then(async (r) => (r.ok ? ((await r.json()) as { enabled?: boolean }) : { enabled: false }))
+          .catch(() => ({ enabled: false })),
+      ]);
       if (!cancelled) {
         setApiReach(result);
+        setOidcEnabled(Boolean(oidc.enabled));
         setCheckingApi(false);
       }
     })();
@@ -150,6 +157,22 @@ export function UnifiedLoginPage(): ReactElement {
           {busy ? "Signing in…" : "Continue"}
         </button>
       </form>
+
+      {oidcEnabled ? (
+        <>
+          <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-widest text-zinc-600">
+            <span className="h-px flex-1 bg-orange-500/15" />
+            or
+            <span className="h-px flex-1 bg-orange-500/15" />
+          </div>
+          <a
+            href={`${getApiBaseUrl()}/auth/oidc/login`}
+            className="block w-full rounded-xl border border-orange-500/30 bg-zinc-900/60 py-3 text-center text-sm font-medium text-orange-100 hover:border-rose-500/40 hover:bg-zinc-900 transition"
+          >
+            Sign in with LGU identity (OIDC)
+          </a>
+        </>
+      ) : null}
 
       <p className="mt-6 text-center text-xs text-zinc-500">
         New resident?{" "}

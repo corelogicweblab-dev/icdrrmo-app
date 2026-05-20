@@ -2,6 +2,7 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { JobsService } from '../jobs/jobs.service';
+import { CommunicationsService } from '../communications/communications.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { Prisma } from '@prisma/client';
@@ -13,6 +14,7 @@ export class AlertsService {
   constructor(
     private readonly config: ConfigService,
     private readonly jobs: JobsService,
+    private readonly communications: CommunicationsService,
     private readonly audit: AuditLogService,
   ) {}
 
@@ -21,8 +23,8 @@ export class AlertsService {
     dto: { toPhone: string; message: string },
     meta: { ip?: string; ua?: string },
   ): Promise<{ queued: boolean; note?: string }> {
-    await this.jobs.enqueueSmsRetry({
-      incidentId: `ops-alert-${Date.now()}`,
+    await this.communications.queueOutboundSms({
+      incidentId: null,
       toPhone: dto.toPhone,
       message: dto.message,
     });

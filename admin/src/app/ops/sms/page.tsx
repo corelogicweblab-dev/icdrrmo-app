@@ -1,40 +1,191 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { Cpu, RefreshCwOff, Rows3, Satellite } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, RefreshCw, Satellite } from "lucide-react";
+import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
+import { opsFetchJson } from "@/lib/ops-api";
+
+type InboundRow = {
+  id: string;
+  fromPhone: string;
+  body: string;
+  processed: boolean;
+  createdAt: string;
+  incident?: { id: string; type: string; status: string } | null;
+};
+
+type OutboundRow = {
+  id: string;
+  toPhone: string;
+  message: string;
+  status: string;
+  attempts: number;
+  lastError: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  incident?: { id: string; type: string } | null;
+};
+
+type Archive = {
+  inbound: InboundRow[];
+  outbound: OutboundRow[];
+};
+
+function statusTone(s: string): string {
+  if (s === "SENT") return "text-emerald-400";
+  if (s === "FAILED" || s === "DEAD_LETTER") return "text-rose-400";
+  return "text-amber-300";
+}
 
 export default function OpsSmsPage(): ReactElement {
+  const { tokens } = useOpsSession();
+  const [archive, setArchive] = useState<Archive | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const token = tokens?.accessToken;
+    if (!token) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const data = await opsFetchJson<Archive>("/communications/archive?take=60", token);
+      setArchive(data);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to load SMS archive");
+    } finally {
+      setBusy(false);
+    }
+  }, [tokens?.accessToken]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const inbound = archive?.inbound ?? [];
+  const outbound = archive?.outbound ?? [];
+
   return (
-    <div className="p-4 lg:p-6 grid gap-4 lg:grid-cols-2">
-      <OpsPanelCard title="SMS fallback operations" subtitle="Disaster-survivable ingestion">
-        <ul className="space-y-3 text-sm text-zinc-300">
-          <li className="flex gap-3">
-            <Satellite className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Incoming SMS SOS parser + geocode
-          </li>
-          <li className="flex gap-3">
-            <Rows3 className="h-5 w-5 text-orange-400 shrink-0" aria-hidden /> Message logs + searchable archive
-          </li>
-          <li className="flex gap-3">
-            <RefreshCwOff className="h-5 w-5 text-amber-400 shrink-0" aria-hidden /> Delivery receipts + adaptive retry queues
-          </li>
-          <li className="flex gap-3">
-            <Cpu className="h-5 w-5 text-rose-400 shrink-0" aria-hidden /> GSM modem telemetry + failover SIM status
-          </li>
-        </ul>
-      </OpsPanelCard>
+    <div className="p-4 lg:p-6 grid gap-4 lg:grid-cols-12">
       <OpsPanelCard
-        title="SMS outbound queue"
-        subtitle="Requires Redis on the API host and a background worker process"
+        title="SMS communications archive"
+        subtitle="Inbound SOS relay · outbound BullMQ delivery log"
+        className="lg:col-span-12"
       >
-        <p className="text-sm text-zinc-400 leading-relaxed mb-3">
-          When operators request SMS notifications on an incident update, the API queues delivery jobs. Your hosting
-          team runs the SMS worker alongside the API so messages are sent and retried reliably.
-        </p>
-        <p className="text-[11px] text-zinc-600">
-          In-app notification fan-out uses the same worker infrastructure when enabled.
-        </p>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-lg border border-orange-500/25 bg-zinc-900/80 px-3 py-1.5 text-xs text-orange-200 hover:border-rose-500/35 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} aria-hidden />
+            Refresh
+          </button>
+          <span className="text-[11px] text-zinc-500">
+            Worker requires <span className="font-mono text-zinc-400">REDIS_URL</span> +{" "}
+            <span className="font-mono text-zinc-400">SMS_GATEWAY_URL</span>
+          </span>
+        </div>
+        {err ? <p className="text-sm text-rose-300 mb-3">{err}</p> : null}
       </OpsPanelCard>
+
+      <OpsPanelCard title="Inbound SMS" subtitle={`${inbound.length} recent`} className="lg:col-span-6">
+        <div className="overflow-x-auto max-h-[480px] scroll-ops">
+          <table className="min-w-full text-left text-[11px]">
+            <thead className="text-zinc-500 uppercase tracking-wider border-b border-orange-500/12 sticky top-0 bg-black/90">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Time</th>
+                <th className="py-2 pr-3 font-medium">From</th>
+                <th className="py-2 pr-3 font-medium">Body</th>
+                <th className="py-2 font-medium">Incident</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inbound.map((r) => (
+                <tr key={r.id} className="border-b border-orange-500/08 text-zinc-300">
+                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">
+                    {new Date(r.createdAt).toLocaleString("en-PH")}
+                  </td>
+                  <td className="py-2 pr-3 font-mono text-orange-200/90">{r.fromPhone}</td>
+                  <td className="py-2 pr-3 max-w-[200px] truncate" title={r.body}>
+                    {r.body}
+                  </td>
+                  <td className="py-2 font-mono text-zinc-500">
+                    {r.incident ? (
+                      <span className="text-orange-300/90">{r.incident.id.slice(0, 8)}…</span>
+                    ) : r.processed ? (
+                      "parsed"
+                    ) : (
+                      "pending"
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!inbound.length && !busy ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-zinc-600">
+                    <Satellite className="h-6 w-6 mx-auto mb-2 text-zinc-700" aria-hidden />
+                    No inbound messages yet
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </OpsPanelCard>
+
+      <OpsPanelCard title="Outbound SMS" subtitle={`${outbound.length} recent`} className="lg:col-span-6">
+        <div className="overflow-x-auto max-h-[480px] scroll-ops">
+          <table className="min-w-full text-left text-[11px]">
+            <thead className="text-zinc-500 uppercase tracking-wider border-b border-orange-500/12 sticky top-0 bg-black/90">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Time</th>
+                <th className="py-2 pr-3 font-medium">To</th>
+                <th className="py-2 pr-3 font-medium">Status</th>
+                <th className="py-2 font-medium">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outbound.map((r) => (
+                <tr key={r.id} className="border-b border-orange-500/08 text-zinc-300">
+                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">
+                    {new Date(r.createdAt).toLocaleString("en-PH")}
+                  </td>
+                  <td className="py-2 pr-3 font-mono text-orange-200/90">{r.toPhone}</td>
+                  <td className={`py-2 pr-3 font-medium uppercase ${statusTone(r.status)}`}>
+                    {r.status}
+                    {r.attempts > 1 ? ` ·×${r.attempts}` : ""}
+                  </td>
+                  <td className="py-2 max-w-[220px] truncate" title={r.lastError ?? r.message}>
+                    {r.message}
+                  </td>
+                </tr>
+              ))}
+              {!outbound.length && !busy ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-zinc-600">
+                    No outbound messages queued yet
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </OpsPanelCard>
+
+      <div className="lg:col-span-12 grid gap-3 sm:grid-cols-2 text-sm text-zinc-400">
+        <p className="flex gap-2 items-start">
+          <ArrowDownLeft className="h-5 w-5 text-orange-400 shrink-0" aria-hidden />
+          Inbound SOS flows through the SMS webhook parser and geocode pipeline.
+        </p>
+        <p className="flex gap-2 items-start">
+          <ArrowUpRight className="h-5 w-5 text-rose-400 shrink-0" aria-hidden />
+          Outbound rows are created when operators notify reporters or chairman SMS fallback runs.
+        </p>
+      </div>
     </div>
   );
 }

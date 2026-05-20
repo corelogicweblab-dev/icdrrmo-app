@@ -14,7 +14,8 @@ export type IncidentNotifyJobData = {
 };
 
 export type SmsRetryJobData = {
-  incidentId: string;
+  logId?: string;
+  incidentId: string | null;
   toPhone: string | null;
   message: string;
 };

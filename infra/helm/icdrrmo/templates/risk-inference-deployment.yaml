@@ -1,0 +1,42 @@
+{{- if .Values.riskInference.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icdrrmo-risk-inference
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: icdrrmo-risk-inference
+spec:
+  replicas: {{ .Values.riskInference.replicaCount }}
+  selector:
+    matchLabels:
+      app: icdrrmo-risk-inference
+  template:
+    metadata:
+      labels:
+        app: icdrrmo-risk-inference
+    spec:
+      containers:
+        - name: risk-inference
+          image: "{{ .Values.riskInference.image.repository }}:{{ .Values.riskInference.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.riskInference.port }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.riskInference.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: icdrrmo-risk-inference
+  namespace: {{ .Values.namespace.name }}
+spec:
+  selector:
+    app: icdrrmo-risk-inference
+  ports:
+    - port: {{ .Values.riskInference.port }}
+      targetPort: {{ .Values.riskInference.port }}
+{{- end }}

@@ -60,7 +60,7 @@ export const OPS_NAV_SECTIONS: OpsNavSection[] = [
 ];
 
 export const OPS_PAGE_TITLES: Record<string, string> = {
-  "/ops": "Command center dashboard",
+  "/ops": "Smart command center",
   "/ops/profile": "EOC user profile",
   "/ops/incidents": "Live incident management",
   "/ops/map": "Realtime GIS map",

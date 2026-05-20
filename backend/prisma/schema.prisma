@@ -17,6 +17,7 @@ enum UserRole {
   RESPONDER
   OPERATOR
   BARANGAY_CHAIRMAN
+  AUDITOR
   ADMIN
   SUPER_ADMIN
 }
@@ -124,6 +125,13 @@ enum NotificationType {
   EVACUATION
   RESPONDER_UPDATE
   SYSTEM
+}
+
+enum SmsOutboundStatus {
+  QUEUED
+  SENT
+  FAILED
+  DEAD_LETTER
 }
 
 model User {
@@ -285,6 +293,7 @@ model Incident {
   smsIngress SmsIngress[]
   dispatchAssignments DispatchAssignment[]
   voiceCallLogs       VoiceCallLog[]
+  smsOutboundLogs     SmsOutboundLog[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([reporterId])
@@ -421,6 +430,26 @@ model SmsIngress {
 
   @@index([fromPhone, createdAt(sort: Desc)])
   @@map("sms_ingress")
+}
+
+model SmsOutboundLog {
+  id              String             @id @default(cuid())
+  incidentId      String?            @map("incident_id")
+  toPhone         String             @map("to_phone")
+  message         String
+  status          SmsOutboundStatus  @default(QUEUED)
+  attempts        Int                @default(0)
+  gatewayResponse String?            @map("gateway_response")
+  lastError       String?            @map("last_error")
+  jobId           String?            @map("job_id")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  sentAt          DateTime?          @map("sent_at")
+
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("sms_outbound_logs")
 }
 
 /// Evacuation sites — GIS polygon optional; coordinates required for map routing.

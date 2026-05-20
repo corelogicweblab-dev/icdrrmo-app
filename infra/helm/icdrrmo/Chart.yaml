@@ -1,0 +1,15 @@
+apiVersion: v2
+name: icdrrmo
+description: ICDRRMO Smart Command Center — API, workers, risk inference, data plane
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: postgresql
+    version: "16.2.1"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "20.6.2"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

@@ -1,0 +1,81 @@
+# Default values for icdrrmo production Helm chart.
+# Override secrets via --set-file or external Secrets Operator — never commit real credentials.
+
+global:
+  imagePullSecrets: []
+
+namespace:
+  create: true
+  name: icdrrmo
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.icdrrmo.local
+  tls: false
+  annotations: {}
+
+api:
+  replicaCount: 2
+  image:
+    repository: icdrrmo-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 4000
+  resources: {}
+  env:
+    RISK_INFERENCE_URL: http://icdrrmo-risk-inference:8090
+    ADMIN_WEB_URL: https://icdrrmo.example.gov.ph
+
+worker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: icdrrmo-api
+    tag: latest
+
+riskInference:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: icdrrmo-risk-inference
+    tag: latest
+  port: 8090
+
+# Application secrets (create empty placeholders — fill at deploy time)
+secrets:
+  create: true
+  # Keys mapped into icdrrmo-secrets; set via helm --set secrets.data.DATABASE_URL=...
+  data: {}
+
+postgresql:
+  enabled: true
+  architecture: replication
+  auth:
+    username: icdrrmo
+    password: changeme
+    database: icdrrmo
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+  readReplicas:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 20Gi
+
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 8Gi

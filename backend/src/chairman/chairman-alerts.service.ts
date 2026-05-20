@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { NotificationType, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import { JobsService } from '../jobs/jobs.service';
+import { CommunicationsService } from '../communications/communications.service';
 import { AuditLogService } from '../audit/audit-log.service';
 
 export type ChairmanAlertIncident = {
@@ -22,7 +22,7 @@ export class ChairmanAlertsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
-    private readonly jobs: JobsService,
+    private readonly communications: CommunicationsService,
     private readonly audit: AuditLogService,
   ) {}
 
@@ -91,7 +91,7 @@ export class ChairmanAlertsService {
     if (pushResult.tokensAttempted === 0 || pushResult.failure >= pushResult.success) {
       for (const c of chairmen) {
         if (!c.phone?.trim()) continue;
-        await this.jobs.enqueueSmsRetry({
+        await this.communications.queueOutboundSms({
           incidentId: incident.id,
           toPhone: c.phone.trim(),
           message: `[ICDRRMO] ${title}. ${body} Open the chairman app immediately.`,

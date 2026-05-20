@@ -9,6 +9,7 @@ import { CreateOpsIncidentDto } from './dto/create-ops-incident.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { UserRole } from '@prisma/client';
+import { OPS_DESK_READ_ROLES } from '../common/ops-desk-roles';
 
 @Controller('incidents')
 export class IncidentsController {
@@ -80,6 +81,13 @@ export class IncidentsController {
     }>
   > {
     return this.incidents.listAssignableResponders(user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...OPS_DESK_READ_ROLES)
+  @Get(':id/timeline')
+  timeline(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.incidents.getTimeline(user, id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

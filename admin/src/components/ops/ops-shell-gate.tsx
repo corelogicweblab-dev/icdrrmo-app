@@ -31,8 +31,8 @@ export function OpsShellGate({ children }: { children: ReactNode }): ReactElemen
           <h1 className="text-lg font-semibold text-white">Operations console restricted</h1>
           <p className="text-sm text-zinc-400 leading-relaxed">
             This EOC dashboard requires an <span className="text-zinc-200">ADMIN</span>,{" "}
-            <span className="text-zinc-200">SUPER_ADMIN</span>, or <span className="text-zinc-200">OPERATOR</span>{" "}
-            (dispatcher) account. Citizen and responder accounts cannot open this area.
+            <span className="text-zinc-200">SUPER_ADMIN</span>, <span className="text-zinc-200">OPERATOR</span>, or{" "}
+            <span className="text-zinc-200">AUDITOR</span> account. Citizen and responder accounts cannot open this area.
           </p>
         </div>
         <button

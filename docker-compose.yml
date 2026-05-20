@@ -42,7 +42,15 @@ services:
       # Compose + nginx + local ports; Firebase static admin (override in root `.env`).
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1:80,http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,https://icdrrmo-b204e.web.app,https://icdrrmo-b204e.firebaseapp.com}
       PORT: "4000"
+      RISK_INFERENCE_URL: http://risk-inference:8090
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost/api/v1/auth/oidc/callback}
+      ADMIN_WEB_URL: ${ADMIN_WEB_URL:-http://localhost:3000}
     depends_on:
+      risk-inference:
+        condition: service_started
       postgres:
         condition: service_healthy
       redis:
@@ -69,6 +77,33 @@ services:
       - api
     ports:
       - "3000:3000"
+
+  risk-inference:
+    build:
+      context: ./services/risk-inference
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["node", "dist/workers/bull-workers.js"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://icdrrmo:icdrrmo@postgres:5432/icdrrmo?schema=public}
+      REDIS_URL: redis://redis:6379
+      SMS_GATEWAY_URL: ${SMS_GATEWAY_URL:-}
+      SMS_GATEWAY_API_KEY: ${SMS_GATEWAY_API_KEY:-}
+    depends_on:
+      - postgres
+      - redis
+      - api
 
   nginx:
     image: nginx:1.27-alpine

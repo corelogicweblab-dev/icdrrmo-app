@@ -12,6 +12,28 @@ import type {
 const NOTIFICATION_FANOUT = 'notification-fanout';
 const SMS_RETRY = 'sms-retry';
 
+async function sendViaGateway(
+  toPhone: string,
+  message: string,
+): Promise<{ ok: boolean; response: string }> {
+  const url = process.env.SMS_GATEWAY_URL?.trim();
+  const secret = process.env.SMS_GATEWAY_API_KEY?.trim();
+  if (!url) {
+    return { ok: false, response: 'SMS_GATEWAY_URL not configured' };
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
+    },
+    body: JSON.stringify({ to: toPhone, message }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const text = await res.text();
+  return { ok: res.ok, response: text.slice(0, 2000) };
+}
+
 async function main(): Promise<void> {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl?.trim()) {
@@ -21,6 +43,9 @@ async function main(): Promise<void> {
   }
 
   const prisma = new PrismaClient();
+  const smsOutbound = (prisma as unknown as { smsOutboundLog: {
+    update: (args: unknown) => Promise<unknown>;
+  } }).smsOutboundLog;
   const connection = { url: redisUrl };
 
   new Worker<IncidentNotifyJobData>(
@@ -62,9 +87,38 @@ async function main(): Promise<void> {
     SMS_RETRY,
     async (job: Job<SmsRetryJobData>) => {
       const d = job.data;
+      const phone = d.toPhone?.trim();
+      if (!phone) {
+        if (d.logId) {
+          await smsOutbound.update({
+            where: { id: d.logId },
+            data: {
+              status: 'FAILED',
+              lastError: 'No destination phone',
+              attempts: { increment: 1 },
+            },
+          });
+        }
+        return;
+      }
+
+      const { ok, response } = await sendViaGateway(phone, d.message);
+      if (d.logId) {
+        await smsOutbound.update({
+          where: { id: d.logId },
+          data: {
+            status: ok ? 'SENT' : 'FAILED',
+            gatewayResponse: response,
+            lastError: ok ? null : response,
+            sentAt: ok ? new Date() : undefined,
+            attempts: { increment: 1 },
+            jobId: job.id ?? null,
+          },
+        });
+      }
       // eslint-disable-next-line no-console
       console.log(
-        `[${SMS_RETRY}] stub gateway → phone=${d.toPhone ?? 'N/A'} len=${d.message.length} incident=${d.incidentId} job=${job.id}`,
+        `[${SMS_RETRY}] ${ok ? 'sent' : 'failed'} phone=${phone} incident=${d.incidentId ?? '—'} job=${job.id}`,
       );
     },
     { connection },

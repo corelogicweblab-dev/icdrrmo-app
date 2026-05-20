@@ -101,6 +101,26 @@ async function main(): Promise<void> {
     `Seeded admin: ${email}${repushPasswords ? '' : ' (password unchanged — set FORCE_SEED_PASSWORDS=1 to rotate)'}`,
   );
 
+  const auditorEmail = process.env.SEED_AUDITOR_EMAIL ?? 'auditor@icdrrmo.local';
+  const auditorHash = await bcrypt.hash(
+    process.env.SEED_AUDITOR_PASSWORD ?? 'ChangeMe!Auditor12',
+    12,
+  );
+  await prisma.user.upsert({
+    where: { email: auditorEmail },
+    create: {
+      email: auditorEmail,
+      passwordHash: auditorHash,
+      role: UserRole.AUDITOR,
+      profile: { create: { fullName: 'ICDRRMO Compliance Auditor', setupCompleted: true } },
+    },
+    update: {
+      ...(repushPasswords ? { passwordHash: auditorHash } : {}),
+      role: UserRole.AUDITOR,
+    },
+  });
+  console.log(`Seeded auditor (read-only desk): ${auditorEmail}`);
+
   const demoResponderEmail =
     process.env.SEED_RESPONDER_EMAIL ?? 'responder.demo@icdrrmo.local';
   const responderPasswordHash = await bcrypt.hash(

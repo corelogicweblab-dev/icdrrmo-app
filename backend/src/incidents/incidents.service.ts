@@ -28,6 +28,7 @@ import {
   OPERATOR_BARANGAY_REQUIRED,
 } from '../common/ops-operator-scope';
 import { ChairmanAlertsService } from '../chairman/chairman-alerts.service';
+import { CommunicationsService } from '../communications/communications.service';
 
 const DEDUPE_WINDOW_MS = 120_000;
 
@@ -40,6 +41,7 @@ export class IncidentsService {
     private readonly realtime: RealtimeGateway,
     private readonly jobs: JobsService,
     private readonly chairmanAlerts: ChairmanAlertsService,
+    private readonly communications: CommunicationsService,
   ) {}
 
   async createSosFromApp(
@@ -433,11 +435,13 @@ export class IncidentsService {
         select: { phone: true },
       });
       const msg = `ICDRRMO: incident ${id.slice(0, 8)} — status ${updatedRow.status}`;
-      await this.jobs.enqueueSmsRetry({
-        incidentId: id,
-        toPhone: reporter?.phone ?? null,
-        message: msg,
-      });
+      if (reporter?.phone) {
+        await this.communications.queueOutboundSms({
+          incidentId: id,
+          toPhone: reporter.phone,
+          message: msg,
+        });
+      }
     }
 
     return updatedRow;
@@ -512,6 +516,61 @@ export class IncidentsService {
       select: { barangayId: true },
     });
     return p?.barangayId === barangayId;
+  }
+
+  async getTimeline(actor: JwtPayload, incidentId: string) {
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        barangayId: true,
+        reporterId: true,
+      },
+    });
+    if (!incident) throw new NotFoundException('Incident not found');
+
+    if (!isGlobalOpsRole(actor)) {
+      const bg = await getOperatorBarangayId(this.prisma, actor);
+      if (!bg || !(await this.incidentVisibleToOperatorBarangay(incident, bg))) {
+        throw new ForbiddenException('Incident outside your barangay scope');
+      }
+    }
+
+    const logs = await this.prisma.incidentLog.findMany({
+      where: { incidentId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        createdBy: { select: { email: true, role: true } },
+      },
+    });
+
+    const synthetic = [
+      {
+        id: `${incidentId}-opened`,
+        action: 'incident_opened',
+        at: incident.createdAt,
+        actor: 'system',
+        details: { status: IncidentStatus.OPEN },
+      },
+    ];
+
+    return {
+      incidentId,
+      status: incident.status,
+      entries: [
+        ...synthetic,
+        ...logs.map((l) => ({
+          id: l.id,
+          action: l.action,
+          at: l.createdAt,
+          actor: l.createdBy?.email ?? 'system',
+          role: l.createdBy?.role ?? null,
+          details: l.details,
+        })),
+      ],
+    };
   }
 
   private async assertSosRateLimit(userId: string): Promise<void> {

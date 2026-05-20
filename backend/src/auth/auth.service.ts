@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { BloodType, Gender, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FirestoreMirrorService } from '../firestore/firestore-mirror.service';
@@ -153,6 +154,19 @@ export class AuthService {
       return raw;
     }
     throw new BadRequestException('Profile picture must be a data:image/...;base64,... URL or https:// URL');
+  }
+
+  /** Random password for OIDC-only accounts (never used for local login). */
+  async hashForOidcProvision(): Promise<string> {
+    return bcrypt.hash(crypto.randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
+  }
+
+  async issueAccessTokenForUser(
+    userId: string,
+    email: string,
+    role: UserRole,
+  ): Promise<string> {
+    return this.signAccessToken(userId, email, role);
   }
 
   private async issueAccessToken(

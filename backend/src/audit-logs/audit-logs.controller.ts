@@ -11,7 +11,7 @@ import { ListAuditLogsQueryDto } from './dto/list-audit-logs.query.dto';
 export class AuditLogsController {
   constructor(private readonly auditLogs: AuditLogsService) {}
 
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, 'AUDITOR' as UserRole)
   @Get()
   list(@Query() q: ListAuditLogsQueryDto) {
     return this.auditLogs.list(q);

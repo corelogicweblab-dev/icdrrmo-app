@@ -1,0 +1,26 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icdrrmo-worker
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: icdrrmo-worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: icdrrmo-worker
+  template:
+    metadata:
+      labels:
+        app: icdrrmo-worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          command: ["node", "dist/workers/bull-workers.js"]
+          envFrom:
+            - secretRef:
+                name: icdrrmo-secrets
+{{- end }}
