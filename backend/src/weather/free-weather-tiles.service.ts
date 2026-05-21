@@ -38,6 +38,12 @@ export class FreeWeatherTilesService {
           label: 'Clouds / IR satellite (RainViewer)',
           urlTemplate: `https://tilecache.rainviewer.com${satPath}/256/{z}/{x}/{y}/0/0_0.png`,
         });
+      } else if (radarPath) {
+        layers.push({
+          id: 'clouds',
+          label: 'Clouds (radar composite)',
+          urlTemplate: `https://tilecache.rainviewer.com${radarPath}/256/{z}/{x}/{y}/2/1_0.png`,
+        });
       }
       return layers;
     } catch (e: unknown) {

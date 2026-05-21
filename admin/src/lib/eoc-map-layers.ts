@@ -18,4 +18,4 @@ export function mapboxDarkTileUrl(token: string): string {
   return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${encodeURIComponent(token)}`;
 }
 
-export const EOC_MAP_BUILD = "2026.05.20-eoc-v5-layers";
+export const EOC_MAP_BUILD = "2026.05.20-eoc-v6-live";

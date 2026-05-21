@@ -21,14 +21,21 @@ import {
 } from "lucide-react";
 import { getMapboxToken, hasMapboxToken } from "@/lib/env";
 import { opsFetchJson } from "@/lib/ops-api";
+import { fetchGdacsClientFeatures } from "@/lib/eoc-gdacs-client";
+import {
+  applyClientGdacsToGeo,
+  applyPagasaWeatherToGeo,
+  mergePagasaAdvisories,
+  tileLayersFromWeather,
+} from "@/lib/eoc-map-data";
 import { fetchEocWeather, type EocWeatherBundle } from "@/lib/eoc-weather";
 import {
   fetchEocHazardGeoJson,
   gdacsAlertColor,
   owmTileLayersFromGeoJson,
-  pagasaAdvisoriesFromGeoJson,
   type MergedHazardGeoJson,
 } from "@/lib/eoc-weather-geojson";
+import { OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 import {
   connectEocRealtime,
   type EvacuationCenterWsPayload,
@@ -133,7 +140,8 @@ export function EocUnifiedMap({
   const weatherLayersRef = useRef<Partial<Record<WeatherLayerId, import("leaflet").TileLayer>>>({});
   const gdacsGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const pagasaGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
-  const rainViewerUrlRef = useRef<string | null>(null);
+  const [rainViewerUrl, setRainViewerUrl] = useState<string | null>(null);
+  const [layerEpoch, setLayerEpoch] = useState(0);
 
   const [weather, setWeather] = useState<EocWeatherBundle | null>(null);
   const [hazardGeo, setHazardGeo] = useState<MergedHazardGeoJson | null>(null);
@@ -162,38 +170,75 @@ export function EocUnifiedMap({
   const showAllIncidents = mode === "ops" || mode === "responder" || mode === "chairman";
   const showVehicles = mode === "ops";
   const owmLayers = owmTileLayersFromGeoJson(hazardGeo);
-  const bundleLayers = weather?.openWeather.layers ?? owmLayers;
-  const openMeteoOverlays = new Set(
-    weather?.openWeather.openMeteoOverlays ??
-      (hazardGeo?.layers.openWeatherMap.properties?.openMeteoOverlays as string[] | undefined) ??
-      [],
-  );
+  const bundleLayers =
+    tileLayersFromWeather(weather).length > 0 ? tileLayersFromWeather(weather) : owmLayers;
   const hasTileLayer = (id: WeatherLayerId): boolean => {
-    if (id === "rain-radar") return Boolean(rainViewerUrlRef.current);
-    if (id === "temp" || id === "wind") return openMeteoOverlays.has(id);
+    if (id === "rain-radar") return Boolean(rainViewerUrl);
+    if (id === "temp" || id === "wind") return true;
     return bundleLayers.some((l) => l.id === id && l.urlTemplate);
   };
   const layerHint = hazardGeo?.properties.upstreamErrors;
-  const pagasaAdvisories = pagasaAdvisoriesFromGeoJson(hazardGeo);
+  const pagasaAdvisories = mergePagasaAdvisories(hazardGeo, weather);
   const gdacsCount = hazardGeo?.layers.gdacs.features.length ?? 0;
+  const dataStatus =
+    gdacsCount > 0 || pagasaAdvisories.length > 0 || bundleLayers.length > 0
+      ? `Live · GDACS ${gdacsCount} · PAGASA ${pagasaAdvisories.length} · tiles ${bundleLayers.length}`
+      : "No hazard data — tap Sync or check API deploy";
 
   const loadData = useCallback(async () => {
     const token = accessToken;
     if (!token) return;
     setBusy(true);
     setError(null);
+    const loadErrors: string[] = [];
     try {
-      const [wx, geo, live, rainUrl] = await Promise.all([
-        fetchEocWeather(token).catch(() => null),
-        fetchEocHazardGeoJson(token).catch(() => null),
+      let wx: EocWeatherBundle | null = null;
+      try {
+        wx = await fetchEocWeather(token);
+        setWeather(wx);
+      } catch (e: unknown) {
+        loadErrors.push(
+          e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Weather API failed",
+        );
+      }
+
+      let geo: MergedHazardGeoJson | null = wx?.hazardGeo ?? null;
+      if (!geo) {
+        try {
+          geo = await fetchEocHazardGeoJson(token);
+        } catch (e: unknown) {
+          loadErrors.push(
+            e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "GeoJSON API failed",
+          );
+        }
+      }
+
+      const clientGdacs = geo?.layers.gdacs.features.length
+        ? []
+        : await fetchGdacsClientFeatures();
+      geo = applyClientGdacsToGeo(geo, clientGdacs);
+      geo = applyPagasaWeatherToGeo(geo, wx);
+      setHazardGeo(geo);
+
+      const rainUrl = await fetchRainViewerTileUrl();
+      setRainViewerUrl(rainUrl);
+      if (!rainUrl) loadErrors.push("RainViewer tiles unavailable");
+
+      const live =
         mode === "citizen"
-          ? Promise.resolve(null)
-          : opsFetchJson<OpsLive>("/map/ops-live", token).catch(() => null),
-        fetchRainViewerTileUrl(),
-      ]);
-      rainViewerUrlRef.current = rainUrl;
-      if (wx) setWeather(wx);
-      if (geo) setHazardGeo(geo);
+          ? null
+          : await opsFetchJson<OpsLive>("/map/ops-live", token).catch(() => null);
+
+      const hasHazardData =
+        (geo?.layers.gdacs.features.length ?? 0) > 0 ||
+        (geo?.layers.pagasa.features.length ?? 0) > 0 ||
+        Boolean(rainUrl) ||
+        (wx?.openWeather.layers.length ?? 0) > 0;
+      if (loadErrors.length && !hasHazardData) {
+        setError(loadErrors.join(" · "));
+      }
+
+      setLayerEpoch((n) => n + 1);
 
       if (mode === "citizen") {
         type EvacRow = {
@@ -434,7 +479,8 @@ export function EocUnifiedMap({
         return;
       }
       const bounds = L.latLngBounds(pts);
-      map.fitBounds(bounds as LatLngBoundsExpression, { padding: [48, 48], maxZoom: 13 });
+      const maxZoom = gdacsPts.length > 0 ? 8 : 13;
+      map.fitBounds(bounds as LatLngBoundsExpression, { padding: [48, 48], maxZoom });
     });
   }, [evac, incidents, hazardGeo]);
 
@@ -549,18 +595,21 @@ export function EocUnifiedMap({
 
         let url: string | null = null;
         let opacity = 0.6;
-        if (id === "rain-radar") {
-          url = rainViewerUrlRef.current;
-          opacity = 0.55;
+        if (id === "rain-radar" || id === "precipitation") {
+          url =
+            rainViewerUrl ??
+            bundleLayers.find((l) => l.id === "precipitation")?.urlTemplate ??
+            null;
+          opacity = id === "rain-radar" ? 0.55 : 0.5;
+        } else if (id === "clouds") {
+          url = bundleLayers.find((l) => l.id === "clouds")?.urlTemplate ?? rainViewerUrl;
+          opacity = 0.45;
         } else {
           const owm =
             owmById.get(id) ??
             bundleLayers.find((l) => l.id === id) ??
             weather?.openWeather.layers.find((l) => l.id === id);
           url = owm?.urlTemplate ?? null;
-          if (!url && id === "precipitation" && rainViewerUrlRef.current) {
-            url = rainViewerUrlRef.current;
-          }
         }
 
         if (!url) continue;
@@ -572,13 +621,16 @@ export function EocUnifiedMap({
         const tile = L.tileLayer(url, {
           opacity,
           maxZoom: id === "rain-radar" ? 12 : 19,
-          attribution: id === "rain-radar" ? "Radar © RainViewer" : "© OpenWeatherMap",
+          zIndex: 450,
+          pane: "overlayPane",
+          attribution: "© RainViewer / OpenWeatherMap",
         });
         weatherLayersRef.current[id] = tile;
         tile.addTo(map);
+        tile.bringToFront();
       }
     })();
-  }, [activeLayers, weather, bundleLayers, owmLayers]);
+  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -865,8 +917,8 @@ export function EocUnifiedMap({
           <span className="rounded-md border border-orange-500/35 bg-black/80 px-2 py-0.5 text-[9px] font-mono text-orange-200 truncate max-w-[140px] sm:max-w-none">
             {EOC_MAP_BUILD}
           </span>
-          <span className="hidden sm:inline text-[9px] text-zinc-500 truncate">
-            OWM · GDACS · PAGASA
+          <span className="hidden sm:inline text-[9px] text-zinc-500 truncate max-w-[50%]">
+            {dataStatus}
           </span>
           <button
             type="button"

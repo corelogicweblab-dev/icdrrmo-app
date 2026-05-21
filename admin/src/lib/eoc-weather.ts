@@ -1,4 +1,5 @@
 import { opsFetchJson } from "@/lib/ops-api";
+import type { MergedHazardGeoJson } from "@/lib/eoc-weather-geojson";
 
 export type EocWeatherBundle = {
   situation: {
@@ -24,6 +25,7 @@ export type EocWeatherBundle = {
     openMeteoOverlays?: Array<'temp' | 'wind'>;
   };
   rainViewer?: { available: boolean };
+  hazardGeo?: MergedHazardGeoJson;
 };
 
 export async function fetchEocWeather(accessToken: string): Promise<EocWeatherBundle> {
