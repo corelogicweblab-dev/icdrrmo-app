@@ -17,6 +17,7 @@ import {
 } from "@/lib/unified-auth";
 import { loadChairmanTokens } from "@/components/chairman/chairman-storage";
 import { loadOpsTokens } from "@/components/ops/ops-storage";
+import { WEB_BUILD_ID } from "@/lib/web-build-id";
 
 export function UnifiedLoginPage(): ReactElement {
   const router = useRouter();
@@ -179,6 +180,9 @@ export function UnifiedLoginPage(): ReactElement {
         <Link href="/citizen" className="icd-link">
           Create a citizen account
         </Link>
+      </p>
+      <p className="mt-3 text-center font-mono text-[9px] text-zinc-600" title="Firebase Hosting build">
+        Web build {WEB_BUILD_ID} · SMART dashboards + ICDRRMO AI
       </p>
     </IcdAuthShell>
   );

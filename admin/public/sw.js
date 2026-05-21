@@ -1,4 +1,4 @@
-/* ICDRRMO Operation Center PWA · v2026-05-11 — bump comment to force SW update checks */
+/* ICDRRMO Operation Center PWA · v2026-05-21-smart-ai — bump to force clients off stale SW */
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(Promise.resolve());

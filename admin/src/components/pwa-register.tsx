@@ -17,9 +17,14 @@ export function PwaRegister(): null {
       });
       return;
     }
-    void navigator.serviceWorker.register("/sw.js").catch(() => {
-      /* ignore registration failures */
-    });
+    void navigator.serviceWorker
+      .register(`/sw.js?v=${encodeURIComponent(process.env.NEXT_PUBLIC_WEB_BUILD_ID ?? "1")}`)
+      .then((reg) => {
+        void reg.update();
+      })
+      .catch(() => {
+        /* ignore registration failures */
+      });
   }, []);
   return null;
 }

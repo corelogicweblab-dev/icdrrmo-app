@@ -36,10 +36,16 @@ function isAbsoluteHttpUrl(u) {
 const deployFile = join(adminRoot, ".env.deploy");
 const fromFile = parseEnvFile(deployFile);
 
+const buildId =
+  process.env.NEXT_PUBLIC_WEB_BUILD_ID?.trim() ||
+  process.env.GITHUB_SHA?.trim() ||
+  `local-${Date.now()}`;
+
 const childEnv = {
   ...process.env,
   NODE_ENV: "production",
   STATIC_EXPORT: "1",
+  NEXT_PUBLIC_WEB_BUILD_ID: buildId,
   ...fromFile,
 };
 
