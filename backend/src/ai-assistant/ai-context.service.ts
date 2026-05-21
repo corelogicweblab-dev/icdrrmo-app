@@ -21,6 +21,33 @@ export class AiContextService {
     private readonly weather: WeatherService,
   ) {}
 
+  /** Fast path for AI chat — no full citizen feed (avoids 10–20s delay). */
+  async buildCitizenLight(actor: JwtPayload): Promise<AiRoleContext> {
+    const generatedAt = new Date().toISOString();
+    const [situation, profile] = await Promise.all([
+      this.weather.getSituationSnapshot().catch(() => null),
+      this.prisma.userProfile
+        .findUnique({
+          where: { userId: actor.sub },
+          select: {
+            fullName: true,
+            barangay: { select: { name: true } },
+          },
+        })
+        .catch(() => null),
+    ]);
+    const barangayName = profile?.barangay?.name ?? 'your barangay';
+    return {
+      role: 'CITIZEN',
+      generatedAt,
+      summary: `Citizen${profile?.fullName ? ` (${profile.fullName})` : ''} · ${barangayName}. Use SOS, Map, Prepare, Alerts, and Profile tabs.`,
+      weather: situation,
+      evacuation: [],
+      advisories: [],
+      metrics: { status: 'online', label: 'Live' },
+    };
+  }
+
   async build(actor: JwtPayload): Promise<AiRoleContext> {
     const generatedAt = new Date().toISOString();
     if (actor.role === UserRole.CITIZEN) {

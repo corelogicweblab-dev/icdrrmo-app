@@ -464,7 +464,11 @@ function CitizenPageInner(): ReactElement {
               </form>
           </section>
         ) : tokens ? (
-          <SmartCitizenDashboard accessToken={tokens.accessToken} onLogout={logout} />
+          <SmartCitizenDashboard
+            accessToken={tokens.accessToken}
+            onLogout={logout}
+            initialTab={searchParams.get("tab")}
+          />
         ) : null}
       </main>
       <footer className="mx-auto max-w-lg px-4 py-6 text-center text-[10px] text-zinc-600 border-t border-white/[0.04]">

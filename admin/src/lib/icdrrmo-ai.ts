@@ -31,7 +31,7 @@ export async function sendAiChat(
         conversationId: opts?.conversationId,
       }),
     },
-    60_000,
+    22_000,
   );
   const text = await res.text();
   if (!res.ok) {
@@ -56,7 +56,7 @@ export async function sendGuestAiChat(
         conversationId: opts?.conversationId,
       }),
     },
-    60_000,
+    22_000,
   );
   const text = await res.text();
   if (!res.ok) {

@@ -2,37 +2,45 @@
 
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bot, Loader2, MessageCircle, Send, X } from "lucide-react";
 import { sendAiChat, sendGuestAiChat, type AiChatResponse } from "@/lib/icdrrmo-ai";
+import { navigateAiAction, resolveAiChatActions } from "@/lib/ai-chat-actions";
 import { OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 import { ApiTimeoutError, formatApiReachabilityError } from "@/lib/api-fetch";
 
 type ChatMessage = {
   role: "user" | "assistant";
   text: string;
-  suggestedActions?: string[];
+  actionIds?: string[];
 };
 
 const INTRO =
-  "HapIsabela! I am ICDRRMO AI — Isabela City DRRMO assistant. Ask anything about SOS, weather, evacuation, preparedness, barangays, or how to use this app.";
+  "HapIsabela! I am ICDRRMO AI — Isabela City DRRMO assistant. Ask about SOS, weather, evacuation, preparedness, or how to use this app.";
 
 export function IcdrrmoAiChat(props: {
   accessToken: string | null;
   portal: "citizen" | "chairman" | "responder" | "ops" | "home";
   guestMode?: boolean;
 }): ReactElement | null {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", text: INTRO }]);
+  const introActions =
+    props.portal === "citizen"
+      ? ["sos", "map", "prepare"]
+      : ["sign_in", "citizen_portal", "map"];
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: "assistant", text: INTRO, actionIds: introActions },
+  ]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
       endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     });
   }, []);
 
@@ -41,6 +49,17 @@ export function IcdrrmoAiChat(props: {
   }, [messages, open, busy, scrollToEnd]);
 
   const canChat = Boolean(props.accessToken) || props.guestMode;
+
+  const onActionClick = useCallback(
+    (actionIds: string[] | undefined) => {
+      const actions = resolveAiChatActions(actionIds, props.portal);
+      const first = actions[0];
+      if (!first) return;
+      setOpen(false);
+      navigateAiAction(first, props.portal, router);
+    },
+    [props.portal, router],
+  );
 
   const submit = useCallback(async () => {
     const text = input.trim();
@@ -58,7 +77,7 @@ export function IcdrrmoAiChat(props: {
         {
           role: "assistant",
           text: res.reply?.trim() || "I could not generate a reply. Please try again.",
-          suggestedActions: res.suggestedActions,
+          actionIds: res.suggestedActions,
         },
       ]);
     } catch (e: unknown) {
@@ -75,9 +94,9 @@ export function IcdrrmoAiChat(props: {
         {
           role: "assistant",
           text: err,
-          suggestedActions: props.accessToken
-            ? ["Open Map", "Send SOS", "Prepare tab"]
-            : ["Sign in", "Open Citizen portal"],
+          actionIds: props.accessToken
+            ? ["sos", "map", "prepare"]
+            : ["sign_in", "citizen_portal"],
         },
       ]);
     } finally {
@@ -96,25 +115,23 @@ export function IcdrrmoAiChat(props: {
     >
       {open ? (
         <div
-          className="pointer-events-auto mb-1 flex w-[min(calc(100vw-1.25rem),min(400px,calc(100vw-1.25rem)))] max-h-[min(85dvh,560px)] flex-col overflow-hidden rounded-2xl border border-orange-500/25 bg-[#0a0a0a]/98 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.9)] backdrop-blur-md sm:w-[380px]"
+          className="pointer-events-auto mb-1 flex w-[min(calc(100vw-1.25rem),400px)] max-h-[min(88dvh,580px)] flex-col overflow-hidden rounded-2xl border border-orange-500/25 bg-[#0a0a0a]/98 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.9)] backdrop-blur-md"
           role="dialog"
-          aria-label="ICDRRMO AI support"
+          aria-label="AI Chat"
         >
           <header className="flex shrink-0 items-center justify-between gap-2 border-b border-orange-500/15 bg-gradient-to-r from-orange-950/60 to-rose-950/40 px-3 py-2.5">
             <div className="flex items-center gap-2 min-w-0">
               <Bot className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-orange-200">
-                  ICDRRMO AI
-                </p>
-                <p className="text-[9px] text-zinc-500 truncate">HapIsabela · English</p>
+                <p className="text-xs font-bold text-white">AI Chat</p>
+                <p className="text-[9px] text-zinc-500 truncate">ICDRRMO · HapIsabela</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white touch-manipulation"
-              aria-label="Close chat"
+              aria-label="Close AI Chat"
             >
               <X className="h-4 w-4" />
             </button>
@@ -122,36 +139,42 @@ export function IcdrrmoAiChat(props: {
 
           <div
             ref={scrollRef}
-            className="flex-1 min-h-[140px] max-h-[min(60dvh,440px)] overflow-y-auto overscroll-contain px-3 py-3 space-y-3"
+            className="flex-1 min-h-[160px] max-h-[min(62dvh,460px)] overflow-y-auto overscroll-contain px-3 py-3 space-y-3"
           >
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex flex-col gap-1.5 ${msg.role === "user" ? "items-end" : "items-start"}`}
-              >
+            {messages.map((msg, i) => {
+              const actions =
+                msg.role === "assistant" ? resolveAiChatActions(msg.actionIds, props.portal) : [];
+              return (
                 <div
-                  className={`max-w-[92%] text-sm leading-relaxed rounded-xl px-3 py-2.5 break-words whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "bg-rose-950/55 text-rose-50 border border-rose-500/25"
-                      : "bg-zinc-900/90 text-zinc-100 border border-white/[0.08]"
-                  }`}
+                  key={i}
+                  className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}
                 >
-                  {msg.text}
-                </div>
-                {msg.role === "assistant" && msg.suggestedActions?.length ? (
-                  <div className="flex flex-wrap gap-1 max-w-[92%]">
-                    {msg.suggestedActions.map((action) => (
-                      <span
-                        key={action}
-                        className="rounded-full border border-orange-500/25 bg-orange-950/40 px-2 py-0.5 text-[10px] text-orange-100/90"
-                      >
-                        {action}
-                      </span>
-                    ))}
+                  <div
+                    className={`max-w-[94%] text-sm leading-relaxed rounded-xl px-3 py-2.5 break-words whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-rose-950/55 text-rose-50 border border-rose-500/25"
+                        : "bg-zinc-900/90 text-zinc-100 border border-white/[0.08]"
+                    }`}
+                  >
+                    {msg.text}
                   </div>
-                ) : null}
-              </div>
-            ))}
+                  {actions.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 max-w-[94%]">
+                      {actions.map((action) => (
+                        <button
+                          key={action.id}
+                          type="button"
+                          onClick={() => onActionClick([action.id])}
+                          className="rounded-full border border-orange-500/40 bg-orange-600/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-orange-500 active:scale-[0.98] touch-manipulation transition-colors"
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
             {busy ? (
               <div className="flex items-center gap-2 text-xs text-zinc-500 pl-1">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-400" />
@@ -191,15 +214,18 @@ export function IcdrrmoAiChat(props: {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-600 to-rose-600 text-white shadow-md ring-1 ring-orange-400/30 hover:scale-105 active:scale-95 transition-transform touch-manipulation"
+        className="pointer-events-auto flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-full bg-gradient-to-br from-orange-600 to-rose-600 text-white shadow-md ring-1 ring-orange-400/30 hover:scale-105 active:scale-95 transition-transform touch-manipulation"
         aria-expanded={open}
-        aria-label={open ? "Close ICDRRMO AI support" : "Open ICDRRMO AI support"}
-        title="ICDRRMO AI"
+        aria-label={open ? "Close AI Chat" : "Open AI Chat"}
+        title="AI Chat"
       >
         {open ? (
           <X className="h-4 w-4" aria-hidden />
         ) : (
-          <MessageCircle className="h-4 w-4" aria-hidden />
+          <>
+            <MessageCircle className="h-4 w-4" aria-hidden />
+            <span className="text-[7px] font-bold leading-none">AI</span>
+          </>
         )}
       </button>
     </div>

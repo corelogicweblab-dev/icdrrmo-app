@@ -29,7 +29,7 @@ export class AiAssistantService {
     return preferred ?? 'en';
   }
 
-  /** Public portal assistant (no JWT) — uses Gemini when configured. */
+  /** Public portal assistant — fast RAG (no slow full-feed context). */
   async guestChat(dto: AiChatDto): Promise<AiChatResponse> {
     const lang = this.detectLanguage(dto.message, dto.language);
     const conversationId = dto.conversationId?.trim() || randomUUID();
@@ -37,34 +37,10 @@ export class AiAssistantService {
       role: 'CITIZEN',
       generatedAt: new Date().toISOString(),
       summary:
-        'Visitor on ICDRRMO SMART portal (HapIsabela). Sign in as Citizen for SOS, or use the Prepare tab for emergency kit guides.',
+        'Visitor on ICDRRMO SMART portal. Sign in as Citizen for SOS, weather map, evacuation, and preparedness guides.',
       metrics: { label: 'ICDRRMO Portal', status: 'online' },
       weather: await this.weatherService.getSituationSnapshot().catch(() => null),
     };
-    const guestActor: JwtPayload = {
-      sub: 'guest',
-      role: UserRole.CITIZEN,
-      email: 'guest@portal',
-    };
-
-    const key =
-      this.config.get<string>('GEMINI_API_KEY')?.trim() ||
-      this.config.get<string>('GOOGLE_AI_API_KEY')?.trim();
-
-    if (key) {
-      try {
-        const reply = await this.geminiReply(key, lang, guestActor, dto.message, ctx);
-        return {
-          reply,
-          language: lang,
-          engine: 'gemini',
-          conversationId,
-          suggestedActions: ['Open Citizen portal', 'Sign in', 'Open Map tab'],
-        };
-      } catch (e) {
-        this.logger.warn(`Guest Gemini fallback: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
 
     const reply = this.contextRagReply(dto.message, ctx, lang);
     return {
@@ -72,12 +48,26 @@ export class AiAssistantService {
       language: lang,
       engine: 'context-rag',
       conversationId,
-      suggestedActions: ['Open Citizen portal', 'Sign in', 'Emergency SOS'],
+      suggestedActions: ['sign_in', 'citizen_portal', 'map'],
     };
   }
 
   async chat(actor: JwtPayload, dto: AiChatDto): Promise<AiChatResponse> {
     const lang = this.detectLanguage(dto.message, dto.language);
+    const conversationId = dto.conversationId?.trim() || randomUUID();
+
+    if (actor.role === UserRole.CITIZEN) {
+      const ctx = await this.context.buildCitizenLight(actor);
+      const reply = this.contextRagReply(dto.message, ctx, lang);
+      return {
+        reply,
+        language: lang,
+        engine: 'context-rag',
+        conversationId,
+        suggestedActions: this.citizenActionIds(),
+      };
+    }
+
     let ctx: Awaited<ReturnType<AiContextService['build']>>;
     try {
       ctx = await this.context.build(actor);
@@ -88,11 +78,10 @@ export class AiAssistantService {
       ctx = {
         role: actor.role,
         generatedAt: new Date().toISOString(),
-        summary: `${actor.role} session — live dashboard context is still loading.`,
+        summary: `${actor.role} session — context loading.`,
         metrics: { status: 'online', label: 'Live' },
       };
     }
-    const conversationId = dto.conversationId?.trim() || randomUUID();
 
     const key =
       this.config.get<string>('GEMINI_API_KEY')?.trim() ||
@@ -106,7 +95,7 @@ export class AiAssistantService {
           language: lang,
           engine: 'gemini',
           conversationId,
-          suggestedActions: this.suggestedActions(ctx, lang),
+          suggestedActions: this.staffActionIds(actor.role),
         };
       } catch (e) {
         this.logger.warn(`Gemini fallback: ${e instanceof Error ? e.message : String(e)}`);
@@ -119,18 +108,23 @@ export class AiAssistantService {
       language: lang,
       engine: 'context-rag',
       conversationId,
-      suggestedActions: this.suggestedActions(ctx, lang),
+      suggestedActions: this.staffActionIds(actor.role),
     };
   }
 
   private systemPrompt(lang: AiLanguage, actor: JwtPayload): string {
+    const citizenOnly =
+      actor.role === UserRole.CITIZEN
+        ? ' You are helping a CITIZEN only. Do NOT disclose responder assignments, ops command data, internal dispatch, or staff contact details. Share only what a resident needs: SOS, Map, Prepare, Alerts, Profile, evacuation, and public safety guidance.'
+        : '';
     return [
       'You are ICDRRMO AI for Isabela City, Basilan — greet with spirit of "HapIsabela!" (happy, prepared Isabela).',
-      'Answer ANY reasonable question about: disasters, typhoon/flood/fire, this SMART app, SOS, evacuation, barangay DRRM, responders, weather, preparedness, profiles, and government coordination.',
-      'Use CONTEXT when available; otherwise give accurate general DRRM guidance for the Philippines / BARMM context.',
-      'Reply in English only — clear, concise, professional emergency language.',
+      'Answer questions about disasters, this SMART app, SOS, evacuation, weather, preparedness, and barangay safety.',
+      'Use CONTEXT when available; otherwise give accurate DRRM guidance for the Philippines / BARMM context.',
+      'Reply in English only — clear, concise, under 120 words unless step-by-step is requested.',
       `User role: ${actor.role}.`,
-      'Never refuse ICDRRMO-related questions. If unsure, suggest: Map tab, Prepare tab, Profile, SOS button, or contact barangay/ICDRRMO.',
+      citizenOnly,
+      'Never refuse ICDRRMO-related questions. If unsure, suggest Map, Prepare, Profile, or SOS.',
     ].join('\n');
   }
 
@@ -155,13 +149,13 @@ export class AiAssistantService {
           ],
         },
       ],
-      generationConfig: { temperature: 0.35, maxOutputTokens: 1024 },
+      generationConfig: { temperature: 0.35, maxOutputTokens: 512 },
     };
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(18_000),
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
@@ -197,8 +191,8 @@ export class AiAssistantService {
       return (
         prefix +
         (inc.length
-          ? `You have ${inc.length} incident(s) on record. For a new emergency: open Home → choose type (flood, fire, medical, typhoon) → tap Send SOS with GPS enabled. Responders receive your location and medical profile automatically.`
-          : 'For an emergency: Home tab → select SOS type → tap Send SOS. Turn on GPS so ICDRRMO gets your exact location. Stay on the line if safe; follow barangay or EOC instructions.')
+          ? `You have ${inc.length} incident(s) on record. For a new emergency: Home → choose type → tap Send SOS with GPS on. ICDRRMO receives your location and the medical info from your Profile.`
+          : 'For an emergency: Home tab → select SOS type → tap Send SOS with GPS enabled. ICDRRMO coordinates response with your barangay — stay safe and follow official instructions.')
       );
     }
 
@@ -242,7 +236,7 @@ export class AiAssistantService {
     if (/medical|blood|allergy|profile|contact/.test(q)) {
       return (
         prefix +
-        'Profile stores blood type, allergies, conditions, and emergency contacts. This data is sent to responders when you trigger SOS — keep it updated.'
+        'Profile stores blood type, allergies, conditions, and emergency contacts. This is shared with ICDRRMO only when you trigger SOS — keep it updated.'
       );
     }
 
@@ -282,27 +276,13 @@ export class AiAssistantService {
     );
   }
 
-  private suggestedActions(
-    ctx: Awaited<ReturnType<AiContextService['build']>>,
-    lang: AiLanguage,
-  ): string[] {
-    const en =
-      ctx.role === 'CITIZEN'
-        ? ['Open Map', 'Check evacuation', 'Review preparedness']
-        : ctx.role === 'BARANGAY_CHAIRMAN'
-          ? ['Review open incidents', 'Check shelter capacity', 'View risk forecast']
-          : ctx.role === 'RESPONDER'
-            ? ['Open field map', 'View assignments', 'Update profile']
-            : ['Open command center', 'Dispatch resources', 'Weather desk'];
-    if (lang === 'fil') {
-      return en.map((s) =>
-        s === 'Open Map'
-          ? 'Buksan ang Mapa'
-          : s === 'Check evacuation'
-            ? 'Tingnan evacuation'
-            : s,
-      );
-    }
-    return en;
+  private citizenActionIds(): string[] {
+    return ['sos', 'map', 'prepare', 'alerts', 'profile'];
+  }
+
+  private staffActionIds(role: UserRole): string[] {
+    if (role === UserRole.BARANGAY_CHAIRMAN) return ['citizen_portal'];
+    if (role === UserRole.RESPONDER) return ['map'];
+    return ['citizen_portal'];
   }
 }

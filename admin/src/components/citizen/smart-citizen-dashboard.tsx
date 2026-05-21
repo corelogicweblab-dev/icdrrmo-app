@@ -33,6 +33,13 @@ const SOS_TYPES = [
 
 type Tab = "home" | "map" | "alerts" | "community" | "prepare";
 
+const TAB_IDS: Tab[] = ["home", "map", "alerts", "community", "prepare"];
+
+function parseCitizenTab(raw: string | null | undefined): Tab {
+  if (raw && TAB_IDS.includes(raw as Tab)) return raw as Tab;
+  return "home";
+}
+
 type SosPanel = {
   incidentId: string;
   deduplicated: boolean;
@@ -44,8 +51,22 @@ type SosPanel = {
 export function SmartCitizenDashboard(props: {
   accessToken: string;
   onLogout: () => void;
+  initialTab?: string | null;
 }): ReactElement {
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>(() => parseCitizenTab(props.initialTab));
+
+  useEffect(() => {
+    const handler = (ev: Event): void => {
+      const detail = (ev as CustomEvent<{ tab?: string }>).detail;
+      if (detail?.tab) setTab(parseCitizenTab(detail.tab));
+    };
+    window.addEventListener("icdrrmo-citizen-tab", handler);
+    return () => window.removeEventListener("icdrrmo-citizen-tab", handler);
+  }, []);
+
+  useEffect(() => {
+    if (props.initialTab) setTab(parseCitizenTab(props.initialTab));
+  }, [props.initialTab]);
   const [feed, setFeed] = useState<CitizenUnifiedFeed>(() => createDegradedCitizenFeed());
   const [prep, setPrep] = useState<{
     checklist: Array<{ id: string; label: string; done: boolean }>;
