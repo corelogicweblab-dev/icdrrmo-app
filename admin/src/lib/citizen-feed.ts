@@ -1,5 +1,65 @@
-import { opsFetchJson } from "@/lib/ops-api";
+import { fetchWithTimeout } from "@/lib/api-fetch";
+import { getApiBaseUrl } from "@/lib/env";
+import { OpsApiError, opsFetchJson } from "@/lib/ops-api";
 import type { MergedHazardGeoJson } from "@/lib/eoc-weather-geojson";
+
+const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
+
+/** Client-side fallback so SOS + tabs always render even if the API hiccups. */
+export function createDegradedCitizenFeed(): CitizenUnifiedFeed {
+  return {
+    generatedAt: new Date().toISOString(),
+    safetyStatus: "safe",
+    safetyLabels: {
+      safe: { en: "Safe", tl: "Ligtas" },
+      caution: { en: "Caution", tl: "Mag-ingat" },
+      evacuate: { en: "Evacuate", tl: "Lumikas" },
+    },
+    profile: null,
+    hazardGeo: {
+      type: "FeatureCollection",
+      generatedAt: new Date().toISOString(),
+      properties: {
+        aoiLabel: "Isabela City, Basilan",
+        bbox: [121.75, 6.55, 122.25, 6.85],
+        sources: [],
+        upstreamErrors: {},
+      },
+      layers: {
+        openWeatherMap: EMPTY_FC,
+        gdacs: EMPTY_FC,
+        pagasa: EMPTY_FC,
+      },
+      features: [],
+    },
+    weather: { openWeather: { configured: false, provider: "none", layers: [] } },
+    situation: null,
+    evacuationCenters: [],
+    community: [],
+    myIncidents: [],
+    notifications: [],
+    heatmaps: {
+      incidentDensity: EMPTY_FC,
+      rainfallIntensity: EMPTY_FC,
+      evacuationDemand: EMPTY_FC,
+    },
+    enterprise: {
+      predictiveAlerts: [],
+      myBarangayRisk: null,
+      usageMetrics: { activeCitizensByBarangay: [], advisoryEngagementPct: 0 },
+    },
+    systemHealth: {
+      status: "degraded",
+      label: "Syncing live data…",
+      database: true,
+      redis: false,
+    },
+  };
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export type CitizenSafetyStatus = "safe" | "caution" | "evacuate";
 
@@ -104,6 +164,41 @@ export async function fetchCitizenFeed(
   const q =
     coords != null ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
   return opsFetchJson<CitizenUnifiedFeed>(`/citizen/feed${q}`, token);
+}
+
+/** Silent retries for Render cold start / transient 5xx — no manual reload. */
+export async function fetchCitizenFeedWithRetry(
+  token: string,
+  coords?: { lat: number; lng: number },
+  maxAttempts = 4,
+): Promise<CitizenUnifiedFeed> {
+  const q = coords != null ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
+  const url = `${getApiBaseUrl()}/citizen/feed${q}`;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        throw new OpsApiError(`HTTP ${res.status}`, res.status, text);
+      }
+      if (!text) return createDegradedCitizenFeed();
+      const parsed = JSON.parse(text) as CitizenUnifiedFeed;
+      if (parsed && typeof parsed === "object" && parsed.safetyStatus) {
+        return parsed;
+      }
+      return createDegradedCitizenFeed();
+    } catch (e: unknown) {
+      lastErr = e;
+      if (attempt < maxAttempts - 1) {
+        await delay(1500 * (attempt + 1));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 export async function fetchCitizenTimeline(

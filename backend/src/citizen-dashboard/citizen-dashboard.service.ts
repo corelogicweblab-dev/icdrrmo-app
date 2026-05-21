@@ -174,10 +174,49 @@ export class CitizenDashboardService implements OnModuleInit {
     }
   }
 
-  async getUnifiedFeed(actor: JwtPayload, lat?: number, lng?: number) {
+  /** Always HTTP-200 safe payload when the full feed cannot be assembled. */
+  buildMinimalFeed(actor: JwtPayload) {
+    const emptyLayer = { type: 'FeatureCollection' as const, features: [] };
+    const hazardGeo = this.emptyHazardGeo();
+    return {
+      generatedAt: new Date().toISOString(),
+      safetyStatus: 'safe' as CitizenSafetyStatus,
+      safetyLabels: {
+        safe: { en: 'Safe', tl: 'Ligtas' },
+        caution: { en: 'Caution', tl: 'Mag-ingat' },
+        evacuate: { en: 'Evacuate', tl: 'Lumikas' },
+      },
+      profile: null,
+      hazardGeo,
+      weather: {
+        openWeather: { configured: false, provider: 'none', layers: [] },
+      },
+      situation: null,
+      evacuationCenters: [],
+      community: [],
+      myIncidents: [],
+      notifications: [],
+      heatmaps: {
+        incidentDensity: emptyLayer,
+        rainfallIntensity: emptyLayer,
+        evacuationDemand: emptyLayer,
+      },
+      enterprise: this.emptyEnterpriseMetrics(),
+      systemHealth: {
+        status: 'degraded',
+        label: 'Syncing live data…',
+        database: true,
+        redis: false,
+      },
+      feedDegraded: true,
+      userId: actor.sub,
+    };
+  }
+
+  private async loadProfileForFeed(userId: string) {
     try {
-      const profile = await this.prisma.userProfile.findUnique({
-        where: { userId: actor.sub },
+      return await this.prisma.userProfile.findUnique({
+        where: { userId },
         include: {
           barangay: {
             select: {
@@ -193,6 +232,26 @@ export class CitizenDashboardService implements OnModuleInit {
           },
         },
       });
+    } catch (e: unknown) {
+      this.logger.warn(
+        `Profile+barangay hazard fields unavailable, using basic profile: ${e instanceof Error ? e.message : e}`,
+      );
+      try {
+        return await this.prisma.userProfile.findUnique({
+          where: { userId },
+          include: {
+            barangay: { select: { id: true, name: true, code: true } },
+          },
+        });
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  async getUnifiedFeed(actor: JwtPayload, lat?: number, lng?: number) {
+    try {
+      const profile = await this.loadProfileForFeed(actor.sub);
       const barangayId = profile?.barangayId ?? null;
       const cacheKey = `${REDIS_FEED_PREFIX}${barangayId ?? 'none'}:${actor.sub}`;
 
@@ -205,14 +264,19 @@ export class CitizenDashboardService implements OnModuleInit {
         }
       }
 
-      const openIncidentCount = await this.prisma.incident.count({
-        where: {
-          status: {
-            notIn: [IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM],
-          },
-          ...(barangayId ? { barangayId } : {}),
-        },
-      });
+      const openIncidentCount = await this.safeFeedPart(
+        'openIncidentCount',
+        () =>
+          this.prisma.incident.count({
+            where: {
+              status: {
+                notIn: [IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM],
+              },
+              ...(barangayId ? { barangayId } : {}),
+            },
+          }),
+        0,
+      );
 
       const [
         hazardGeo,
@@ -278,8 +342,18 @@ export class CitizenDashboardService implements OnModuleInit {
         }),
       ]);
 
+      const safetyBarangay = profile?.barangay
+        ? {
+            opsFloodActive: Boolean(
+              'opsFloodActive' in profile.barangay && profile.barangay.opsFloodActive,
+            ),
+            opsRedZoneActive: Boolean(
+              'opsRedZoneActive' in profile.barangay && profile.barangay.opsRedZoneActive,
+            ),
+          }
+        : null;
       const safetyStatus = this.computeSafetyStatus(
-        profile?.barangay ?? null,
+        safetyBarangay,
         openIncidentCount,
         enterprise.predictiveAlerts as Array<{ level: string }>,
       );
@@ -334,16 +408,16 @@ export class CitizenDashboardService implements OnModuleInit {
         `Citizen unified feed fatal: ${e instanceof Error ? e.message : String(e)}`,
         e instanceof Error ? e.stack : undefined,
       );
-      throw e;
+      return this.buildMinimalFeed(actor);
     }
   }
 
   private computeSafetyStatus(
     barangay: {
-      opsFloodActive: boolean;
-      opsRedZoneActive: boolean;
-      opsFloodMessage: string | null;
-      opsRedZoneMessage: string | null;
+      opsFloodActive?: boolean;
+      opsRedZoneActive?: boolean;
+      opsFloodMessage?: string | null;
+      opsRedZoneMessage?: string | null;
     } | null,
     openIncidents: number,
     predictive: Array<{ level: string }>,

@@ -9,6 +9,9 @@ function shouldHideApiHealthStrip(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === "/" || pathname === "/signin") return true;
   if (pathname.startsWith("/portals")) return true;
+  if (pathname.startsWith("/citizen")) return true;
+  if (pathname.startsWith("/responder")) return true;
+  if (pathname.startsWith("/chairman")) return true;
   return false;
 }
 

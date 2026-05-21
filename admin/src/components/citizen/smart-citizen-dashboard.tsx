@@ -3,14 +3,7 @@
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Bell,
-  ChevronRight,
-  Loader2,
-  LocateFixed,
-  MapPin,
-  UserCircle,
-} from "lucide-react";
+import { Bell, ChevronRight, Loader2, LocateFixed, MapPin } from "lucide-react";
 import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
@@ -19,10 +12,13 @@ import { CitizenSosLifecycle } from "@/components/citizen/citizen-sos-lifecycle"
 import { CitizenCommunityFeed } from "@/components/citizen/citizen-community-feed";
 import { CitizenPreparednessPanel } from "@/components/citizen/citizen-preparedness-panel";
 import { CitizenEnterpriseStrip } from "@/components/citizen/citizen-enterprise-strip";
-import { fetchCitizenFeed, type CitizenUnifiedFeed } from "@/lib/citizen-feed";
+import {
+  createDegradedCitizenFeed,
+  fetchCitizenFeedWithRetry,
+  type CitizenUnifiedFeed,
+} from "@/lib/citizen-feed";
 import { useCitizenRealtime } from "@/hooks/use-citizen-realtime";
 import { getApiBaseUrl, getOpsVoiceHotline } from "@/lib/env";
-import { OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 import { SMART_CITIZEN_BUILD } from "@/lib/citizen-dashboard-meta";
 import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 
@@ -55,6 +51,7 @@ export function SmartCitizenDashboard(props: {
     badges: string[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
@@ -62,37 +59,52 @@ export function SmartCitizenDashboard(props: {
   const [sosBusy, setSosBusy] = useState(false);
   const [sosPanel, setSosPanel] = useState<SosPanel | null>(null);
 
-  const loadFeed = useCallback(async () => {
-    setErr(null);
-    try {
-      const coords =
-        lat != null && lon != null ? { lat, lng: lon } : undefined;
-      const f = await fetchCitizenFeed(props.accessToken, coords);
-      setFeed(f);
-      const pRes = await fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
-        headers: { Authorization: `Bearer ${props.accessToken}` },
-      });
-      if (pRes.ok) {
-        const p = (await pRes.json()) as typeof prep;
-        setPrep(p);
+  const loadFeed = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (opts?.silent) {
+        setSyncing(true);
+      } else {
+        setLoading(true);
       }
-    } catch (e: unknown) {
-      setErr(
-        e instanceof OpsApiError
-          ? opsApiErrorUserMessage(e)
-          : "Could not load SMART dashboard.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [props.accessToken, lat, lon]);
+      const coords = lat != null && lon != null ? { lat, lng: lon } : undefined;
+      try {
+        const f = await fetchCitizenFeedWithRetry(props.accessToken, coords);
+        setFeed(f);
+        setErr(null);
+        const pRes = await fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
+          headers: { Authorization: `Bearer ${props.accessToken}` },
+        });
+        if (pRes.ok) {
+          const p = (await pRes.json()) as typeof prep;
+          setPrep(p);
+        }
+      } catch {
+        setFeed((prev) => prev ?? createDegradedCitizenFeed());
+        setErr(null);
+      } finally {
+        setLoading(false);
+        setSyncing(false);
+      }
+    },
+    [props.accessToken, lat, lon],
+  );
 
   useEffect(() => {
     void loadFeed();
   }, [loadFeed]);
 
+  /** Background sync — no manual reload; upgrades degraded → live feed when API is ready. */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (feed?.systemHealth.status === "degraded" || !feed) {
+        void loadFeed({ silent: true });
+      }
+    }, 20_000);
+    return () => window.clearInterval(id);
+  }, [feed, loadFeed]);
+
   useCitizenRealtime(props.accessToken, () => {
-    void loadFeed();
+    void loadFeed({ silent: true });
   });
 
   const captureLocation = useCallback(() => {
@@ -170,49 +182,36 @@ export function SmartCitizenDashboard(props: {
     { id: "prepare", label: "Prepare" },
   ];
 
+  if (loading && !feed) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-400" aria-label="Loading dashboard" />
+        <p className="text-[11px] text-zinc-500">Preparing your emergency dashboard…</p>
+      </div>
+    );
+  }
+
+  const activeFeed = feed ?? createDegradedCitizenFeed();
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {feed ? (
-            <CitizenSafetyBadge
-              status={feed.safetyStatus}
-              labelTl={feed.safetyLabels[feed.safetyStatus]?.tl}
-            />
-          ) : null}
-          <span className="font-mono text-[9px] text-zinc-600">{SMART_CITIZEN_BUILD}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Link
-            href="/citizen/profile"
-            className="inline-flex items-center gap-1 rounded-lg border border-rose-500/35 px-2 py-1 text-[11px] text-rose-100"
-          >
-            <UserCircle className="h-3.5 w-3.5" />
-            Profile
-          </Link>
-          <button
-            type="button"
-            onClick={props.onLogout}
-            className="text-[11px] text-zinc-500 hover:text-zinc-300"
-          >
-            Sign out
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <CitizenSafetyBadge
+          status={activeFeed.safetyStatus}
+          labelTl={activeFeed.safetyLabels[activeFeed.safetyStatus]?.tl}
+        />
+        <span className="font-mono text-[9px] text-zinc-600">{SMART_CITIZEN_BUILD}</span>
+        {syncing || activeFeed.systemHealth.status === "degraded" ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <Loader2 className="h-3 w-3 animate-spin text-orange-400/80" aria-hidden />
+            Syncing live data…
+          </span>
+        ) : null}
       </div>
 
       {err ? (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-100 space-y-2">
-          <p>{err}</p>
-          <button
-            type="button"
-            onClick={() => {
-              setLoading(true);
-              void loadFeed();
-            }}
-            className="rounded-lg border border-rose-400/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-rose-50 hover:bg-rose-900/40"
-          >
-            Retry load
-          </button>
+        <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-100">
+          {err}
         </div>
       ) : null}
 
@@ -231,17 +230,11 @@ export function SmartCitizenDashboard(props: {
         ))}
       </nav>
 
-      {loading && !feed ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-400" />
-        </div>
-      ) : null}
-
-      {feed && tab === "home" ? (
+      {tab === "home" ? (
         <div className="space-y-4">
           <CitizenEnterpriseStrip
-            enterprise={feed.enterprise}
-            systemHealth={feed.systemHealth}
+            enterprise={activeFeed.enterprise}
+            systemHealth={activeFeed.systemHealth}
           />
 
           <form
@@ -295,19 +288,19 @@ export function SmartCitizenDashboard(props: {
             </div>
           ) : null}
 
-          {feed.profile ? (
+          {activeFeed.profile ? (
             <div className="rounded-xl icd-surface p-3 text-xs text-zinc-300">
               <p className="text-[10px] uppercase tracking-widest text-orange-400/80 mb-2">
                 Medical (auto-forwarded on SOS)
               </p>
               <p>
                 <span className="text-zinc-500">Blood: </span>
-                {feed.profile.bloodType.replace(/_/g, " ")}
+                {activeFeed.profile.bloodType.replace(/_/g, " ")}
               </p>
-              {feed.profile.allergies ? (
+              {activeFeed.profile.allergies ? (
                 <p className="mt-1">
                   <span className="text-zinc-500">Allergies: </span>
-                  {feed.profile.allergies}
+                  {activeFeed.profile.allergies}
                 </p>
               ) : null}
             </div>
@@ -318,7 +311,7 @@ export function SmartCitizenDashboard(props: {
               Nearest evacuation
             </p>
             <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {feed.evacuationCenters.slice(0, 5).map((e) => (
+              {activeFeed.evacuationCenters.slice(0, 5).map((e) => (
                 <li
                   key={e.id}
                   className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2 text-xs"
@@ -345,7 +338,7 @@ export function SmartCitizenDashboard(props: {
         </div>
       ) : null}
 
-      {feed && tab === "map" ? (
+      {tab === "map" ? (
         <div className="rounded-2xl border border-orange-500/20 overflow-hidden h-[min(55dvh,520px)] flex flex-col">
           <p className="shrink-0 px-3 py-2 text-[10px] uppercase tracking-widest text-orange-400/80 bg-black/40 border-b border-orange-500/12">
             Windy + GDACS + PAGASA · tap markers
@@ -358,14 +351,14 @@ export function SmartCitizenDashboard(props: {
         </div>
       ) : null}
 
-      {feed && tab === "alerts" ? (
+      {tab === "alerts" ? (
         <div className="space-y-3">
           <p className="text-xs text-zinc-500 flex items-center gap-2">
             <Bell className="h-4 w-4 text-orange-400" />
             Incidents & advisories near you
           </p>
           <ul className="space-y-2 max-h-[400px] overflow-y-auto">
-            {feed.notifications.map((n) => (
+            {activeFeed.notifications.map((n) => (
               <li
                 key={n.id}
                 className={`rounded-xl border px-3 py-2.5 text-xs ${
@@ -377,7 +370,7 @@ export function SmartCitizenDashboard(props: {
                 <p className="text-[10px] text-zinc-600 mt-1">{n.type}</p>
               </li>
             ))}
-            {feed.myIncidents.map((i) => (
+            {activeFeed.myIncidents.map((i) => (
               <li
                 key={i.id}
                 className="rounded-xl border border-rose-500/20 bg-rose-950/15 px-3 py-2.5 text-xs"
@@ -392,11 +385,11 @@ export function SmartCitizenDashboard(props: {
         </div>
       ) : null}
 
-      {feed && tab === "community" ? (
-        <CitizenCommunityFeed posts={feed.community} />
+      {tab === "community" ? (
+        <CitizenCommunityFeed posts={activeFeed.community} />
       ) : null}
 
-      {feed && tab === "prepare" && prep ? (
+      {tab === "prepare" && prep ? (
         <CitizenPreparednessPanel
           accessToken={props.accessToken}
           checklist={prep.checklist}
@@ -405,7 +398,7 @@ export function SmartCitizenDashboard(props: {
         />
       ) : null}
 
-      {feed && tab === "home" ? (
+      {tab === "home" ? (
         <Link
           href="/citizen/profile"
           className="flex items-center justify-center gap-2 rounded-xl border border-orange-500/30 py-3 text-sm text-orange-100"
