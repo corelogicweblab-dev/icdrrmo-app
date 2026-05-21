@@ -35,10 +35,13 @@ export class RiskScoringService {
     );
 
     if (ml?.length) {
-      return ml.map((r) => ({
-        ...r,
-        factors: this.factorsFor(barangays.find((b) => b.id === r.barangayId)!, rainLikely),
-      }));
+      return ml.map((r) => {
+        const b = barangays.find((x) => x.id === r.barangayId);
+        return {
+          ...r,
+          factors: b ? this.factorsFor(b, rainLikely) : [],
+        };
+      });
     }
 
     return barangays.map((b) => {

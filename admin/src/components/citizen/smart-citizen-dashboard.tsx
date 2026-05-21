@@ -201,8 +201,18 @@ export function SmartCitizenDashboard(props: {
       </div>
 
       {err ? (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-100">
-          {err}
+        <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-100 space-y-2">
+          <p>{err}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              void loadFeed();
+            }}
+            className="rounded-lg border border-rose-400/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-rose-50 hover:bg-rose-900/40"
+          >
+            Retry load
+          </button>
         </div>
       ) : null}
 

@@ -15,8 +15,10 @@ import {
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
+import { ISABELA_AOI_BBOX } from '../weather/geojson-parse.util';
+import type { MergedHazardGeoJsonBundle } from '../weather/geojson.types';
 import { WeatherGeojsonMergeService } from '../weather/weather-geojson-merge.service';
-import { WeatherService } from '../weather/weather.service';
+import { WeatherService, type EocWeatherBundle } from '../weather/weather.service';
 import { RiskScoringService } from '../analytics/risk-scoring.service';
 import { IncidentsService } from '../incidents/incidents.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -127,117 +129,213 @@ export class CitizenDashboardService implements OnModuleInit {
     }
   }
 
+  private emptyHazardGeo(): MergedHazardGeoJsonBundle {
+    const emptyLayer = { type: 'FeatureCollection' as const, features: [] };
+    return {
+      type: 'FeatureCollection',
+      generatedAt: new Date().toISOString(),
+      properties: {
+        aoiLabel: 'Isabela City, Basilan',
+        bbox: ISABELA_AOI_BBOX,
+        sources: [],
+        upstreamErrors: { merge: 'Hazard layers temporarily unavailable' },
+      },
+      layers: {
+        openWeatherMap: emptyLayer,
+        gdacs: emptyLayer,
+        pagasa: emptyLayer,
+      },
+      features: [],
+    };
+  }
+
+  private emptyEnterpriseMetrics() {
+    return {
+      predictiveAlerts: [],
+      myBarangayRisk: null,
+      usageMetrics: {
+        activeCitizensByBarangay: [] as Array<{ barangayId: string | null; count: number }>,
+        advisoryEngagementPct: 0,
+        advisoriesRead: 0,
+        advisoriesTotal: 0,
+      },
+    };
+  }
+
+  private async safeFeedPart<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+    try {
+      return await fn();
+    } catch (e: unknown) {
+      this.logger.error(
+        `Citizen feed: ${label} failed: ${e instanceof Error ? e.message : String(e)}`,
+        e instanceof Error ? e.stack : undefined,
+      );
+      return fallback;
+    }
+  }
+
   async getUnifiedFeed(actor: JwtPayload, lat?: number, lng?: number) {
-    const profile = await this.prisma.userProfile.findUnique({
-      where: { userId: actor.sub },
-      include: {
-        barangay: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            opsFloodActive: true,
-            opsFloodMessage: true,
-            opsRedZoneActive: true,
-            opsRedZoneMessage: true,
-            isFloodProne: true,
+    try {
+      const profile = await this.prisma.userProfile.findUnique({
+        where: { userId: actor.sub },
+        include: {
+          barangay: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              opsFloodActive: true,
+              opsFloodMessage: true,
+              opsRedZoneActive: true,
+              opsRedZoneMessage: true,
+              isFloodProne: true,
+            },
           },
         },
-      },
-    });
-    const barangayId = profile?.barangayId ?? null;
-    const cacheKey = `${REDIS_FEED_PREFIX}${barangayId ?? 'none'}:${actor.sub}`;
+      });
+      const barangayId = profile?.barangayId ?? null;
+      const cacheKey = `${REDIS_FEED_PREFIX}${barangayId ?? 'none'}:${actor.sub}`;
 
-    if (this.redis) {
-      try {
-        const cached = await this.redis.get(cacheKey);
-        if (cached) return JSON.parse(cached) as Record<string, unknown>;
-      } catch {
-        /* ignore */
+      if (this.redis) {
+        try {
+          const cached = await this.redis.get(cacheKey);
+          if (cached) return JSON.parse(cached) as Record<string, unknown>;
+        } catch {
+          /* ignore */
+        }
       }
-    }
 
-    const openIncidentCount = await this.prisma.incident.count({
-      where: {
-        status: { notIn: [IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM] },
-        ...(barangayId ? { barangayId } : {}),
-      },
-    });
+      const openIncidentCount = await this.prisma.incident.count({
+        where: {
+          status: {
+            notIn: [IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM],
+          },
+          ...(barangayId ? { barangayId } : {}),
+        },
+      });
 
-    const [
-      hazardGeo,
-      weatherBundle,
-      situation,
-      evacCenters,
-      community,
-      myIncidents,
-      notifications,
-      enterprise,
-    ] = await Promise.all([
-      this.geoMerge.buildMergedGeoJson(),
-      this.weather.getEocWeatherBundle(),
-      this.weather.getSituationSnapshot(),
-      this.listEvacForCitizen(actor, lat, lng),
-      this.listCommunity(actor, 30),
-      this.listMyIncidents(actor),
-      this.prisma.notification.findMany({
-        where: { userId: actor.sub },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      }),
-      this.buildEnterpriseMetrics(actor, barangayId, openIncidentCount),
-    ]);
+      const [
+        hazardGeo,
+        weatherBundle,
+        situation,
+        evacCenters,
+        community,
+        myIncidents,
+        notifications,
+        enterprise,
+        heatmaps,
+        systemHealth,
+      ] = await Promise.all([
+        this.safeFeedPart('hazardGeo', () => this.geoMerge.buildMergedGeoJson(), this.emptyHazardGeo()),
+        this.safeFeedPart('weatherBundle', () => this.weather.getEocWeatherBundle(), {
+          situation: null as unknown as Awaited<
+            ReturnType<WeatherService['getSituationSnapshot']>
+          >,
+          pagasa: { source: 'pagasa', fetchedAt: new Date().toISOString(), items: [] },
+          openWeather: {
+            configured: false,
+            provider: 'none' as const,
+            layers: [],
+            openMeteoOverlays: [],
+          },
+          rainViewer: { available: false },
+        } satisfies EocWeatherBundle),
+        this.safeFeedPart('situation', () => this.weather.getSituationSnapshot(), null),
+        this.safeFeedPart('evacCenters', () => this.listEvacForCitizen(actor, lat, lng), []),
+        this.safeFeedPart('community', () => this.listCommunity(actor, 30), []),
+        this.safeFeedPart('myIncidents', () => this.listMyIncidents(actor), []),
+        this.safeFeedPart(
+          'notifications',
+          () =>
+            this.prisma.notification.findMany({
+              where: { userId: actor.sub },
+              orderBy: { createdAt: 'desc' },
+              take: 20,
+            }),
+          [],
+        ),
+        this.safeFeedPart(
+          'enterprise',
+          () => this.buildEnterpriseMetrics(actor, barangayId, openIncidentCount),
+          this.emptyEnterpriseMetrics(),
+        ),
+        this.safeFeedPart(
+          'heatmaps',
+          () => this.buildHeatmaps(barangayId),
+          {
+            incidentDensity: { type: 'FeatureCollection', features: [] },
+            rainfallIntensity: { type: 'FeatureCollection', features: [] },
+            evacuationDemand: { type: 'FeatureCollection', features: [] },
+          },
+        ),
+        this.safeFeedPart('systemHealth', () => this.systemHealth(), {
+          status: 'degraded',
+          label: 'Limited Service',
+          database: false,
+          redis: false,
+          realtime: true,
+          checkedAt: new Date().toISOString(),
+        }),
+      ]);
 
-    const safetyStatus = this.computeSafetyStatus(
-      profile?.barangay ?? null,
-      openIncidentCount,
-      enterprise.predictiveAlerts as Array<{ level: string }>,
-    );
+      const safetyStatus = this.computeSafetyStatus(
+        profile?.barangay ?? null,
+        openIncidentCount,
+        enterprise.predictiveAlerts as Array<{ level: string }>,
+      );
 
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      safetyStatus,
-      safetyLabels: {
-        safe: { en: 'Safe', tl: 'Ligtas' },
-        caution: { en: 'Caution', tl: 'Mag-ingat' },
-        evacuate: { en: 'Evacuate', tl: 'Lumikas' },
-      },
-      profile: profile
-        ? {
-            fullName: profile.fullName,
-            barangay: profile.barangay,
-            bloodType: profile.bloodType,
-            allergies: profile.allergies,
-            medicalConditions: profile.medicalConditions,
-          }
-        : null,
-      hazardGeo,
-      weather: weatherBundle,
-      situation,
-      evacuationCenters: evacCenters,
-      community,
-      myIncidents,
-      notifications: notifications.map((n) => ({
-        id: n.id,
-        title: n.title,
-        body: n.body,
-        type: n.type,
-        readAt: n.readAt?.toISOString() ?? null,
-        createdAt: n.createdAt.toISOString(),
-      })),
-      heatmaps: await this.buildHeatmaps(barangayId),
-      enterprise,
-      systemHealth: await this.systemHealth(),
-    };
+      const payload = {
+        generatedAt: new Date().toISOString(),
+        safetyStatus,
+        safetyLabels: {
+          safe: { en: 'Safe', tl: 'Ligtas' },
+          caution: { en: 'Caution', tl: 'Mag-ingat' },
+          evacuate: { en: 'Evacuate', tl: 'Lumikas' },
+        },
+        profile: profile
+          ? {
+              fullName: profile.fullName,
+              barangay: profile.barangay,
+              bloodType: profile.bloodType,
+              allergies: profile.allergies,
+              medicalConditions: profile.medicalConditions,
+            }
+          : null,
+        hazardGeo,
+        weather: weatherBundle,
+        situation,
+        evacuationCenters: evacCenters,
+        community,
+        myIncidents,
+        notifications: notifications.map((n) => ({
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          type: n.type,
+          readAt: n.readAt?.toISOString() ?? null,
+          createdAt: n.createdAt.toISOString(),
+        })),
+        heatmaps,
+        enterprise,
+        systemHealth,
+        feedDegraded: hazardGeo.properties?.upstreamErrors?.merge != null,
+      };
 
-    if (this.redis) {
-      try {
-        await this.redis.setex(cacheKey, this.feedCacheTtlSec(), JSON.stringify(payload));
-      } catch {
-        /* ignore */
+      if (this.redis) {
+        try {
+          await this.redis.setex(cacheKey, this.feedCacheTtlSec(), JSON.stringify(payload));
+        } catch {
+          /* ignore */
+        }
       }
+      return payload;
+    } catch (e: unknown) {
+      this.logger.error(
+        `Citizen unified feed fatal: ${e instanceof Error ? e.message : String(e)}`,
+        e instanceof Error ? e.stack : undefined,
+      );
+      throw e;
     }
-    return payload;
   }
 
   private computeSafetyStatus(

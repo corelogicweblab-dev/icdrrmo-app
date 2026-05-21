@@ -16,9 +16,18 @@ export class OpsApiError extends Error {
 export function opsApiErrorUserMessage(e: OpsApiError, bodyMax = 280): string {
   try {
     const o = JSON.parse(e.body ?? "{}") as { message?: unknown };
-    if (typeof o.message === "string" && o.message.trim()) return o.message.trim();
+    if (typeof o.message === "string" && o.message.trim()) {
+      const m = o.message.trim();
+      if (e.status >= 500 && /internal server error/i.test(m)) {
+        return "Dashboard data is temporarily unavailable. Tap Retry load, or sign out and sign in again. If this continues, contact ICT support.";
+      }
+      return m;
+    }
   } catch {
     /* ignore */
+  }
+  if (e.status >= 500) {
+    return "Dashboard data is temporarily unavailable. Tap Retry load, or sign out and sign in again.";
   }
   const b = e.body?.trim();
   if (b) return b.length <= bodyMax ? b : `${e.message}: ${b.slice(0, bodyMax)}…`;
