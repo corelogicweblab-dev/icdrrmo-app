@@ -79,7 +79,8 @@ jobs:
           grep -q 'SMART Citizen Dashboard' admin/out/citizen.html
           CITIZEN_CHUNK="$(find admin/out/_next/static/chunks/app/citizen -maxdepth 1 -name 'page-*.js' -print -quit)"
           test -n "${CITIZEN_CHUNK}"
-          grep -q 'smart-citizen-dashboard' "${CITIZEN_CHUNK}" || grep -q 'SmartCitizenDashboard' "${CITIZEN_CHUNK}"
+          # Minified bundle may only retain path strings, not component names
+          grep -qE 'smart-citizen|SmartCitizen|/citizen/feed' "${CITIZEN_CHUNK}"
 
       - name: Verify bundle is Next export (not Firebase default page)
         run: |

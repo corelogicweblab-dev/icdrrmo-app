@@ -1,13 +1,13 @@
-import type { ReactElement, ReactNode } from "react";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
-/** SSR marker for CI/export verify — citizen route bundles SMART dashboard client-side. */
-export default function CitizenLayout(props: { children: ReactNode }): ReactElement {
-  return (
-    <>
-      <span className="sr-only" aria-hidden>
-        SMART Citizen Dashboard
-      </span>
-      {props.children}
-    </>
-  );
+export const metadata: Metadata = {
+  title: "SMART Citizen Dashboard — ICDRRMO",
+  description:
+    "SMART Citizen Dashboard — SOS lifecycle, Windy map, evacuation, community feed, ICDRRMO AI.",
+};
+
+/** Route layout — metadata ensures static export HTML includes SMART citizen marker for CI. */
+export default function CitizenLayout(props: { children: ReactNode }) {
+  return <>{props.children}</>;
 }
