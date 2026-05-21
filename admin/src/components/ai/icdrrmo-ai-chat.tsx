@@ -3,22 +3,13 @@
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, Loader2, MessageCircle, Send, X } from "lucide-react";
-import {
-  sendAiChat,
-  sendGuestAiChat,
-  type AiLanguage,
-  type AiChatResponse,
-} from "@/lib/icdrrmo-ai";
+import { sendAiChat, sendGuestAiChat, type AiChatResponse } from "@/lib/icdrrmo-ai";
 import { OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 
-type ChatMessage = { role: "user" | "assistant"; text: string; engine?: string };
+type ChatMessage = { role: "user" | "assistant"; text: string };
 
-const LANG_OPTIONS: { id: AiLanguage; label: string }[] = [
-  { id: "en", label: "English" },
-  { id: "fil", label: "Filipino" },
-  { id: "ceb", label: "Cebuano" },
-  { id: "cbk", label: "Chavacano" },
-];
+const INTRO =
+  "HapIsabela! Ako ang ICDRRMO AI — opisyal na assistant ng Isabela City DRRMO. Magtanong tungkol sa SOS, panahon, evacuation, preparedness, barangay, o kung paano gamitin ang SMART app.";
 
 export function IcdrrmoAiChat(props: {
   accessToken: string | null;
@@ -27,18 +18,10 @@ export function IcdrrmoAiChat(props: {
   guestMode?: boolean;
 }): ReactElement | null {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState<AiLanguage>(
-    props.portal === "citizen" || props.portal === "home" ? "fil" : "en",
-  );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      text: "Kumusta — I am ICDRRMO AI. Ask about incidents, weather, evacuation, SOS, governance, or how to use this dashboard.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", text: INTRO }]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,16 +38,10 @@ export function IcdrrmoAiChat(props: {
     setBusy(true);
     try {
       const res: AiChatResponse = props.accessToken
-        ? await sendAiChat(props.accessToken, text, {
-            language: lang,
-            conversationId,
-          })
-        : await sendGuestAiChat(text, { language: lang, conversationId });
+        ? await sendAiChat(props.accessToken, text, { conversationId })
+        : await sendGuestAiChat(text, { conversationId });
       setConversationId(res.conversationId);
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", text: res.reply, engine: res.engine },
-      ]);
+      setMessages((m) => [...m, { role: "assistant", text: res.reply }]);
     } catch (e: unknown) {
       const err =
         e instanceof OpsApiError
@@ -76,7 +53,7 @@ export function IcdrrmoAiChat(props: {
     } finally {
       setBusy(false);
     }
-  }, [input, props.accessToken, canChat, busy, lang, conversationId]);
+  }, [input, props.accessToken, canChat, busy, conversationId]);
 
   if (!canChat) return null;
 
@@ -102,7 +79,7 @@ export function IcdrrmoAiChat(props: {
                 <p className="text-xs font-bold uppercase tracking-wider text-orange-200">
                   ICDRRMO AI
                 </p>
-                <p className="text-[10px] text-zinc-500 truncate">Live feed · multi-language</p>
+                <p className="text-[10px] text-zinc-500 truncate">HapIsabela · live ICDRRMO data</p>
               </div>
             </div>
             <button
@@ -114,21 +91,6 @@ export function IcdrrmoAiChat(props: {
               <X className="h-4 w-4" />
             </button>
           </header>
-
-          <div className="flex items-center gap-1 border-b border-white/[0.04] px-2 py-1.5 bg-black/40">
-            {LANG_OPTIONS.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => setLang(o.id)}
-                className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${
-                  lang === o.id ? "bg-orange-600/80 text-white" : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
 
           <div
             ref={scrollRef}
@@ -144,9 +106,6 @@ export function IcdrrmoAiChat(props: {
                 }`}
               >
                 {msg.text}
-                {msg.engine ? (
-                  <p className="mt-1 text-[9px] text-zinc-600 font-mono">{msg.engine}</p>
-                ) : null}
               </div>
             ))}
             {busy ? (
@@ -167,7 +126,7 @@ export function IcdrrmoAiChat(props: {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={lang === "fil" ? "Magtanong sa ICDRRMO AI…" : "Ask ICDRRMO AI…"}
+              placeholder="Magtanong ng kahit ano tungkol sa ICDRRMO…"
               className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-base sm:text-xs text-white outline-none focus:ring-1 focus:ring-orange-500/40"
               disabled={busy}
             />

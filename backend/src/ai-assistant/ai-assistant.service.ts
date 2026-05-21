@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { AiContextService } from './ai-context.service';
+import { WeatherService } from '../weather/weather.service';
 import { AiChatDto } from './dto/ai-chat.dto';
 import type { AiChatResponse, AiLanguage, AiRoleContext } from './ai-assistant.types';
 
@@ -20,6 +22,7 @@ export class AiAssistantService {
   constructor(
     private readonly context: AiContextService,
     private readonly config: ConfigService,
+    private readonly weatherService: WeatherService,
   ) {}
 
   detectLanguage(message: string, preferred?: AiLanguage): AiLanguage {
@@ -31,7 +34,7 @@ export class AiAssistantService {
     return 'en';
   }
 
-  /** Public portal assistant (no JWT) — context-RAG only, rate-limited at controller. */
+  /** Public portal assistant (no JWT) — uses Gemini when configured. */
   async guestChat(dto: AiChatDto): Promise<AiChatResponse> {
     const lang = this.detectLanguage(dto.message, dto.language);
     const conversationId = dto.conversationId?.trim() || randomUUID();
@@ -39,20 +42,46 @@ export class AiAssistantService {
       role: 'CITIZEN',
       generatedAt: new Date().toISOString(),
       summary:
-        'Visitor on ICDRRMO SMART portal (not signed in). Direct them to Citizen portal for SOS, or sign-in for responders/operators.',
+        'Bisita sa ICDRRMO SMART portal (HapIsabela). Mag-sign in bilang Citizen para sa SOS, o gamitin ang Prepare tab para sa emergency kit.',
       metrics: { label: 'ICDRRMO Portal', status: 'online' },
+      weather: await this.weatherService.getSituationSnapshot().catch(() => null),
     };
+    const guestActor: JwtPayload = {
+      sub: 'guest',
+      role: UserRole.CITIZEN,
+      email: 'guest@portal',
+    };
+
+    const key =
+      this.config.get<string>('GEMINI_API_KEY')?.trim() ||
+      this.config.get<string>('GOOGLE_AI_API_KEY')?.trim();
+
+    if (key) {
+      try {
+        const reply = await this.geminiReply(key, lang, guestActor, dto.message, ctx);
+        return {
+          reply,
+          language: lang,
+          engine: 'gemini',
+          conversationId,
+          suggestedActions: [
+            'Buksan ang Citizen portal',
+            'Mag-sign in',
+            'Tingnan ang Map tab',
+          ],
+        };
+      } catch (e) {
+        this.logger.warn(`Guest Gemini fallback: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
     const reply = this.contextRagReply(dto.message, ctx, lang);
     return {
       reply,
       language: lang,
       engine: 'context-rag',
       conversationId,
-      suggestedActions: [
-        lang === 'fil' ? 'Buksan ang Citizen portal' : 'Open Citizen portal',
-        lang === 'fil' ? 'Mag-sign in' : 'Sign in',
-        lang === 'fil' ? 'Tawag sa hotline' : 'Call emergency hotline',
-      ],
+      suggestedActions: ['Buksan ang Citizen portal', 'Mag-sign in', 'Emergency SOS'],
     };
   }
 
@@ -92,12 +121,12 @@ export class AiAssistantService {
 
   private systemPrompt(lang: AiLanguage, actor: JwtPayload): string {
     return [
-      'You are ICDRRMO AI — the official emergency operations assistant for Isabela City DRRMO.',
-      'Answer using ONLY the provided CONTEXT about incidents, weather, evacuation, governance, and resources.',
-      'Be concise, actionable, and calm. If data is missing, say what the user should do (call hotline, check map, re-login).',
-      `Respond in ${LANG_NAMES[lang]}.`,
-      `User role: ${actor.role}.`,
-      'Topics: SOS lifecycle, Windy/GDACS/PAGASA hazards, evacuation capacity, barangay advisories, responder assignments, EOC KPIs, citizen preparedness.',
+      'You are ICDRRMO AI for Isabela City, Basilan — greet with spirit of "HapIsabela!" (happy, prepared Isabela).',
+      'Answer ANY reasonable question about: disasters, typhoon/flood/fire, this SMART app, SOS, evacuation, barangay DRRM, responders, weather, preparedness, profiles, and government coordination.',
+      'Use CONTEXT when available; otherwise give accurate general DRRM guidance for the Philippines / BARMM context.',
+      'Always reply in the same language the user wrote (Tagalog, English, Cebuano, or Chavacano). Be helpful, concise, and calm.',
+      `Preferred tone language hint: ${LANG_NAMES[lang]}. User role: ${actor.role}.`,
+      'Never refuse ICDRRMO-related questions. If unsure, suggest: Map tab, Prepare tab, Profile, SOS button, or contact barangay/ICDRRMO.',
     ].join('\n');
   }
 
@@ -156,6 +185,17 @@ export class AiAssistantService {
       if (lang === 'cbk') return cbk;
       return en;
     };
+
+    if (/hap\s*isabela|hap isabela|kumusta|hello|hi\b|musta|good (morning|afternoon|evening)/.test(q)) {
+      lines.push(
+        t(
+          'HapIsabela! I am ICDRRMO AI — your Isabela City emergency assistant. Ask me anything about SOS, weather, evacuation, preparedness, or how to use this app.',
+          'HapIsabela! Ako ang ICDRRMO AI — opisyal na assistant ng Isabela City DRRMO. Magtanong ng kahit ano tungkol sa sakuna, panahon, evacuation, preparedness, o app.',
+          'HapIsabela! ICDRRMO AI ni para sa inyong emergency. Pangutana bahin sa SOS, panahon, evacuation, o app.',
+          'HapIsabela! Yo ta ICDRRMO AI — pregunta sobre emergencia, tiempo, evacuación, o el app.',
+        ),
+      );
+    }
 
     lines.push(t(
       `ICDRRMO AI (${ctx.role} view): ${ctx.summary}`,
@@ -236,12 +276,48 @@ export class AiAssistantService {
       ));
     }
 
-    if (/community|volunteer|donation|prepared|gamif|kit/.test(q)) {
+    if (/community|volunteer|donation|prepared|gamif|kit|prepare|checklist|go bag|go-bag/.test(q)) {
       lines.push(t(
-        'Community feed shows barangay posts, volunteer calls, and donations. Preparedness checklist earns badges when completed.',
-        'Ang community feed ay may posts, volunteers, at donations. Tapusin ang preparedness checklist para sa badges.',
-        'Community feed — posts ug preparedness checklist.',
-        'Feed de comunidad y checklist de preparación.',
+        'Community feed shows barangay posts, volunteer calls, and donations. Preparedness tab has emergency kit cards — tap each card for step-by-step guides in Filipino/English.',
+        'Ang Community tab ay may posts at volunteers. Sa Prepare tab, i-tap ang bawat card (go bag, evacuation route, tubig, gamot) para sa buong gabay.',
+        'Community feed ug Prepare tab — cards para sa emergency kit guides.',
+        'Feed de comunidad y pestaña Prepare con guías paso a paso.',
+      ));
+    }
+
+    if (/login|sign in|sign-in|register|account|password|email|mag-sign|gumawa/.test(q)) {
+      lines.push(t(
+        'Sign in on the home page with your issued email and password. New residents: Citizen portal → Create account (barangay, medical info, photo required).',
+        'Mag-sign in sa home page gamit ang email at password. Bagong residente: Citizen → gumawa ng account (kailangan barangay, medical info, at larawan).',
+        'Sign in sa home. Bag-ong residente: Citizen → create account.',
+        'Sign in en home. Nuevo residente: Citizen → crear cuenta.',
+      ));
+    }
+
+    if (/map|mapa|windy|layer|radar|gdacs|pagasa/.test(q)) {
+      lines.push(t(
+        'Open the Map tab for live weather layers (wind, rain, temperature) plus GDACS and PAGASA hazard markers. Enable GPS for nearest evacuation.',
+        'Buksan ang Map tab para sa live na panahon, GDACS, at PAGASA. I-on ang GPS para sa pinakamalapit na evacuation center.',
+        'Abli ang Map tab para sa panahon ug hazards.',
+        'Abre Mapa para tiempo en vivo y marcadores PAGASA/GDACS.',
+      ));
+    }
+
+    if (/isabela|icdrrmo|drrmo|basilan|lgu|siyudad/.test(q)) {
+      lines.push(t(
+        'ICDRRMO is Isabela City Disaster Risk Reduction and Management Office (Basilan). This SMART platform coordinates SOS, weather, evacuation, responders, and barangay governance.',
+        'Ang ICDRRMO ay opisina ng disaster risk reduction ng Lungsod ng Isabela, Basilan. Ang SMART app na ito ay para sa SOS, panahon, evacuation, at koordinasyon ng barangay.',
+        'ICDRRMO — Isabela City DRRMO. SMART app para sa emergency.',
+        'ICDRRMO — oficina de desastres de Isabela City, Basilan.',
+      ));
+    }
+
+    if (/help|tulong|unsaon|paano|how to|what is|ano ang|pano|guide/.test(q)) {
+      lines.push(t(
+        'I can explain: Emergency SOS (with GPS), Map/weather, Alerts, Community feed, Prepare/emergency kit guides, and Profile (medical info for responders). What do you need step-by-step?',
+        'Masasagot ko: SOS, Map/panahon, Alerts, Community, Prepare (mga card na may gabay), at Profile. Ano ang kailangan mong hakbang-hakbang?',
+        'Matabang ko: SOS, Map, Alerts, Prepare, Profile. Unsa imong kinahanglan?',
+        'Puedo ayudar: SOS, Mapa, Alertas, Prepare, Profile. ¿Qué necesitas?',
       ));
     }
 
@@ -265,11 +341,12 @@ export class AiAssistantService {
     }
 
     if (lines.length <= 1) {
+      const snippet = message.trim().slice(0, 120);
       lines.push(t(
-        'Ask about incidents, weather, evacuation, SOS lifecycle, governance KPIs, resources, or citizen engagement. I use live ICDRRMO feed data.',
-        'Magtanong tungkol sa insidente, panahon, evacuation, SOS, KPI, o resources. Gamit ko ang live na data.',
-        'Pangutana bahin sa insidente, panahon, evacuation, o SOS.',
-        'Pregunta sobre incidentes, tiempo, evacuación, o SOS.',
+        `HapIsabela! About "${snippet}" — ${ctx.summary} I use live ICDRRMO data when you are signed in. For SOS press the red button with GPS on. For guides open Prepare tab. For weather open Map. Tell me which topic you want explained in detail.`,
+        `HapIsabela! Tungkol sa "${snippet}" — ${ctx.summary} Gamit ko ang live na data kapag naka-sign in ka. Para sa SOS pindutin ang pulang button na may GPS. Para sa gabay buksan ang Prepare tab. Sabihin kung anong paksa ang gusto mong detalye.`,
+        `HapIsabela! About "${snippet}" — ${ctx.summary} Pangutana kung unsa imong gusto: SOS, Map, Prepare, o Profile.`,
+        `HapIsabela! Sobre "${snippet}" — ${ctx.summary} Usa SOS, Mapa, Prepare o Profile.`,
       ));
     }
 
