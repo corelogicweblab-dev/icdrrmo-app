@@ -181,8 +181,8 @@ export function EocUnifiedMap({
   const pagasaAdvisories = mergePagasaAdvisories(hazardGeo, weather);
   const gdacsCount = hazardGeo?.layers.gdacs.features.length ?? 0;
   const dataStatus =
-    gdacsCount > 0 || pagasaAdvisories.length > 0 || bundleLayers.length > 0
-      ? `Live · GDACS ${gdacsCount} · PAGASA ${pagasaAdvisories.length} · tiles ${bundleLayers.length}`
+    gdacsCount > 0 || pagasaAdvisories.length > 0 || bundleLayers.length > 0 || Boolean(rainViewerUrl)
+      ? `Live · GDACS ${gdacsCount} · PAGASA ${pagasaAdvisories.length} · tiles ${Math.max(bundleLayers.length, rainViewerUrl ? 1 : 0)}`
       : "No hazard data — tap Sync or check API deploy";
 
   const loadData = useCallback(async () => {
@@ -234,8 +234,8 @@ export function EocUnifiedMap({
         (geo?.layers.pagasa.features.length ?? 0) > 0 ||
         Boolean(rainUrl) ||
         (wx?.openWeather.layers.length ?? 0) > 0;
-      if (loadErrors.length && !hasHazardData) {
-        setError(loadErrors.join(" · "));
+      if (loadErrors.length) {
+        setError(hasHazardData ? loadErrors[0] : loadErrors.join(" · "));
       }
 
       setLayerEpoch((n) => n + 1);
