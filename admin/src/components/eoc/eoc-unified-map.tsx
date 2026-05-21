@@ -42,7 +42,14 @@ import {
 } from "@/lib/eoc-realtime";
 import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 import { ISABELA_CITY_LAT, ISABELA_CITY_LON } from "@/lib/isabela-forecast-embed";
-import { ICDRRMO_WEATHER_ATTRIBUTION, WINDY_STYLE_BASEMAP_ATTRIBUTION, WINDY_STYLE_BASEMAP_URL } from "@/lib/windy-leaflet";
+import {
+  fetchPublicWindyTileLayers,
+  ICDRRMO_WEATHER_ATTRIBUTION,
+  isWindyTileUrl,
+  WINDY_STYLE_BASEMAP_ATTRIBUTION,
+  WINDY_STYLE_BASEMAP_URL,
+  type WindyTileLayer,
+} from "@/lib/windy-leaflet";
 import {
   fetchOpenMeteoClient,
   fetchRainViewerTileUrl,
@@ -148,6 +155,8 @@ export function EocUnifiedMap({
   const pagasaGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const [rainViewerUrl, setRainViewerUrl] = useState<string | null>(null);
   const [layerEpoch, setLayerEpoch] = useState(0);
+  const [proxyWindyLayers, setProxyWindyLayers] = useState<WindyTileLayer[]>([]);
+  const [windyConfigured, setWindyConfigured] = useState(false);
 
   const [weather, setWeather] = useState<EocWeatherBundle | null>(null);
   const [clientMeteo, setClientMeteo] = useState<ClientOpenMeteo | null>(null);
@@ -178,9 +187,19 @@ export function EocUnifiedMap({
   const showVehicles = mode === "ops";
   const owmLayers = owmTileLayersFromGeoJson(hazardGeo);
   const tileProvider = weather?.openWeather.provider ?? hazardGeo?.layers.openWeatherMap.properties?.source;
-  const useWindy = tileProvider === "windy";
+  const useWindy =
+    windyConfigured || tileProvider === "windy" || proxyWindyLayers.length > 0;
+  const fromWeather = tileLayersFromWeather(weather).filter((l) =>
+    useWindy ? isWindyTileUrl(l.urlTemplate) : true,
+  );
   const bundleLayers =
-    tileLayersFromWeather(weather).length > 0 ? tileLayersFromWeather(weather) : owmLayers;
+    fromWeather.length > 0
+      ? fromWeather
+      : proxyWindyLayers.length > 0
+        ? proxyWindyLayers
+        : useWindy
+          ? proxyWindyLayers
+          : owmLayers;
   const hasTileLayer = (id: WeatherLayerId): boolean => {
     if (bundleLayers.some((l) => l.id === id && l.urlTemplate)) return true;
     if (id === "rain-radar" || id === "precipitation") return Boolean(rainViewerUrl);
@@ -205,8 +224,12 @@ export function EocUnifiedMap({
     setError(null);
     const loadErrors: string[] = [];
     try {
+      const windyPub = await fetchPublicWindyTileLayers();
+      setProxyWindyLayers(windyPub.layers);
+      setWindyConfigured(windyPub.configured);
+
       const [rainUrl, clientGdacsRaw, openMeteo] = await Promise.all([
-        fetchRainViewerTileUrl(),
+        windyPub.configured ? Promise.resolve(null) : fetchRainViewerTileUrl(),
         fetchGdacsClientFeatures(),
         fetchOpenMeteoClient(),
       ]);
@@ -629,10 +652,10 @@ export function EocUnifiedMap({
         let opacity = 0.55;
         if (id === "rain-radar" || id === "precipitation") {
           opacity = id === "rain-radar" ? 0.55 : 0.5;
-          if (!url && !useWindy) url = rainViewerUrl;
+          if (!url && !useWindy && !windyConfigured) url = rainViewerUrl;
         } else if (id === "clouds") {
           opacity = 0.45;
-          if (!url && !useWindy) url = rainViewerUrl;
+          if (!url && !useWindy && !windyConfigured) url = rainViewerUrl;
         } else if (id === "temp") {
           opacity = 0.5;
         } else if (id === "wind") {
@@ -643,8 +666,9 @@ export function EocUnifiedMap({
 
         const isRainViewer =
           !useWindy &&
+          !windyConfigured &&
           (url.includes("rainviewer.com") || url.includes("tilecache.rainviewer"));
-        const isWindy = url.includes("tiles.windy.com");
+        const isWindyLayer = isWindyTileUrl(url);
 
         if (existing) {
           map.removeLayer(existing);
@@ -657,7 +681,7 @@ export function EocUnifiedMap({
           maxNativeZoom: isRainViewer ? RAINVIEWER_MAX_NATIVE_ZOOM : 18,
           zIndex: 450,
           pane: "overlayPane",
-          attribution: isWindy
+          attribution: isWindyLayer
             ? ICDRRMO_WEATHER_ATTRIBUTION
             : isRainViewer
               ? "Radar © RainViewer"
@@ -670,6 +694,7 @@ export function EocUnifiedMap({
 
       if (
         !useWindy &&
+        !windyConfigured &&
         (activeLayers.has("rain-radar") ||
           activeLayers.has("precipitation") ||
           activeLayers.has("clouds"))
@@ -680,7 +705,7 @@ export function EocUnifiedMap({
         }
       }
     })();
-  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch, useWindy]);
+  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch, useWindy, windyConfigured]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -892,8 +917,11 @@ export function EocUnifiedMap({
         </p>
       ) : null}
       <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
-        Tiles: {useWindy ? "ICDRRMO live weather (Windy API, no logo)" : weather?.openWeather.provider ?? "RainViewer fallback"}.
-        {!useWindy ? " Set WINDY_API_KEY on Render for full live layers." : ""}
+        Tiles:{" "}
+        {useWindy || windyConfigured
+          ? "ICDRRMO live weather layers (no Windy logo)"
+          : weather?.openWeather.provider ?? "Awaiting WINDY_API_KEY on Render API"}
+        {!windyConfigured ? " — add WINDY_API_KEY to icdrrmo-api on Render, then redeploy." : ""}
       </p>
       {weather?.situation || clientMeteo ? (
         <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">

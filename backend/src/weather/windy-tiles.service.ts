@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { OpenWeatherLayerConfig } from './weather.service';
 
 /** Windy raster layers — keys match https://tiles.windy.com/{layer}/… */
@@ -11,19 +11,52 @@ const WINDY_RASTER_LAYERS: Array<{ id: string; windy: string; label: string }> =
   { id: 'satellite', windy: 'satellite', label: 'Satellite' },
 ];
 
+const PROXY_LAYER_IDS = new Set(WINDY_RASTER_LAYERS.map((l) => l.windy));
+
 @Injectable()
 export class WindyTilesService {
+  /** Public API base for browser tile requests (ICDRRMO proxy — no Windy logo iframe). */
+  getPublicApiBase(): string {
+    const raw =
+      process.env.API_PUBLIC_BASE_URL?.trim() ||
+      process.env.RENDER_EXTERNAL_URL?.trim() ||
+      'https://icdrrmo-api.onrender.com';
+    const base = raw.replace(/\/$/, '');
+    return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+  }
+
   getLayers(): { configured: boolean; layers: OpenWeatherLayerConfig[] } {
+    return this.getPublicLayers();
+  }
+
+  getPublicLayers(): {
+    configured: boolean;
+    provider: 'windy' | 'none';
+    layers: OpenWeatherLayerConfig[];
+  } {
     const key = process.env.WINDY_API_KEY?.trim();
     if (!key) {
-      return { configured: false, layers: [] };
+      return { configured: false, provider: 'none', layers: [] };
     }
-    const enc = encodeURIComponent(key);
+    const apiBase = this.getPublicApiBase();
     const layers = WINDY_RASTER_LAYERS.map((l) => ({
       id: l.id,
       label: l.label,
-      urlTemplate: `https://tiles.windy.com/${l.windy}/{z}/{x}/{y}.png?key=${enc}`,
+      urlTemplate: `${apiBase}/weather/tiles/${l.windy}/{z}/{x}/{y}.png`,
     }));
-    return { configured: true, layers };
+    return { configured: true, provider: 'windy', layers };
+  }
+
+  isAllowedProxyLayer(layer: string): boolean {
+    return PROXY_LAYER_IDS.has(layer);
+  }
+
+  upstreamTileUrl(layer: string, z: string, x: string, y: string): string {
+    const key = process.env.WINDY_API_KEY?.trim();
+    if (!key || !this.isAllowedProxyLayer(layer)) {
+      throw new NotFoundException('Weather tile not available');
+    }
+    const enc = encodeURIComponent(key);
+    return `https://tiles.windy.com/${layer}/${z}/${x}/${y}.png?key=${enc}`;
   }
 }

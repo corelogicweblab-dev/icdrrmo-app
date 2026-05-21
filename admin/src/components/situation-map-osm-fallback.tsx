@@ -157,7 +157,7 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
           </p>
         </div>
         <div className="rounded-lg border border-amber-500/25 bg-amber-950/40 px-2 py-1.5 text-[9px] text-amber-100/90 backdrop-blur-sm">
-          ICDRRMO live weather layers (no Windy logo)
+          ICDRRMO live weather layers
         </div>
       </div>
     </div>

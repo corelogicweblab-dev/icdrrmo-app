@@ -709,3 +709,17 @@ body:has(.icd-auth-page) .icd-live-dot {
     animation: none;
   }
 }
+
+/* Leaflet maps — ICDRRMO attribution only; hide any Windy embed branding */
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  color: #a1a1aa !important;
+  padding: 2px 6px !important;
+  border-radius: 4px;
+}
+
+.leaflet-control-attribution a[href*="windy.com"],
+.leaflet-control-attribution a[href*="windy.app"] {
+  display: none !important;
+}

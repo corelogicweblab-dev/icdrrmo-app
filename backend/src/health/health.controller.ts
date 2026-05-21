@@ -8,8 +8,12 @@ export class HealthController {
 
   /** Lightweight — orchestrator / uptime probes (no DB). */
   @Get()
-  check(): { status: string; service: string } {
-    return { status: 'ok', service: 'icdrrmo-api' };
+  check(): { status: string; service: string; windyTiles: boolean } {
+    return {
+      status: 'ok',
+      service: 'icdrrmo-api',
+      windyTiles: Boolean(process.env.WINDY_API_KEY?.trim()),
+    };
   }
 
   /** Readiness — requires working PostgreSQL connection. */

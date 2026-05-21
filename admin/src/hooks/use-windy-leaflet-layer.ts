@@ -8,7 +8,7 @@ import {
 } from "@/lib/windy-leaflet";
 
 /**
- * Adds a single ICDRRMO weather raster overlay (Windy API tiles, no embed logo).
+ * ICDRRMO weather raster overlay via API tile proxy (Windy data, no embed logo).
  */
 export function useWindyLeafletLayer(opts: {
   mapRef: RefObject<import("leaflet").Map | null>;
@@ -22,8 +22,7 @@ export function useWindyLeafletLayer(opts: {
 
   useEffect(() => {
     const map = opts.mapRef.current;
-    const token = opts.accessToken?.trim();
-    if (!opts.mapReady || !map || !token) {
+    if (!opts.mapReady || !map) {
       setWindyActive(false);
       return;
     }
@@ -32,7 +31,7 @@ export function useWindyLeafletLayer(opts: {
 
     void (async () => {
       try {
-        const { layers } = await fetchWindyTileLayers(token);
+        const { layers } = await fetchWindyTileLayers(opts.accessToken);
         const url = pickWindyTileUrl(layers, opts.overlay ?? "rain");
         if (cancelled || !url) {
           setWindyActive(false);
