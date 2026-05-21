@@ -127,6 +127,25 @@ body {
   display: none;
 }
 
+/* Sign-in screen: stop heavy motion (reads as “flickering” on video / low-end devices). */
+body:has(.icd-auth-page) .icdrrmo-app-backdrop::before,
+body:has(.icd-auth-page) .icdrrmo-app-backdrop::after {
+  animation: none;
+}
+body:has(.icd-auth-page) .icd-scan-beam {
+  animation: none;
+  opacity: 0.35;
+}
+body:has(.icd-auth-page) .icd-logo-pulse-ring {
+  animation: none;
+  opacity: 0.75;
+  transform: none;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.25);
+}
+body:has(.icd-auth-page) .icd-live-dot {
+  animation: none;
+}
+
 .icd-app-shell {
   position: relative;
   z-index: 10;

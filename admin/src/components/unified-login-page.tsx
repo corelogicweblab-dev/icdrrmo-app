@@ -29,33 +29,26 @@ export function UnifiedLoginPage(): ReactElement {
   const [apiReach, setApiReach] = useState<ApiReachability | null>(null);
   const [checkingApi, setCheckingApi] = useState(true);
   const [oidcEnabled, setOidcEnabled] = useState(false);
+  /** Avoid flashing the sign-in form before auto-redirect when a valid session exists. */
+  const [sessionChecked, setSessionChecked] = useState(false);
   const apiWarning = getApiConfigWarning();
 
   useEffect(() => {
     purgeInvalidStoredSessions();
-    const citizen = loadCitizenTokens();
-    if (citizen?.accessToken) {
-      const path = dashboardPathForToken(citizen.accessToken);
+    const pairs = [
+      loadCitizenTokens(),
+      loadChairmanTokens(),
+      loadOpsTokens(),
+    ];
+    for (const pair of pairs) {
+      if (!pair?.accessToken) continue;
+      const path = dashboardPathForToken(pair.accessToken);
       if (path) {
         router.replace(path);
         return;
       }
     }
-    const chairman = loadChairmanTokens();
-    if (chairman?.accessToken) {
-      const path = dashboardPathForToken(chairman.accessToken);
-      if (path) {
-        router.replace(path);
-        return;
-      }
-    }
-    const ops = loadOpsTokens();
-    if (ops?.accessToken) {
-      const path = dashboardPathForToken(ops.accessToken);
-      if (path) {
-        router.replace(path);
-      }
-    }
+    setSessionChecked(true);
   }, [router]);
 
   useEffect(() => {
@@ -107,6 +100,14 @@ export function UnifiedLoginPage(): ReactElement {
     }
   }
 
+  if (!sessionChecked) {
+    return (
+      <div className="icd-auth-page min-h-[100dvh] flex items-center justify-center text-sm text-zinc-500">
+        Checking session…
+      </div>
+    );
+  }
+
   return (
     <>
     <IcdAuthShell title="Sign in" subtitle="Use the email and password issued for your role.">
@@ -120,13 +121,9 @@ export function UnifiedLoginPage(): ReactElement {
       ) : null}
 
       {!checkingApi && apiReach && !apiReach.ok ? (
-        <div
-          className="mb-4 rounded-xl border border-rose-500/35 bg-rose-950/45 px-4 py-3 text-sm text-rose-100"
-          role="alert"
-        >
-          <p className="font-medium">Backend offline</p>
-          <p className="mt-1 text-rose-200/90">{apiReach.message}</p>
-        </div>
+        <p className="mb-3 text-xs text-amber-200/90" role="alert">
+          API waking up — first load may take ~60s on Render. {apiReach.message}
+        </p>
       ) : null}
 
       <form onSubmit={(ev) => void onSubmit(ev)} className="space-y-4">

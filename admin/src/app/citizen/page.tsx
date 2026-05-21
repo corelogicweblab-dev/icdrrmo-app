@@ -130,6 +130,7 @@ function CitizenPageInner(): ReactElement {
   }, [searchParams]);
 
   useEffect(() => {
+    if (tokens === null && mode === "signin") return;
     if (!tokens && mode === "signin") {
       router.replace("/");
     }

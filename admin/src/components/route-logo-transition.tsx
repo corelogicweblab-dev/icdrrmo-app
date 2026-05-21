@@ -17,6 +17,8 @@ export function RouteLogoTransition(): ReactElement | null {
       skipFirst.current = false;
       return;
     }
+    /* Auth home uses IcdAuthShell — route overlay reads as flicker on top of logo pulse. */
+    if (pathname === "/" || pathname === "/signin") return;
     setShow(true);
     const t = window.setTimeout(() => setShow(false), OVERLAY_MS);
     return () => window.clearTimeout(t);
