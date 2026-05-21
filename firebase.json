@@ -41,7 +41,7 @@
           { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
         ]
       }
-    ],
+    ]
   },
   "firestore": {
     "rules": "infra/firebase/firestore.rules",
