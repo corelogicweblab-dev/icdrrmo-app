@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ApiHealthStrip } from "@/components/api-health-strip";
+import { ApiHealthStripGate } from "@/components/api-health-strip-gate";
 import { AppInstallStrip } from "@/components/app-install-strip";
 import { PwaRegister } from "@/components/pwa-register";
 import { RouteLogoTransition } from "@/components/route-logo-transition";
@@ -49,7 +49,7 @@ export default function RootLayout({
         <PwaRegister />
         <div className="icd-app-shell">
           <StaleBuildBanner />
-          <ApiHealthStrip />
+          <ApiHealthStripGate />
           <AppInstallStrip />
           <RouteLogoTransition />
           <div className="icd-app-main">{children}</div>

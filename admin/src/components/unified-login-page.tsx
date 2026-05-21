@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IcdAuthShell } from "@/components/icd-auth-shell";
 import { PasswordInput } from "@/components/password-input";
-import { fetchWithTimeout, pingApiHealth, type ApiReachability } from "@/lib/api-fetch";
+import { fetchWithTimeout } from "@/lib/api-fetch";
 import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
 import {
   dashboardPathForToken,
@@ -26,8 +26,6 @@ export function UnifiedLoginPage(): ReactElement {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [apiReach, setApiReach] = useState<ApiReachability | null>(null);
-  const [checkingApi, setCheckingApi] = useState(true);
   const [oidcEnabled, setOidcEnabled] = useState(false);
   const apiWarning = getApiConfigWarning();
 
@@ -46,18 +44,12 @@ export function UnifiedLoginPage(): ReactElement {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setCheckingApi(true);
-      const [result, oidc] = await Promise.all([
-        pingApiHealth(),
-        fetchWithTimeout(`${getApiBaseUrl()}/auth/oidc/status`)
-          .then(async (r) => (r.ok ? ((await r.json()) as { enabled?: boolean }) : { enabled: false }))
-          .catch(() => ({ enabled: false })),
-      ]);
+    void (async () => {
+      const oidc = await fetchWithTimeout(`${getApiBaseUrl()}/auth/oidc/status`)
+        .then(async (r) => (r.ok ? ((await r.json()) as { enabled?: boolean }) : { enabled: false }))
+        .catch(() => ({ enabled: false }));
       if (!cancelled) {
-        setApiReach(result);
         setOidcEnabled(Boolean(oidc.enabled));
-        setCheckingApi(false);
       }
     })();
     return () => {
@@ -70,14 +62,7 @@ export function UnifiedLoginPage(): ReactElement {
     setMsg(null);
     setBusy(true);
     try {
-      if (apiReach && !apiReach.ok) {
-        const again = await pingApiHealth(8_000);
-        setApiReach(again);
-        if (!again.ok) {
-          setMsg(again.message);
-          return;
-        }
-      }
+      setMsg("Connecting to ICDRRMO servers…");
 
       const result = await loginWithRoleRouting(email, password);
       if (!result.ok) {
@@ -103,12 +88,6 @@ export function UnifiedLoginPage(): ReactElement {
         >
           {apiWarning}
         </div>
-      ) : null}
-
-      {!checkingApi && apiReach && !apiReach.ok ? (
-        <p className="mb-3 text-xs text-amber-200/90" role="alert">
-          API waking up — first load may take ~60s on Render. {apiReach.message}
-        </p>
       ) : null}
 
       <form onSubmit={(ev) => void onSubmit(ev)} className="space-y-4">
@@ -139,8 +118,14 @@ export function UnifiedLoginPage(): ReactElement {
           </p>
         ) : null}
         <button type="submit" disabled={busy} className="icd-btn-primary py-3">
-          {busy ? "Signing in…" : "Continue"}
+          {busy ? "Connecting… (up to 90s on first load)" : "Continue"}
         </button>
+        {!busy && !msg ? (
+          <p className="text-[10px] text-zinc-500 text-center">
+            First sign-in after idle may take up to 90 seconds — keep this page open and tap Continue
+            once.
+          </p>
+        ) : null}
       </form>
 
       {oidcEnabled ? (

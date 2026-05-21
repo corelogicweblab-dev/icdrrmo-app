@@ -1,4 +1,9 @@
-import { ApiTimeoutError, fetchWithTimeout } from "@/lib/api-fetch";
+import {
+  fetchWithTimeout,
+  formatApiReachabilityError,
+  getApiTimeoutMs,
+  wakeEmergencyApi,
+} from "@/lib/api-fetch";
 import { getApiBaseUrl } from "@/lib/env";
 import { decodeJwtPayload, isAccessTokenUsable, OPS_CONSOLE_ROLES } from "@/lib/decode-jwt-role";
 import {
@@ -69,30 +74,21 @@ export async function loginWithRoleRouting(
   email: string,
   password: string,
 ): Promise<LoginRouteResult> {
+  await wakeEmergencyApi();
+
   let res: Response;
   try {
-    res = await fetchWithTimeout(`${getApiBaseUrl()}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    res = await fetchWithTimeout(
+      `${getApiBaseUrl()}/auth/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      },
+      getApiTimeoutMs(),
+    );
   } catch (err: unknown) {
-    if (err instanceof ApiTimeoutError) {
-      return {
-        ok: false,
-        message:
-          "Sign-in timed out. Start the API (npm run dev:api) and database (npm run db:setup), then try again.",
-      };
-    }
-    const onLocal =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    return {
-      ok: false,
-      message: onLocal
-        ? "Cannot reach the API. Run npm run db:setup, then npm run dev:api and npm run dev:admin."
-        : "Cannot reach the emergency services server. Check your connection or contact support.",
-    };
+    return { ok: false, message: formatApiReachabilityError(err, "login") };
   }
 
   const data = (await res.json().catch(() => ({}))) as Partial<TokenPair> & {

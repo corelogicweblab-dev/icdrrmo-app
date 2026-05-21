@@ -15,7 +15,7 @@ export function ApiHealthStrip(): ReactElement {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const r = await pingApiHealth(25_000);
+      const r = await pingApiHealth();
       if (cancelled) return;
       setStatus(r.ok ? "online" : "offline");
       setDetail(r.message);
@@ -57,8 +57,7 @@ export function ApiHealthStrip(): ReactElement {
       ) : (
         <span className="inline-flex items-center justify-center gap-1.5">
           <AlertTriangle className="h-3 w-3" aria-hidden />
-          API waking up or unreachable ({apiHost}). {detail} First request may take ~60s on
-          Render free tier.
+          {detail || `Emergency API (${apiHost}) is slow or offline. Wait up to 90s, then retry.`}
         </span>
       )}
     </div>

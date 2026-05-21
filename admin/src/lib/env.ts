@@ -11,7 +11,7 @@ function isAbsoluteApiUrl(u: string | undefined): u is string {
   return Boolean(u && /^https?:\/\//i.test(u) && !u.startsWith("/"));
 }
 
-function isFirebaseHostingOrigin(): boolean {
+export function isFirebaseHostingOrigin(): boolean {
   if (typeof window === "undefined") return false;
   return FIREBASE_HOSTING_HOSTS.has(window.location.hostname);
 }
