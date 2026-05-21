@@ -1,49 +1,28 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useState } from "react";
-import { Layers, Wind } from "lucide-react";
-import { WindyEmbedMap } from "@/components/windy-embed-map";
 import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
 
-type MapView = "windy" | "hazards";
-
-/** Citizen map: Windy forecast desk (default) + optional ICDRRMO hazard layers. */
+/**
+ * Citizen weather map — Leaflet + Windy API tiles (Render WINDY_API_KEY).
+ * No Windy.com embed iframe or Windy logo on screen.
+ */
 export function CitizenWeatherMap(props: { accessToken: string }): ReactElement {
-  const [view, setView] = useState<MapView>("windy");
-
   return (
-    <div className="space-y-2">
-      <div className="flex gap-1 rounded-lg bg-black/40 p-1">
-        <button
-          type="button"
-          onClick={() => setView("windy")}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-[10px] font-semibold uppercase tracking-wide ${
-            view === "windy" ? "bg-orange-600/35 text-orange-50" : "text-zinc-500"
-          }`}
-        >
-          <Wind className="h-3.5 w-3.5" aria-hidden />
-          Live forecast (Windy)
-        </button>
-        <button
-          type="button"
-          onClick={() => setView("hazards")}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-[10px] font-semibold uppercase tracking-wide ${
-            view === "hazards" ? "bg-orange-600/35 text-orange-50" : "text-zinc-500"
-          }`}
-        >
-          <Layers className="h-3.5 w-3.5" aria-hidden />
-          GDACS · PAGASA · SOS
-        </button>
-      </div>
-
-      {view === "windy" ? (
-        <WindyEmbedMap variant="synoptic" overlay="wind" />
-      ) : (
-        <div className="rounded-2xl border border-orange-500/20 overflow-hidden h-[min(55dvh,520px)] flex flex-col">
-          <EocUnifiedMap mode="citizen" accessToken={props.accessToken} className="flex-1 min-h-0" />
-        </div>
-      )}
+    <div className="flex h-[min(72dvh,720px)] min-h-[360px] flex-col overflow-hidden rounded-2xl border border-orange-500/20">
+      <p className="shrink-0 border-b border-orange-500/12 bg-black/50 px-3 py-2 text-[10px] text-zinc-400">
+        <span className="font-semibold uppercase tracking-wider text-orange-400/90">
+          Live weather layers
+        </span>
+        {" · "}
+        Wind, rain, temp · GDACS · PAGASA · ICDRRMO (no third-party branding)
+      </p>
+      <EocUnifiedMap
+        mode="citizen"
+        accessToken={props.accessToken}
+        layout="fullscreen"
+        className="min-h-0 flex-1"
+      />
     </div>
   );
 }

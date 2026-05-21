@@ -27,7 +27,9 @@ export function IcdrrmoAiChat(props: {
   guestMode?: boolean;
 }): ReactElement | null {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState<AiLanguage>("en");
+  const [lang, setLang] = useState<AiLanguage>(
+    props.portal === "citizen" || props.portal === "home" ? "fil" : "en",
+  );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -80,12 +82,16 @@ export function IcdrrmoAiChat(props: {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-[180] flex flex-col items-end gap-2 pointer-events-none"
+      className="fixed z-[180] flex flex-col items-stretch gap-2 pointer-events-none
+        bottom-[max(0.75rem,env(safe-area-inset-bottom))]
+        right-[max(0.75rem,env(safe-area-inset-right))]
+        left-[max(0.75rem,env(safe-area-inset-left))]
+        sm:left-auto sm:max-w-[min(100vw-1.5rem,400px)] sm:items-end"
       data-portal={props.portal}
     >
       {open ? (
         <div
-          className="pointer-events-auto flex w-[min(100vw-2rem,380px)] flex-col overflow-hidden rounded-2xl border border-orange-500/25 bg-[#0a0a0a]/95 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.85)] backdrop-blur-md"
+          className="pointer-events-auto flex w-full sm:w-[min(100vw-1.5rem,400px)] max-h-[min(85dvh,560px)] flex-col overflow-hidden rounded-2xl border border-orange-500/25 bg-[#0a0a0a]/98 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.85)] backdrop-blur-md"
           role="dialog"
           aria-label="ICDRRMO AI chat"
         >
@@ -126,7 +132,7 @@ export function IcdrrmoAiChat(props: {
 
           <div
             ref={scrollRef}
-            className="flex-1 max-h-[min(50dvh,360px)] min-h-[200px] overflow-y-auto px-3 py-3 space-y-3"
+            className="flex-1 min-h-[140px] overflow-y-auto overscroll-contain px-3 py-3 space-y-3"
           >
             {messages.map((msg, i) => (
               <div
@@ -161,8 +167,8 @@ export function IcdrrmoAiChat(props: {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask ICDRRMO AI…"
-              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-orange-500/40"
+              placeholder={lang === "fil" ? "Magtanong sa ICDRRMO AI…" : "Ask ICDRRMO AI…"}
+              className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-base sm:text-xs text-white outline-none focus:ring-1 focus:ring-orange-500/40"
               disabled={busy}
             />
             <button
@@ -180,7 +186,7 @@ export function IcdrrmoAiChat(props: {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="pointer-events-auto flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-600 to-rose-600 px-4 py-3 text-sm font-bold text-white shadow-lg ring-2 ring-orange-400/30 hover:scale-[1.02] transition-transform"
+        className="pointer-events-auto flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-600 to-rose-600 px-4 py-3.5 sm:py-3 text-sm font-bold text-white shadow-lg ring-2 ring-orange-400/30 hover:scale-[1.02] active:scale-[0.98] transition-transform touch-manipulation"
         aria-expanded={open}
       >
         {open ? (

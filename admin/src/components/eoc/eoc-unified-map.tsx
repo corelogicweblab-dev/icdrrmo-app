@@ -665,7 +665,7 @@ export function EocUnifiedMap({
           zIndex: 450,
           pane: "overlayPane",
           attribution: isWindy
-            ? "Data © Windy"
+            ? "ICDRRMO · Live weather layers"
             : isRainViewer
               ? "Radar © RainViewer"
               : "© OpenWeatherMap",
@@ -899,8 +899,8 @@ export function EocUnifiedMap({
         </p>
       ) : null}
       <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
-        Tiles: {useWindy ? "Windy (API)" : weather?.openWeather.provider ?? "RainViewer fallback"}.
-        {useWindy ? " Key from Render WINDY_API_KEY." : " Temp/wind point overlay when no tile URL."}
+        Tiles: {useWindy ? "ICDRRMO live layers (API)" : weather?.openWeather.provider ?? "RainViewer fallback"}.
+        {useWindy ? " Server-side WINDY_API_KEY on Render." : " Temp/wind point overlay when no tile URL."}
       </p>
       {weather?.situation || clientMeteo ? (
         <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">
