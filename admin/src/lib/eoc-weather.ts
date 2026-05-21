@@ -20,7 +20,7 @@ export type EocWeatherBundle = {
   };
   openWeather: {
     configured: boolean;
-    provider?: string;
+    provider?: "windy" | "openweathermap" | "rainviewer" | "none" | string;
     layers: Array<{ id: string; label: string; urlTemplate: string }>;
     openMeteoOverlays?: Array<'temp' | 'wind'>;
   };

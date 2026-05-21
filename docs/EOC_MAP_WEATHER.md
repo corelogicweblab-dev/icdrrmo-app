@@ -12,7 +12,8 @@
 
 ## Environment (API)
 
-- `OPENWEATHERMAP_API_KEY` — enables rain/cloud/temp/wind tile overlays on the unified map
+- `WINDY_API_KEY` — **preferred** Windy tile overlays (rain, clouds, temp, wind) via `https://tiles.windy.com/…`
+- `OPENWEATHERMAP_API_KEY` — fallback if Windy key not set
 - `PAGASA_RSS_URL` — default `https://www.pagasa.dost.gov.ph/rss/weather`
 - `PAGASA_CACHE_TTL_SEC` — Redis/in-memory cache (default 1800s)
 - `REDIS_URL` — shared cache for Open-Meteo + PAGASA

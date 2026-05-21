@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ResponderStatus, UserRole } from '@prisma/client';
+import { IncidentStatus, Prisma, ResponderStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -130,5 +130,125 @@ export class RespondersService {
       userAgent: meta.ua,
     });
     return { ok: true };
+  }
+
+  /** Field responder dashboard — assignments, medical context, performance. */
+  async fieldDashboard(actor: JwtPayload) {
+    if (actor.role !== UserRole.RESPONDER) {
+      throw new ForbiddenException('Responder role required');
+    }
+    const responder = await this.prisma.responder.findUnique({
+      where: { userId: actor.sub },
+      include: {
+        vehicle: true,
+        user: {
+          select: {
+            email: true,
+            phone: true,
+            profile: {
+              select: {
+                fullName: true,
+                bloodType: true,
+                allergies: true,
+                medicalConditions: true,
+                barangay: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!responder) {
+      return {
+        configured: false,
+        message: 'No responder roster record — contact ops admin.',
+      };
+    }
+    const active = await this.prisma.incident.findMany({
+      where: {
+        assignedResponderId: responder.id,
+        status: {
+          notIn: [IncidentStatus.CLOSED, IncidentStatus.FALSE_ALARM, IncidentStatus.RESOLVED],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        barangay: { select: { name: true } },
+        reporter: {
+          select: {
+            phone: true,
+            profile: {
+              select: {
+                fullName: true,
+                bloodType: true,
+                allergies: true,
+                medicalConditions: true,
+              },
+            },
+            emergencyContacts: {
+              orderBy: { priority: 'asc' },
+              take: 3,
+              select: { fullName: true, phone: true, relationship: true },
+            },
+          },
+        },
+      },
+    });
+    const since30d = new Date(Date.now() - 30 * 86_400_000);
+    const [resolved30d, totalAssigned30d] = await Promise.all([
+      this.prisma.incident.count({
+        where: {
+          assignedResponderId: responder.id,
+          status: { in: [IncidentStatus.RESOLVED, IncidentStatus.CLOSED] },
+          updatedAt: { gte: since30d },
+        },
+      }),
+      this.prisma.incident.count({
+        where: { assignedResponderId: responder.id, createdAt: { gte: since30d } },
+      }),
+    ]);
+    return {
+      configured: true,
+      generatedAt: new Date().toISOString(),
+      responder: {
+        id: responder.id,
+        status: responder.status,
+        badgeNumber: responder.badgeNumber,
+        vehicle: responder.vehicle,
+      },
+      profile: responder.user.profile,
+      assignments: active.map((i) => ({
+        id: i.id,
+        type: i.type,
+        status: i.status,
+        title: i.title,
+        latitude: Number(i.latitude),
+        longitude: Number(i.longitude),
+        barangayName: i.barangay?.name,
+        createdAt: i.createdAt.toISOString(),
+        routeUrl: `https://www.google.com/maps/dir/?api=1&destination=${Number(i.latitude)},${Number(i.longitude)}`,
+        citizenMedical: i.reporter?.profile
+          ? {
+              fullName: i.reporter.profile.fullName,
+              bloodType: i.reporter.profile.bloodType,
+              allergies: i.reporter.profile.allergies,
+              medicalConditions: i.reporter.profile.medicalConditions,
+              phone: i.reporter.phone,
+              emergencyContacts: i.reporter.emergencyContacts,
+            }
+          : null,
+      })),
+      performance: {
+        resolved30d,
+        assigned30d: totalAssigned30d,
+        resolutionRatePct:
+          totalAssigned30d > 0 ? Math.round((resolved30d / totalAssigned30d) * 100) : 0,
+      },
+      communications: {
+        opsChannel: 'WebRTC voice via incident SOS panel',
+        citizenContact: 'Use assignment medical phone or ops dispatch',
+      },
+    };
   }
 }

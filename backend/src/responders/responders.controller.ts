@@ -23,6 +23,12 @@ function clientMeta(req: Request): { ip?: string; ua?: string } {
 export class RespondersController {
   constructor(private readonly responders: RespondersService) {}
 
+  @Roles(UserRole.RESPONDER)
+  @Get('me/field-dashboard')
+  fieldDashboard(@CurrentUser() actor: JwtPayload) {
+    return this.responders.fieldDashboard(actor);
+  }
+
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
   @Get()
   list(@CurrentUser() actor: JwtPayload) {

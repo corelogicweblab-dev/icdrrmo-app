@@ -270,6 +270,106 @@ export class ChairmanService {
     });
   }
 
+  async getExecutiveOverview(user: JwtPayload) {
+    const barangayId = await this.requireChairmanBarangay(user);
+    const [dash, incidents, evacCenters, vehicles, responders, barangay] = await Promise.all([
+      this.getDashboard(user),
+      this.listIncidents(user),
+      this.prisma.evacuationCenter.findMany({
+        where: { barangayId, isActive: true },
+        include: { barangay: { select: { name: true } } },
+      }),
+      this.prisma.vehicle.findMany({
+        where: { isActive: true },
+        take: 25,
+        select: { plateNumber: true, fleetStatus: true, type: true, name: true },
+      }),
+      this.prisma.responder.findMany({
+        where: { user: { profile: { barangayId } } },
+        take: 25,
+        include: {
+          user: { select: { email: true, profile: { select: { fullName: true } } } },
+          vehicle: { select: { plateNumber: true } },
+        },
+      }),
+      this.prisma.barangay.findUnique({
+        where: { id: barangayId },
+        select: {
+          name: true,
+          opsFloodActive: true,
+          opsFloodMessage: true,
+          opsRedZoneActive: true,
+          opsRedZoneMessage: true,
+        },
+      }),
+    ]);
+    const incList = Array.isArray(incidents) ? incidents : [];
+    const sosCount = incList.filter(
+      (i: { channel?: string }) => String(i.channel ?? '') === 'MOBILE_APP',
+    ).length;
+    const since7d = new Date(Date.now() - 7 * 86_400_000);
+    const resolved7d = await this.prisma.incident.findMany({
+      where: {
+        barangayId,
+        status: { in: [IncidentStatus.RESOLVED, IncidentStatus.CLOSED] },
+        updatedAt: { gte: since7d },
+      },
+      select: { createdAt: true, updatedAt: true },
+      take: 100,
+    });
+    const avgResponseMin =
+      resolved7d.length > 0
+        ? Math.round(
+            resolved7d.reduce(
+              (s, i) => s + (i.updatedAt.getTime() - i.createdAt.getTime()) / 60_000,
+              0,
+            ) / resolved7d.length,
+          )
+        : null;
+    const total7d = await this.prisma.incident.count({
+      where: { barangayId, createdAt: { gte: since7d } },
+    });
+    const evacUtil = evacCenters.map((e) => {
+      const cap = e.capacity ?? 0;
+      return {
+        id: e.id,
+        name: e.name,
+        occupancy: e.occupancy,
+        capacity: cap,
+        utilizationPct: cap > 0 ? Math.round((e.occupancy / cap) * 100) : null,
+      };
+    });
+    return {
+      generatedAt: new Date().toISOString(),
+      dashboard: dash,
+      barangay,
+      governanceKpis: {
+        avgResponseMinutes: avgResponseMin,
+        resolutionRatePct: total7d > 0 ? Math.round((resolved7d.length / total7d) * 100) : 0,
+        incidents7d: total7d,
+        citizenSos7d: sosCount,
+        resourceUtilization: {
+          vehiclesDeployed: vehicles.filter((v) => v.fleetStatus === 'DEPLOYED').length,
+          vehiclesTotal: vehicles.length,
+          respondersOnMission: responders.filter((r) =>
+            ['DISPATCHED', 'EN_ROUTE', 'ON_SCENE', 'TRANSPORTING'].includes(r.status),
+          ).length,
+          respondersTotal: responders.length,
+        },
+      },
+      resources: { vehicles, responders, evacuationCenters: evacUtil },
+      policyAdvisories: {
+        flood: barangay?.opsFloodActive
+          ? { active: true, message: barangay.opsFloodMessage }
+          : { active: false },
+        redZone: barangay?.opsRedZoneActive
+          ? { active: true, message: barangay.opsRedZoneMessage }
+          : { active: false },
+      },
+      recentIncidents: incList.slice(0, 15),
+    };
+  }
+
   async getSystemHealth(user: JwtPayload) {
     await this.requireChairmanBarangay(user);
     let database = false;

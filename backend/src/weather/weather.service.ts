@@ -7,6 +7,7 @@ import {
 import Redis from 'ioredis';
 import { ISABELA_HAZARD_DISCLAIMER, ISABELA_HAZARD_ZONES } from './isabela-hazard-reference';
 import { FreeWeatherTilesService } from './free-weather-tiles.service';
+import { WindyTilesService } from './windy-tiles.service';
 import { PagasaRssService, type PagasaAdvisoryItem } from './pagasa-rss.service';
 
 export type OpenWeatherLayerConfig = {
@@ -25,7 +26,7 @@ export type EocWeatherBundle = {
   };
   openWeather: {
     configured: boolean;
-    provider: 'openweathermap' | 'rainviewer' | 'none';
+    provider: 'windy' | 'openweathermap' | 'rainviewer' | 'none';
     layers: OpenWeatherLayerConfig[];
     /** Layers rendered from Open-Meteo point data (no tile URL). */
     openMeteoOverlays: Array<'temp' | 'wind'>;
@@ -145,6 +146,7 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly pagasa: PagasaRssService,
     private readonly freeTiles: FreeWeatherTilesService,
+    private readonly windyTiles: WindyTilesService,
   ) {}
 
   private redis: Redis | null = null;
@@ -517,8 +519,17 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
   }
 
   async resolveTileLayers(): Promise<EocWeatherBundle['openWeather']> {
-    const key = process.env.OPENWEATHERMAP_API_KEY?.trim();
-    if (key) {
+    const windy = this.windyTiles.getLayers();
+    if (windy.configured) {
+      return {
+        configured: true,
+        provider: 'windy',
+        layers: windy.layers,
+        openMeteoOverlays: [],
+      };
+    }
+    const owmKey = process.env.OPENWEATHERMAP_API_KEY?.trim();
+    if (owmKey) {
       const owm = this.getOpenWeatherLayers();
       return {
         configured: true,

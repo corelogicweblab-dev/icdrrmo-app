@@ -28,6 +28,11 @@ export class ChairmanController {
     return this.chairman.getDashboard(user);
   }
 
+  @Get('executive-overview')
+  executiveOverview(@CurrentUser() user: JwtPayload) {
+    return this.chairman.getExecutiveOverview(user);
+  }
+
   @Get('incidents')
   incidents(@CurrentUser() user: JwtPayload) {
     return this.chairman.listIncidents(user);

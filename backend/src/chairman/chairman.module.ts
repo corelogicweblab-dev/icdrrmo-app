@@ -12,6 +12,6 @@ import { CommunicationsModule } from '../communications/communications.module';
   imports: [RealtimeModule, PushModule, JobsModule, AuditModule, CommunicationsModule],
   controllers: [ChairmanController],
   providers: [ChairmanService, ChairmanAlertsService],
-  exports: [ChairmanAlertsService],
+  exports: [ChairmanAlertsService, ChairmanService],
 })
 export class ChairmanModule {}

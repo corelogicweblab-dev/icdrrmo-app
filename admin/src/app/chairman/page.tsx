@@ -17,6 +17,8 @@ import {
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { ChairmanLeafletMap } from "@/components/chairman/chairman-leaflet-map";
 import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
+import { ChairmanExecutivePanel } from "@/components/chairman/chairman-executive-panel";
+import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 import {
   clearChairmanTokens,
   loadChairmanTokens,
@@ -358,6 +360,8 @@ export default function ChairmanDashboardPage(): ReactElement {
           />
         </section>
 
+        <ChairmanExecutivePanel accessToken={tokens.accessToken} />
+
         {loading && incidents.length === 0 ? (
           <p className="flex items-center gap-2 text-sm text-zinc-500">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -470,6 +474,7 @@ export default function ChairmanDashboardPage(): ReactElement {
           </section>
         </div>
       </main>
+      <IcdrrmoAiChat accessToken={tokens.accessToken} portal="chairman" />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { GdacsGeorssService } from './gdacs-georss.service';
 import { PagasaPortalService } from './pagasa-portal.service';
 import { WeatherGeojsonMergeService } from './weather-geojson-merge.service';
 import { FreeWeatherTilesService } from './free-weather-tiles.service';
+import { WindyTilesService } from './windy-tiles.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     PagasaPortalService,
     WeatherGeojsonMergeService,
     FreeWeatherTilesService,
+    WindyTilesService,
   ],
   exports: [WeatherService, WeatherGeojsonMergeService],
 })

@@ -191,6 +191,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     type?: string;
     title?: string | null;
     barangayId?: string | null;
+    medicalSummary?: Record<string, unknown> | null;
   }): void {
     this.server.to('ops').emit('incident_created', payload);
     this.server.to('chairman').emit('chairman_incident', {
@@ -227,7 +228,15 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.to('ops').emit('incident_updated', payload);
     if (payload.reporterId) {
       this.server.to(`user:${payload.reporterId}`).emit('incident_updated', payload);
+      this.emitCitizenFeedUpdated(payload.reporterId, { reason: 'incident_updated' });
     }
+  }
+
+  emitCitizenFeedUpdated(userId: string, payload: { reason: string }): void {
+    this.server.to(`user:${userId}`).emit('citizen_feed_updated', {
+      ...payload,
+      at: new Date().toISOString(),
+    });
   }
 
   emitResponderLocation(payload: { responderId: string; latitude: number; longitude: number }): void {

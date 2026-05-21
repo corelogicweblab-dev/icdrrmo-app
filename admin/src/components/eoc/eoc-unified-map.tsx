@@ -178,12 +178,18 @@ export function EocUnifiedMap({
   const showAllIncidents = mode === "ops" || mode === "responder" || mode === "chairman";
   const showVehicles = mode === "ops";
   const owmLayers = owmTileLayersFromGeoJson(hazardGeo);
+  const tileProvider = weather?.openWeather.provider ?? hazardGeo?.layers.openWeatherMap.properties?.source;
+  const useWindy = tileProvider === "windy";
   const bundleLayers =
     tileLayersFromWeather(weather).length > 0 ? tileLayersFromWeather(weather) : owmLayers;
   const hasTileLayer = (id: WeatherLayerId): boolean => {
-    if (id === "rain-radar") return Boolean(rainViewerUrl);
-    if (id === "temp" || id === "wind") return true;
-    return bundleLayers.some((l) => l.id === id && l.urlTemplate);
+    if (bundleLayers.some((l) => l.id === id && l.urlTemplate)) return true;
+    if (id === "rain-radar" || id === "precipitation") return Boolean(rainViewerUrl);
+    const usePointOverlay =
+      !useWindy &&
+      (weather?.openWeather.openMeteoOverlays?.includes(id as "temp" | "wind") ?? false);
+    if (id === "temp" || id === "wind") return usePointOverlay || Boolean(clientMeteo);
+    return false;
   };
   const layerHint = hazardGeo?.properties.upstreamErrors;
   const pagasaAdvisories = mergePagasaAdvisories(hazardGeo, weather);
@@ -207,7 +213,6 @@ export function EocUnifiedMap({
       ]);
       setRainViewerUrl(rainUrl);
       setClientMeteo(openMeteo);
-      if (!rainUrl) loadErrors.push("RainViewer tiles unavailable");
 
       let wx: EocWeatherBundle | null = null;
       try {
@@ -621,29 +626,32 @@ export function EocUnifiedMap({
           continue;
         }
 
-        let url: string | null = null;
-        let opacity = 0.6;
+        const fromBundle =
+          bundleLayers.find((l) => l.id === id)?.urlTemplate ??
+          weather?.openWeather.layers.find((l) => l.id === id)?.urlTemplate ??
+          owmById.get(id)?.urlTemplate ??
+          null;
+
+        let url: string | null = fromBundle;
+        let opacity = 0.55;
         if (id === "rain-radar" || id === "precipitation") {
-          url =
-            rainViewerUrl ??
-            bundleLayers.find((l) => l.id === "precipitation")?.urlTemplate ??
-            null;
           opacity = id === "rain-radar" ? 0.55 : 0.5;
+          if (!url && !useWindy) url = rainViewerUrl;
         } else if (id === "clouds") {
-          url = bundleLayers.find((l) => l.id === "clouds")?.urlTemplate ?? rainViewerUrl;
           opacity = 0.45;
-        } else {
-          const owm =
-            owmById.get(id) ??
-            bundleLayers.find((l) => l.id === id) ??
-            weather?.openWeather.layers.find((l) => l.id === id);
-          url = owm?.urlTemplate ?? null;
+          if (!url && !useWindy) url = rainViewerUrl;
+        } else if (id === "temp") {
+          opacity = 0.5;
+        } else if (id === "wind") {
+          opacity = 0.55;
         }
 
         if (!url) continue;
 
         const isRainViewer =
-          url.includes("rainviewer.com") || url.includes("tilecache.rainviewer");
+          !useWindy &&
+          (url.includes("rainviewer.com") || url.includes("tilecache.rainviewer"));
+        const isWindy = url.includes("tiles.windy.com");
 
         if (existing) {
           map.removeLayer(existing);
@@ -653,10 +661,14 @@ export function EocUnifiedMap({
           opacity,
           minZoom: 3,
           maxZoom: 18,
-          maxNativeZoom: isRainViewer ? RAINVIEWER_MAX_NATIVE_ZOOM : 19,
+          maxNativeZoom: isRainViewer ? RAINVIEWER_MAX_NATIVE_ZOOM : 18,
           zIndex: 450,
           pane: "overlayPane",
-          attribution: isRainViewer ? "Radar © RainViewer" : "© OpenWeatherMap",
+          attribution: isWindy
+            ? "Data © Windy"
+            : isRainViewer
+              ? "Radar © RainViewer"
+              : "© OpenWeatherMap",
         });
         weatherLayersRef.current[id] = tile;
         tile.addTo(map);
@@ -664,9 +676,10 @@ export function EocUnifiedMap({
       }
 
       if (
-        activeLayers.has("rain-radar") ||
-        activeLayers.has("precipitation") ||
-        activeLayers.has("clouds")
+        !useWindy &&
+        (activeLayers.has("rain-radar") ||
+          activeLayers.has("precipitation") ||
+          activeLayers.has("clouds"))
       ) {
         const z = map.getZoom();
         if (z > RAINVIEWER_MAX_NATIVE_ZOOM + 2) {
@@ -674,7 +687,7 @@ export function EocUnifiedMap({
         }
       }
     })();
-  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch]);
+  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch, useWindy]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -687,7 +700,14 @@ export function EocUnifiedMap({
       const tempC = cur?.temperatureC ?? clientMeteo?.temperatureC ?? null;
       const windSpd = cur?.windSpeedKmh ?? clientMeteo?.windSpeedKmh ?? null;
       const windDir = cur?.windDirectionDeg ?? clientMeteo?.windDirectionDeg ?? null;
-      if (activeLayers.has("temp") && tempC != null) {
+      const usePointTemp =
+        activeLayers.has("temp") &&
+        !bundleLayers.some((l) => l.id === "temp" && l.urlTemplate);
+      const usePointWind =
+        activeLayers.has("wind") &&
+        !bundleLayers.some((l) => l.id === "wind" && l.urlTemplate);
+
+      if (usePointTemp && tempC != null) {
         const t = tempC;
         const hue = t >= 32 ? 0 : t >= 28 ? 25 : t >= 24 ? 45 : 200;
         L.circle([ISABELA_CITY_LAT, ISABELA_CITY_LON], {
@@ -700,7 +720,7 @@ export function EocUnifiedMap({
           .bindPopup(`<b>Temperature</b><br/>${t}°C at Isabela City EOC grid`)
           .addTo(g);
       }
-      if (activeLayers.has("wind") && windSpd != null && windDir != null) {
+      if (usePointWind && windSpd != null && windDir != null) {
         const spd = windSpd;
         const dir = windDir;
         L.marker([ISABELA_CITY_LAT, ISABELA_CITY_LON], {
@@ -879,7 +899,8 @@ export function EocUnifiedMap({
         </p>
       ) : null}
       <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
-        Tiles: {weather?.openWeather.provider ?? "RainViewer"}. Temp/wind from Open-Meteo at EOC.
+        Tiles: {useWindy ? "Windy (API)" : weather?.openWeather.provider ?? "RainViewer fallback"}.
+        {useWindy ? " Key from Render WINDY_API_KEY." : " Temp/wind point overlay when no tile URL."}
       </p>
       {weather?.situation || clientMeteo ? (
         <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">

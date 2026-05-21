@@ -12,6 +12,7 @@ import { useOpsSession } from "@/components/ops/ops-session-context";
 import { decodeJwtEmail, formatOpsClock } from "@/components/ops/ops-format";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { OpsVoiceRingOverlay } from "@/components/ops/ops-voice-ring-overlay";
+import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 
 export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
   const pathname = usePathname() ?? "/ops";
@@ -256,6 +257,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
         <main className="flex-1 min-h-0 overflow-auto scroll-ops pb-6">{children}</main>
       </div>
       <OpsVoiceRingOverlay />
+      <IcdrrmoAiChat accessToken={tokens?.accessToken ?? null} portal="ops" />
     </div>
   );
 }

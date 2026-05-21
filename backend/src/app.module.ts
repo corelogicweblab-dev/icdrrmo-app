@@ -30,6 +30,8 @@ import { ChairmanModule } from './chairman/chairman.module';
 import { CommandCenterModule } from './command-center/command-center.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { CitizenDashboardModule } from './citizen-dashboard/citizen-dashboard.module';
+import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
 
 @Module({
   imports: [
@@ -65,6 +67,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     CommandCenterModule,
     CommunicationsModule,
     AnalyticsModule,
+    CitizenDashboardModule,
+    AiAssistantModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

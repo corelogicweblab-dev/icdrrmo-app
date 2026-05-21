@@ -63,6 +63,14 @@ export class IncidentsService {
     }
     const profile = await this.prisma.userProfile.findUnique({
       where: { userId: user.sub },
+      include: {
+        barangay: { select: { name: true } },
+      },
+    });
+    const emergencyContacts = await this.prisma.emergencyContact.findMany({
+      where: { userId: user.sub },
+      orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
+      take: 5,
     });
     const incident = await this.prisma.incident.create({
       data: {
@@ -94,6 +102,20 @@ export class IncidentsService {
       type: incident.type,
       title: incident.title,
       barangayId: incident.barangayId,
+      medicalSummary: profile
+        ? {
+            fullName: profile.fullName,
+            bloodType: profile.bloodType,
+            allergies: profile.allergies,
+            medicalConditions: profile.medicalConditions,
+            barangay: profile.barangay?.name ?? null,
+            emergencyContacts: emergencyContacts.map((c) => ({
+              fullName: c.fullName,
+              phone: c.phone,
+              relationship: c.relationship,
+            })),
+          }
+        : null,
     });
     void this.chairmanAlerts.notifyChairmenForIncident({
       id: incident.id,
@@ -516,6 +538,75 @@ export class IncidentsService {
       select: { barangayId: true },
     });
     return p?.barangayId === barangayId;
+  }
+
+  /** Citizen reporter — own incident lifecycle only. */
+  async getTimelineForReporter(actor: JwtPayload, incidentId: string) {
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        reporterId: true,
+        type: true,
+        title: true,
+      },
+    });
+    if (!incident) throw new NotFoundException('Incident not found');
+    if (incident.reporterId !== actor.sub) {
+      throw new ForbiddenException('Not your incident');
+    }
+    const logs = await this.prisma.incidentLog.findMany({
+      where: { incidentId },
+      orderBy: { createdAt: 'asc' },
+      include: { createdBy: { select: { email: true, role: true } } },
+    });
+    const lifecycle = {
+      OPEN: 'reported',
+      ACKNOWLEDGED: 'verified',
+      DISPATCHED: 'responded',
+      IN_PROGRESS: 'responded',
+      RESOLVED: 'resolved',
+      CLOSED: 'closed',
+      FALSE_ALARM: 'closed',
+    } as const;
+    return {
+      incidentId,
+      status: incident.status,
+      lifecycle: lifecycle[incident.status],
+      type: incident.type,
+      title: incident.title,
+      steps: [
+        { key: 'reported', label: 'Reported', done: true, at: incident.createdAt.toISOString() },
+        {
+          key: 'verified',
+          label: 'Verified',
+          done: !['OPEN'].includes(incident.status),
+          at: logs.find((l) => l.action.includes('ack'))?.createdAt.toISOString() ?? null,
+        },
+        {
+          key: 'responded',
+          label: 'Responded',
+          done: ['DISPATCHED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(incident.status),
+          at: logs.find((l) => l.action.includes('dispatch'))?.createdAt.toISOString() ?? null,
+        },
+        {
+          key: 'resolved',
+          label: 'Resolved',
+          done: ['RESOLVED', 'CLOSED', 'FALSE_ALARM'].includes(incident.status),
+          at: logs.find((l) => l.action.includes('resolv') || l.action.includes('closed'))?.createdAt.toISOString() ?? null,
+        },
+      ],
+      entries: logs.map((l) => ({
+        id: l.id,
+        action: l.action,
+        at: l.createdAt.toISOString(),
+        actor: l.createdBy?.email ?? 'system',
+        role: l.createdBy?.role ?? null,
+        details: l.details,
+      })),
+    };
   }
 
   async getTimeline(actor: JwtPayload, incidentId: string) {

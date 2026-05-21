@@ -154,6 +154,8 @@ model User {
   responder           Responder?
   incidentLogsCreated IncidentLog[]      @relation("IncidentLogCreatedBy")
   deviceTokens        DeviceToken[]
+  communityPosts      CommunityPost[]
+  preparedness        CitizenPreparedness?
   dispatchAssignments DispatchAssignment[] @relation("DispatchAssignedBy")
   voiceCallsInitiated VoiceCallLog[]      @relation("VoiceInitiator")
   voiceCallsJoined    VoiceCallLog[]      @relation("VoiceParticipant")
@@ -225,6 +227,7 @@ model Barangay {
   profiles           UserProfile[]
   incidents          Incident[]
   evacuationCenters EvacuationCenter[]
+  communityPosts    CommunityPost[]
 
   @@map("barangays")
 }
@@ -535,4 +538,44 @@ model DeviceToken {
 
   @@index([userId])
   @@map("device_tokens")
+}
+
+enum CommunityPostCategory {
+  BARANGAY
+  VOLUNTEER
+  DONATION
+  ADVISORY
+}
+
+/// Barangay community feed — posts, volunteer calls, donation requests.
+model CommunityPost {
+  id           String                @id @default(cuid())
+  barangayId   String?               @map("barangay_id")
+  authorUserId String?               @map("author_user_id")
+  category     CommunityPostCategory
+  title        String
+  body         String
+  isPinned     Boolean               @default(false) @map("is_pinned")
+  locale       String                @default("en")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  barangay Barangay? @relation(fields: [barangayId], references: [id])
+  author   User?     @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([barangayId, createdAt(sort: Desc)])
+  @@index([category, createdAt(sort: Desc)])
+  @@map("community_posts")
+}
+
+/// Citizen preparedness checklist + gamification badges (per user).
+model CitizenPreparedness {
+  userId    String   @id @map("user_id")
+  checklist Json     @default("[]")
+  badges    Json     @default("[]")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("citizen_preparedness")
 }

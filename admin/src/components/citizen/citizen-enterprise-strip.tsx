@@ -1,0 +1,74 @@
+"use client";
+
+import type { ReactElement } from "react";
+import { Activity, Brain, Users } from "lucide-react";
+import type { CitizenUnifiedFeed } from "@/lib/citizen-feed";
+
+export function CitizenEnterpriseStrip(props: {
+  enterprise: CitizenUnifiedFeed["enterprise"];
+  systemHealth: CitizenUnifiedFeed["systemHealth"];
+}): ReactElement {
+  const alerts = props.enterprise.predictiveAlerts.slice(0, 3);
+  const engagement = props.enterprise.usageMetrics.advisoryEngagementPct;
+  const citizens = props.enterprise.usageMetrics.activeCitizensByBarangay.reduce(
+    (a, b) => a + b.count,
+    0,
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ring-1 ${
+            props.systemHealth.status === "online"
+              ? "bg-emerald-950/40 text-emerald-300 ring-emerald-500/35"
+              : "bg-amber-950/40 text-amber-200 ring-amber-500/35"
+          }`}
+        >
+          <Activity className="h-3 w-3" aria-hidden />
+          {props.systemHealth.label}
+        </span>
+        {props.enterprise.myBarangayRisk ? (
+          <span className="text-[10px] text-zinc-500">
+            Risk score:{" "}
+            <span className="font-mono text-orange-300/90">
+              {props.enterprise.myBarangayRisk.score}
+            </span>{" "}
+            ({props.enterprise.myBarangayRisk.level})
+          </span>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-[10px]">
+        <div className="rounded-lg border border-white/[0.06] bg-black/25 p-2.5">
+          <Users className="h-3.5 w-3.5 text-zinc-500 mb-1" aria-hidden />
+          <p className="text-zinc-500">Active citizens</p>
+          <p className="text-lg font-semibold text-zinc-100">{citizens}</p>
+        </div>
+        <div className="rounded-lg border border-white/[0.06] bg-black/25 p-2.5">
+          <Brain className="h-3.5 w-3.5 text-zinc-500 mb-1" aria-hidden />
+          <p className="text-zinc-500">Advisory engagement</p>
+          <p className="text-lg font-semibold text-zinc-100">{engagement}%</p>
+        </div>
+      </div>
+
+      {alerts.length > 0 ? (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400/80 mb-2">
+            AI forecast · next 6h
+          </p>
+          <ul className="space-y-1.5">
+            {alerts.map((a) => (
+              <li
+                key={a.barangayName}
+                className="rounded-lg border border-rose-500/20 bg-rose-950/20 px-2.5 py-2 text-[11px] text-rose-100/90"
+              >
+                {a.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}

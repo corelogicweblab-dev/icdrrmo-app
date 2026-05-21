@@ -6,8 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  ChevronRight,
-  LocateFixed,
   Loader2,
   Lock,
   LogOut,
@@ -16,30 +14,14 @@ import {
 } from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { PasswordInput } from "@/components/password-input";
-import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
-import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
-import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
-import { getApiBaseUrl, getApiConfigWarning, getOpsVoiceHotline } from "@/lib/env";
+import { SmartCitizenDashboard } from "@/components/citizen/smart-citizen-dashboard";
+import { getApiBaseUrl } from "@/lib/env";
 import { loadBarangayPickList, barangayRegisterFields } from "@/lib/public-barangays";
-import { opsFetchJson, OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 import { CITIZEN_STORAGE_KEY } from "@/lib/unified-auth";
 
 type Tokens = { accessToken: string; refreshToken?: string };
 
 const STORAGE = CITIZEN_STORAGE_KEY;
-
-const SOS_TYPES = [
-  { id: "FIRE", label: "Fire" },
-  { id: "FLOOD", label: "Flood" },
-  { id: "LANDSLIDE", label: "Landslide" },
-  { id: "MEDICAL_EMERGENCY", label: "Medical emergency" },
-  { id: "ACCIDENT", label: "Accident" },
-  { id: "CRIME", label: "Crime / violence" },
-  { id: "EARTHQUAKE", label: "Earthquake" },
-  { id: "TYPHOON", label: "Typhoon / severe weather" },
-  { id: "RESCUE_REQUEST", label: "Rescue request" },
-  { id: "OTHER", label: "Other emergency" },
-] as const;
 
 const REGISTER_GENDER_OPTS = [
   { value: "MALE", label: "Male" },
@@ -86,32 +68,7 @@ function loadTokens(): Tokens | null {
   }
 }
 
-type CitizenMe = {
-  email: string;
-  phone: string | null;
-  role: string;
-  profile: null | {
-    fullName: string;
-    barangayId: string | null;
-    streetPurok: string | null;
-    address: string | null;
-    bloodType: string;
-    allergies: string | null;
-    medicalConditions: string | null;
-    availabilityStatus: string;
-    barangay: { name: string } | null;
-  };
-};
-
 type PublicBarangay = { id: string; name: string; code: string };
-
-type SosPanelState = {
-  incidentId: string;
-  deduplicated: boolean;
-  userLat: number;
-  userLon: number;
-  emergencyLabel: string;
-};
 
 export default function CitizenPage(): ReactElement {
   const router = useRouter();
@@ -133,17 +90,6 @@ export default function CitizenPage(): ReactElement {
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
-  const [lat, setLat] = useState<number | null>(null);
-  const [lon, setLon] = useState<number | null>(null);
-  const [geoBusy, setGeoBusy] = useState(false);
-  const [kind, setKind] = useState<(typeof SOS_TYPES)[number]["id"]>("MEDICAL_EMERGENCY");
-  const [sosBusy, setSosBusy] = useState(false);
-  const [sosPanel, setSosPanel] = useState<SosPanelState | null>(null);
-
-  const [me, setMe] = useState<CitizenMe | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileErr, setProfileErr] = useState<string | null>(null);
 
   const registerAgeDisplay = useMemo(() => {
     const a = computeAgeFromIso(registerBirthday);
@@ -193,38 +139,6 @@ export default function CitizenPage(): ReactElement {
       cancelled = true;
     };
   }, [mode]);
-
-  useEffect(() => {
-    const t = tokens?.accessToken;
-    if (!t) {
-      setMe(null);
-      setProfileErr(null);
-      return;
-    }
-    let cancelled = false;
-    setProfileLoading(true);
-    setProfileErr(null);
-    (async () => {
-      try {
-        const u = await opsFetchJson<CitizenMe>("/users/me", t);
-        if (!cancelled) setMe(u);
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setProfileErr(
-            e instanceof OpsApiError
-              ? opsApiErrorUserMessage(e)
-              : "Could not load your profile. Check your connection or try again.",
-          );
-          setMe(null);
-        }
-      } finally {
-        if (!cancelled) setProfileLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tokens?.accessToken]);
 
   async function login(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -350,118 +264,10 @@ export default function CitizenPage(): ReactElement {
     }
   }
 
-  const captureLocation = useCallback(() => {
-    setMsg(null);
-    if (!navigator.geolocation) {
-      setMsg("Geolocation is not available in this browser.");
-      return;
-    }
-    setGeoBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLat(Number(p.coords.latitude.toFixed(7)));
-        setLon(Number(p.coords.longitude.toFixed(7)));
-        setGeoBusy(false);
-      },
-      () => {
-        setMsg("Location denied or unavailable. Enable GPS permission to send coordinates with SOS.");
-        setGeoBusy(false);
-      },
-      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
-    );
-  }, []);
-
-  const acquireFreshPosition = useCallback((): Promise<{ lat: number; lon: number }> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error("Geolocation is not available in this browser."));
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (p) => {
-          resolve({
-            lat: Number(p.coords.latitude.toFixed(7)),
-            lon: Number(p.coords.longitude.toFixed(7)),
-          });
-        },
-        () => reject(new Error("Location denied or unavailable.")),
-        { enableHighAccuracy: true, timeout: 25_000, maximumAge: 0 },
-      );
-    });
-  }, []);
-
-  async function sendSos(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    if (!tokens) return;
-    setSosBusy(true);
-    setSosPanel(null);
-    setMsg(null);
-    try {
-      let useLat = lat;
-      let useLon = lon;
-      if (useLat == null || useLon == null) {
-        setGeoBusy(true);
-        try {
-          const pos = await acquireFreshPosition();
-          useLat = pos.lat;
-          useLon = pos.lon;
-          setLat(pos.lat);
-          setLon(pos.lon);
-        } finally {
-          setGeoBusy(false);
-        }
-      }
-      const res = await fetch(`${getApiBaseUrl()}/incidents/sos`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${tokens.accessToken}`,
-        },
-        body: JSON.stringify({
-          type: kind,
-          latitude: useLat,
-          longitude: useLon,
-        }),
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        incidentId?: string;
-        deduplicated?: boolean;
-        message?: string | string[];
-      };
-      if (!res.ok) {
-        const m = Array.isArray(body.message)
-          ? body.message.join(" · ")
-          : (body.message ?? `HTTP ${res.status}`);
-        setMsg(m);
-        return;
-      }
-      const id = body.incidentId ?? "—";
-      const emergencyLabel = SOS_TYPES.find((x) => x.id === kind)?.label ?? kind;
-      setSosPanel({
-        incidentId: id,
-        deduplicated: !!body.deduplicated,
-        userLat: useLat!,
-        userLon: useLon!,
-        emergencyLabel,
-      });
-    } catch (err) {
-      setMsg(
-        err instanceof Error
-          ? err.message
-          : "Could not deliver SOS — verify API connectivity and GPS permission.",
-      );
-    } finally {
-      setSosBusy(false);
-    }
-  }
-
   function logout(): void {
     localStorage.removeItem(STORAGE);
     setTokens(null);
-    setSosPanel(null);
     setMsg(null);
-    setLat(null);
-    setLon(null);
     router.replace("/");
   }
 
@@ -508,9 +314,9 @@ export default function CitizenPage(): ReactElement {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-black/35 ring-1 ring-rose-500/25 p-1">
             <IcdrrmoLogo size={56} priority className="rounded-xl" />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">Citizen Emergency</h1>
+          <h1 className="text-xl font-semibold tracking-tight">SMART Citizen Dashboard</h1>
           <p className="mt-2 text-sm text-zinc-500">
-            SOS with live coordinates. Install this page to your phone for one-tap field access.
+            Enterprise emergency hub — SOS lifecycle, Windy map, evac centers, AI risk, community feed.
           </p>
         </div>
 
@@ -725,226 +531,9 @@ export default function CitizenPage(): ReactElement {
               </form>
             )}
           </section>
-        ) : (
-          <section className="space-y-4">
-            {getApiConfigWarning() ? (
-              <div
-                className="rounded-xl border border-amber-500/35 bg-amber-950/25 px-4 py-3 text-[11px] leading-relaxed text-amber-100/95"
-                role="status"
-              >
-                {getApiConfigWarning()}
-              </div>
-            ) : null}
-
-            <div className="rounded-2xl icd-surface p-4 shadow-panel">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400/90">
-                    Account &amp; medical
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
-                    Edit name, barangay, blood type, allergies, and nearby evacuation centers.
-                  </p>
-                </div>
-                <UserCircle className="h-8 w-8 shrink-0 text-zinc-600" aria-hidden />
-              </div>
-
-              {profileLoading ? (
-                <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Loading profile…
-                </div>
-              ) : profileErr ? (
-                <p className="mt-3 text-xs text-rose-300/95 leading-relaxed">{profileErr}</p>
-              ) : me ? (
-                <>
-                  <dl className="mt-4 grid gap-2 text-xs text-zinc-300">
-                    <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                      <dt className="text-zinc-500">Email</dt>
-                      <dd className="font-mono text-right text-zinc-200">{me.email}</dd>
-                    </div>
-                    <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                      <dt className="text-zinc-500">Phone</dt>
-                      <dd className="font-mono text-right">{me.phone ?? "—"}</dd>
-                    </div>
-                    <div className="flex justify-between gap-3 pb-1">
-                      <dt className="text-zinc-500">Role</dt>
-                      <dd className="text-right text-zinc-400">{me.role}</dd>
-                    </div>
-                  </dl>
-                  {me.profile ? (
-                    <dl className="mt-4 grid gap-2 border-t border-orange-500/12 pt-4 text-xs text-zinc-300">
-                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                        <dt className="text-zinc-500">Full name</dt>
-                        <dd className="font-medium text-white text-right">{me.profile.fullName}</dd>
-                      </div>
-                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                        <dt className="text-zinc-500">Barangay</dt>
-                        <dd className="text-right">{me.profile.barangay?.name ?? "— (set on profile)"}</dd>
-                      </div>
-                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                        <dt className="text-zinc-500">Street / purok</dt>
-                        <dd className="text-right text-zinc-200">
-                          {me.profile.streetPurok?.trim() ? me.profile.streetPurok : "—"}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-3 border-b border-white/[0.05] pb-2">
-                        <dt className="text-zinc-500">Blood type</dt>
-                        <dd className="text-right">{me.profile.bloodType.replace(/_/g, " ")}</dd>
-                      </div>
-                      <div className="flex justify-between gap-3 pb-1">
-                        <dt className="text-zinc-500">Status</dt>
-                        <dd className="text-right text-orange-200/90">{me.profile.availabilityStatus}</dd>
-                      </div>
-                      {(me.profile.allergies || me.profile.medicalConditions) && (
-                        <div className="rounded-lg bg-black/30 p-2.5 text-[11px] text-zinc-400 leading-snug">
-                          {me.profile.allergies ? (
-                            <p>
-                              <span className="text-zinc-500">Allergies: </span>
-                              {me.profile.allergies}
-                            </p>
-                          ) : null}
-                          {me.profile.medicalConditions ? (
-                            <p className={me.profile.allergies ? "mt-1.5" : ""}>
-                              <span className="text-zinc-500">Medical: </span>
-                              {me.profile.medicalConditions}
-                            </p>
-                          ) : null}
-                        </div>
-                      )}
-                    </dl>
-                  ) : (
-                    <p className="mt-3 text-xs text-amber-200/90 leading-relaxed">
-                      No profile record in the database — open the profile page to complete details.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className="mt-3 text-xs text-zinc-500">Could not load account.</p>
-              )}
-
-              <Link
-                href="/citizen/profile"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-950/30 py-3 text-sm font-semibold text-orange-100 hover:bg-orange-900/35 transition-colors"
-              >
-                Open full profile &amp; evacuation
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </div>
-
-            <form
-              onSubmit={sendSos}
-              className="overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-b from-rose-950/40 to-black/55 shadow-panel"
-            >
-              <div className="border-b border-orange-500/12 bg-black/30 px-4 py-4">
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-rose-200/85">
-                  Emergency type
-                </label>
-                <select
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value as (typeof SOS_TYPES)[number]["id"])}
-                  className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-white outline-none focus:ring-2 focus:ring-rose-500/40"
-                >
-                  {SOS_TYPES.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="p-6 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-zinc-500">
-                  One-touch activation
-                </p>
-                <p className="mx-auto mt-2 max-w-xs text-[10px] leading-relaxed text-zinc-500">
-                  GPS is captured when you press Emergency (fresh fix). Ops sees your location in real time with your
-                  signed-in account to reduce false reports.
-                </p>
-                <button
-                  type="submit"
-                  disabled={sosBusy || geoBusy}
-                  className="mt-6 flex min-h-[7.5rem] w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-rose-500 to-rose-700 py-8 text-xl font-black uppercase tracking-[0.12em] text-white shadow-[0_24px_60px_-20px_rgba(225,29,72,0.75)] ring-1 ring-white/15 transition active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {sosBusy ? (
-                    <>
-                      <Loader2 className="mb-3 h-8 w-8 animate-spin" aria-hidden />
-                      Transmitting…
-                    </>
-                  ) : (
-                    <>
-                      <span>Emergency</span>
-                      <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/85">
-                        Send SOS now
-                      </span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-orange-500/12 px-4 py-4 bg-black/25">
-                <button
-                  type="button"
-                  onClick={captureLocation}
-                  disabled={geoBusy}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-4 py-2.5 text-xs font-semibold text-zinc-200 hover:bg-white/[0.08] disabled:opacity-50"
-                >
-                  <LocateFixed className="h-4 w-4 text-orange-400" aria-hidden />
-                  {geoBusy ? "Locating…" : "Capture GPS"}
-                </button>
-                <div className="font-mono text-[11px] text-zinc-500">
-                  {lat != null && lon != null ? (
-                    <>
-                      {lat.toFixed(5)}°, {lon.toFixed(5)}°
-                    </>
-                  ) : (
-                    <>No coordinates</>
-                  )}
-                </div>
-              </div>
-            </form>
-
-            {tokens ? (
-              <div className="rounded-2xl border border-orange-500/20 overflow-hidden flex flex-col min-h-[min(360px,55dvh)] h-[min(50dvh,560px)]">
-                <p className="shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest text-orange-400/80 bg-black/40 border-b border-orange-500/12">
-                  Evacuation & weather — your barangay
-                </p>
-                <EocUnifiedMap
-                  mode="citizen"
-                  accessToken={tokens.accessToken}
-                  className="flex-1 min-h-0"
-                />
-              </div>
-            ) : null}
-
-            {sosPanel && tokens ? (
-              <div className="rounded-xl border border-orange-500/30 bg-orange-950/25 px-4 py-4 text-sm text-orange-100 space-y-1">
-                <CitizenSosRouteCard
-                  incidentId={sosPanel.incidentId}
-                  deduplicated={sosPanel.deduplicated}
-                  userLat={sosPanel.userLat}
-                  userLon={sosPanel.userLon}
-                  emergencyLabel={sosPanel.emergencyLabel}
-                />
-                <CitizenSosVoiceLive incidentId={sosPanel.incidentId} accessToken={tokens.accessToken} />
-                {getOpsVoiceHotline() ? (
-                  <p className="text-[10px] text-zinc-500 pt-2 border-t border-orange-500/12">
-                    Phone fallback:{" "}
-                    <a className="text-rose-400 underline-offset-2 hover:underline" href={`tel:${getOpsVoiceHotline()}`}>
-                      call ops hotline
-                    </a>
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            <p className="text-center text-[11px] leading-relaxed text-zinc-600">
-              ICDRRMO ops sees new incidents immediately; staff sign in at{" "}
-              <Link href="/" className="text-rose-400 underline-offset-4 hover:underline">
-                the home page
-              </Link>
-              .
-            </p>
-          </section>
-        )}
+        ) : tokens ? (
+          <SmartCitizenDashboard accessToken={tokens.accessToken} onLogout={logout} />
+        ) : null}
       </main>
       <footer className="mx-auto max-w-lg px-4 py-6 text-center text-[10px] text-zinc-600 border-t border-white/[0.04]">
         Powered by: CoreLogic

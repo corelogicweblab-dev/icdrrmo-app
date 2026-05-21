@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, UserCircle } from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { ResponderSessionProvider, useResponderSession } from "@/components/responder/responder-session-context";
+import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 
 function ResponderChrome({ children }: { children: ReactNode }): ReactElement {
   const { tokens, logout } = useResponderSession();
@@ -58,6 +59,7 @@ function ResponderChrome({ children }: { children: ReactNode }): ReactElement {
       <footer className="shrink-0 border-t border-orange-500/15 px-4 py-3 text-center text-[10px] text-zinc-600">
         Isabela City DRRMO · <span className="text-orange-400/70">Powered by: CoreLogic</span>
       </footer>
+      <IcdrrmoAiChat accessToken={tokens?.accessToken ?? null} portal="responder" />
     </div>
   );
 }
