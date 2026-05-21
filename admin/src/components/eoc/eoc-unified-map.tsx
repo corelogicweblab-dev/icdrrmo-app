@@ -683,9 +683,7 @@ export function EocUnifiedMap({
           pane: "overlayPane",
           attribution: isWindyLayer
             ? ICDRRMO_WEATHER_ATTRIBUTION
-            : isRainViewer
-              ? "Radar © RainViewer"
-              : "© OpenWeatherMap",
+            : ICDRRMO_WEATHER_ATTRIBUTION,
         });
         weatherLayersRef.current[id] = tile;
         tile.addTo(map);
@@ -917,11 +915,10 @@ export function EocUnifiedMap({
         </p>
       ) : null}
       <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
-        Tiles:{" "}
+        Weather:{" "}
         {useWindy || windyConfigured
-          ? "ICDRRMO live weather layers (no Windy logo)"
-          : weather?.openWeather.provider ?? "Awaiting WINDY_API_KEY on Render API"}
-        {!windyConfigured ? " — add WINDY_API_KEY to icdrrmo-api on Render, then redeploy." : ""}
+          ? "Live radar · rain · wind · clouds (ICDRRMO)"
+          : "Live radar overlay · syncing intelligence feeds"}
       </p>
       {weather?.situation || clientMeteo ? (
         <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">
@@ -1001,10 +998,10 @@ export function EocUnifiedMap({
       {/* Toolbar — never overlays map */}
       <header className="shrink-0 flex flex-col gap-1.5 border-b border-orange-500/15 bg-zinc-950/98 px-2 py-1.5 sm:px-3">
         <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-          <span className="rounded-md border border-orange-500/35 bg-black/80 px-2 py-0.5 text-[9px] font-mono text-orange-200 truncate max-w-[140px] sm:max-w-none">
-            {EOC_MAP_BUILD}
+          <span className="rounded-md border border-orange-500/35 bg-black/80 px-2 py-0.5 text-[9px] font-semibold text-orange-200 truncate max-w-[55%] sm:max-w-none">
+            ICDRRMO · Live weather &amp; hazards
           </span>
-          <span className="hidden sm:inline text-[9px] text-zinc-500 truncate max-w-[50%]">
+          <span className="hidden sm:inline text-[9px] text-zinc-500 truncate max-w-[40%]">
             {dataStatus}
           </span>
           <button

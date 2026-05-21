@@ -1,22 +1,11 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { usePathname } from "next/navigation";
+import { showDevDiagnostics } from "@/lib/env";
 import { ApiHealthStrip } from "@/components/api-health-strip";
 
-/** Hide the global API strip on sign-in — avoids duplicate timeout banners with the login form. */
-function shouldHideApiHealthStrip(pathname: string | null): boolean {
-  if (!pathname) return false;
-  if (pathname === "/" || pathname === "/signin") return true;
-  if (pathname.startsWith("/portals")) return true;
-  if (pathname.startsWith("/citizen")) return true;
-  if (pathname.startsWith("/responder")) return true;
-  if (pathname.startsWith("/chairman")) return true;
-  return false;
-}
-
+/** Developer-only API probe — hidden on production enterprise console. */
 export function ApiHealthStripGate(): ReactElement | null {
-  const pathname = usePathname();
-  if (shouldHideApiHealthStrip(pathname)) return null;
+  if (!showDevDiagnostics()) return null;
   return <ApiHealthStrip />;
 }

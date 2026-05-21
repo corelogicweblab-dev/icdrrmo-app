@@ -193,7 +193,7 @@ export function IsabelaWeatherDesk(props: Props): ReactElement {
         {windyActive ? (
           <span className="text-[9px] text-emerald-400/90">Live layers active</span>
         ) : (
-          <span className="text-[9px] text-amber-400/80">Set WINDY_API_KEY on Render API (icdrrmo-api)</span>
+          <span className="text-[9px] text-amber-400/80">Syncing live weather…</span>
         )}
         {metrics ? (
           <span className="text-[10px] text-zinc-400">

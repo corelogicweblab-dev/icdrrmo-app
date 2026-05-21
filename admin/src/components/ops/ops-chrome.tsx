@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LogOut, Maximize2, Minimize2, Radio, RefreshCw, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/env";
 import { OPS_NAV_SECTIONS, OPS_PAGE_TITLES } from "@/components/ops/ops-nav";
 import { isOpsGlobalAdmin } from "@/lib/decode-jwt-role";
 import { useOpsSession } from "@/components/ops/ops-session-context";
@@ -130,7 +129,7 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
               <div className="min-w-0 flex-1">
                 <h1 className="text-[14px] font-semibold tracking-tight text-white md:text-[15px] icd-text-safe">{title}</h1>
                 <p className="text-[10px] text-zinc-400 mt-0.5 icd-truncate-safe">
-                  {formatOpsClock(now)} · REST {getApiBaseUrl().replace(/^https?:\/\//, "")}
+                  {formatOpsClock(now)}
                 </p>
               </div>
               <div className="icd-badge-row">

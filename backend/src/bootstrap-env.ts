@@ -46,4 +46,15 @@ See docs/RENDER_DEPLOY.md
   if (!process.env.PORT?.trim()) {
     process.env.PORT = '4000';
   }
+
+  const windy =
+    process.env.WINDY_API_KEY?.trim() ||
+    process.env.WINDY_KEY?.trim() ||
+    process.env.WINDY_API?.trim();
+  if (!windy && process.env.NODE_ENV === 'production') {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[ICDRRMO] WINDY_API_KEY is not set — weather maps will use fallback radar until you add it on Render (icdrrmo-api → Environment).',
+    );
+  }
 }

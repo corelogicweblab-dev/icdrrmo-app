@@ -21,8 +21,11 @@ services:
           property: connectionString
       - key: CORS_ORIGINS
         value: https://icdrrmo-b204e.web.app,https://icdrrmo-b204e.firebaseapp.com
+      # Required for live weather maps on all dashboards (Render → icdrrmo-api → Environment):
+      - key: WINDY_API_KEY
+        sync: false
       # Optional — set in Render Dashboard (sync: false):
-      # GEMINI_API_KEY, GEMINI_MODEL, WINDY_API_KEY, REDIS_URL, INFOBIP_API_KEY,
+      # GEMINI_API_KEY, GEMINI_MODEL, REDIS_URL, INFOBIP_API_KEY,
       # AGENCY_*_SMS_PHONES / AGENCY_*_EMAILS, SMTP_HOST, FIREBASE_SERVICE_ACCOUNT_JSON
     # Do not set REDIS_URL unless you provision Redis (avoids ECONNREFUSED)
 

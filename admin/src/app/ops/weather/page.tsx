@@ -27,9 +27,9 @@ export default function OpsWeatherPage(): ReactElement {
     <div className="flex flex-col gap-4 p-3 lg:p-4 h-[calc(100dvh-52px)] min-h-[560px]">
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-sm font-semibold text-white">Unified hazard & weather map</h1>
+          <h1 className="text-sm font-semibold text-white">Weather &amp; disaster intelligence</h1>
           <p className="text-[11px] text-zinc-500 mt-0.5">
-            Windy API tiles (ICDRRMO) · GDACS · PAGASA — no third-party map logo
+            Live weather layers · GDACS · PAGASA · barangay hazard context
           </p>
         </div>
         <Link
@@ -67,8 +67,8 @@ export default function OpsWeatherPage(): ReactElement {
         <OpsPanelCard title="Desk note">
           <p className="text-[11px] text-zinc-500 leading-relaxed flex gap-2">
             <CloudRain className="h-4 w-4 shrink-0 text-sky-400" aria-hidden />
-            Cross-check PAGASA official bulletins before dispatch. Live weather tiles require{" "}
-            <code className="text-zinc-400">WINDY_API_KEY</code> on the API service (Render).
+            Cross-check PAGASA official bulletins before dispatch. Layers update automatically when
+            you tap Sync on the map.
           </p>
         </OpsPanelCard>
       </div>

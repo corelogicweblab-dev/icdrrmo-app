@@ -1,6 +1,7 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveWindyApiKey } from '../weather/windy-tiles.service';
 
 @Controller('health')
 export class HealthController {
@@ -12,7 +13,7 @@ export class HealthController {
     return {
       status: 'ok',
       service: 'icdrrmo-api',
-      windyTiles: Boolean(process.env.WINDY_API_KEY?.trim()),
+      windyTiles: Boolean(resolveWindyApiKey()),
     };
   }
 

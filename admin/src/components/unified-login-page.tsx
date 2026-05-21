@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { IcdAuthShell } from "@/components/icd-auth-shell";
 import { PasswordInput } from "@/components/password-input";
 import { fetchWithTimeout, wakeEmergencyApi } from "@/lib/api-fetch";
-import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
+import { getApiBaseUrl, getApiConfigWarning, showDevDiagnostics } from "@/lib/env";
 import {
   dashboardPathForToken,
   loadCitizenTokens,
@@ -146,9 +146,11 @@ export function UnifiedLoginPage(): ReactElement {
           Create a citizen account
         </Link>
       </p>
-      <p className="mt-3 text-center font-mono text-[9px] text-zinc-600" title="Firebase Hosting build">
-        LIVE BUILD · Web build {WEB_BUILD_ID} · SMART dashboards + ICDRRMO AI
-      </p>
+      {showDevDiagnostics() ? (
+        <p className="mt-3 text-center font-mono text-[9px] text-zinc-600">
+          Dev build {WEB_BUILD_ID}
+        </p>
+      ) : null}
     </IcdAuthShell>
     <IcdrrmoAiChat accessToken={null} portal="home" guestMode />
     </>

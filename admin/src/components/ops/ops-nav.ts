@@ -103,4 +103,4 @@ export const TARGET_RESPONDER_STATUSES = [
 ] as const;
 
 /** Integrations surfaced in Weather panel */
-export const WEATHER_SOURCES = ["PAGASA", "PHIVOLCS", "OpenWeatherMap", "RainViewer"] as const;
+export const WEATHER_SOURCES = ["ICDRRMO Weather", "PAGASA", "PHIVOLCS", "GDACS"] as const;
