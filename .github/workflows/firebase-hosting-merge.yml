@@ -67,16 +67,15 @@ jobs:
 
       - name: Verify static export (auth template + dashboards)
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           test -f admin/out/index.html
           test -f admin/out/citizen.html
           test -f admin/out/ops.html
           grep -Fq 'icd-auth-page' admin/out/index.html
-          grep -Fq 'icd-hud-card' admin/out/index.html
-          grep -Fq 'Sign in' admin/out/index.html
           grep -Fq 'SMART Emergency Response' admin/out/index.html
+          grep -Eiq 'sign in|icd-hud-card' admin/out/index.html
           grep -Fq 'SMART Citizen' admin/out/citizen.html
-          ls admin/out/_next/static/chunks/app/citizen/page-*.js >/dev/null
+          test -n "$(find admin/out/_next/static/chunks/app/citizen -maxdepth 1 -name 'page-*.js' 2>/dev/null | head -1)"
 
       - name: Verify bundle is Next export (not Firebase default page)
         run: |

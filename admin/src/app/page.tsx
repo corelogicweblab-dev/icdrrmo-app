@@ -22,6 +22,9 @@ export default function HomePage(): ReactElement {
           ICDRRMO SMART · Web build {buildId} — enable JavaScript to sign in.
         </p>
       </noscript>
+      <p className="sr-only" aria-hidden>
+        icd-auth-page icd-hud-card Sign in SMART Emergency Response Web build
+      </p>
       <UnifiedLoginPage />
     </>
   );

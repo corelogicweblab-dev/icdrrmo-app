@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IcdAuthShell } from "@/components/icd-auth-shell";
@@ -29,18 +29,12 @@ export function UnifiedLoginPage(): ReactElement {
   const [apiReach, setApiReach] = useState<ApiReachability | null>(null);
   const [checkingApi, setCheckingApi] = useState(true);
   const [oidcEnabled, setOidcEnabled] = useState(false);
-  /** Avoid flashing the sign-in form before auto-redirect when a valid session exists. */
-  const [sessionChecked, setSessionChecked] = useState(false);
   const apiWarning = getApiConfigWarning();
 
-  useEffect(() => {
+  /** Redirect before paint when a stored session exists — keep form in SSR/HTML (CI + no layout swap). */
+  useLayoutEffect(() => {
     purgeInvalidStoredSessions();
-    const pairs = [
-      loadCitizenTokens(),
-      loadChairmanTokens(),
-      loadOpsTokens(),
-    ];
-    for (const pair of pairs) {
+    for (const pair of [loadCitizenTokens(), loadChairmanTokens(), loadOpsTokens()]) {
       if (!pair?.accessToken) continue;
       const path = dashboardPathForToken(pair.accessToken);
       if (path) {
@@ -48,7 +42,6 @@ export function UnifiedLoginPage(): ReactElement {
         return;
       }
     }
-    setSessionChecked(true);
   }, [router]);
 
   useEffect(() => {
@@ -98,14 +91,6 @@ export function UnifiedLoginPage(): ReactElement {
     } finally {
       setBusy(false);
     }
-  }
-
-  if (!sessionChecked) {
-    return (
-      <div className="icd-auth-page min-h-[100dvh] flex items-center justify-center text-sm text-zinc-500">
-        Checking session…
-      </div>
-    );
   }
 
   return (
