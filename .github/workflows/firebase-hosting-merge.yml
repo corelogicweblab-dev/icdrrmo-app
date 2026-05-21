@@ -72,9 +72,9 @@ jobs:
           test -f admin/out/chairman.html
           test -f admin/out/ops.html
           grep -q 'SMART Citizen Dashboard' admin/out/citizen.html
+          grep -q 'icd-auth-page' admin/out/index.html
           grep -q 'ICDRRMO SMART Emergency Response' admin/out/index.html
-          grep -q 'LIVE BUILD' admin/out/index.html
-          grep -q 'ICDRRMO AI' admin/out/index.html
+          grep -q 'Web build' admin/out/index.html
           test -n "$(find admin/out/_next/static/chunks/app/citizen -name 'page-*.js' | head -1)"
 
       - name: Verify bundle is Next export (not Firebase default page)

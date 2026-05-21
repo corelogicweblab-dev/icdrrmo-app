@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Legacy URL — unified sign-in is at `/`; citizen registration at `/citizen`. */
+/** Legacy URL — sign-in at `/`; registration at `/citizen?register=1`. */
 export default function SigninCitizenRedirectPage() {
-  redirect("/");
+  redirect("/citizen?register=1");
 }

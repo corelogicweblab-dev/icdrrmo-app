@@ -75,10 +75,10 @@ export function RoleGatewayHome(): ReactElement {
             Citizens: SMART dashboard with SOS + map + AI. Responders and operators use accredited accounts.
           </p>
           <Link
-            href="/signin"
+            href="/"
             className="mt-3 inline-block text-xs font-semibold text-orange-300 hover:text-orange-200 underline-offset-2 hover:underline"
           >
-            Single sign-in (email + password) → auto-routes by role
+            Unified sign-in (email + password) → auto-routes by role
           </Link>
         </div>
 

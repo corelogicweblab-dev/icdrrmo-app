@@ -17,6 +17,7 @@ import {
 } from "@/lib/unified-auth";
 import { loadChairmanTokens } from "@/components/chairman/chairman-storage";
 import { loadOpsTokens } from "@/components/ops/ops-storage";
+import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 import { WEB_BUILD_ID } from "@/lib/web-build-id";
 
 export function UnifiedLoginPage(): ReactElement {
@@ -107,6 +108,7 @@ export function UnifiedLoginPage(): ReactElement {
   }
 
   return (
+    <>
     <IcdAuthShell title="Sign in" subtitle="Use the email and password issued for your role.">
       {apiWarning ? (
         <div
@@ -177,13 +179,19 @@ export function UnifiedLoginPage(): ReactElement {
 
       <p className="mt-6 text-center text-xs text-zinc-500">
         New resident?{" "}
-        <Link href="/citizen" className="icd-link">
+        <Link href="/citizen?register=1" className="icd-link">
           Create a citizen account
+        </Link>
+        {" · "}
+        <Link href="/portals" className="icd-link text-zinc-600">
+          Portal shortcuts
         </Link>
       </p>
       <p className="mt-3 text-center font-mono text-[9px] text-zinc-600" title="Firebase Hosting build">
-        Web build {WEB_BUILD_ID} · SMART dashboards + ICDRRMO AI
+        LIVE BUILD · Web build {WEB_BUILD_ID} · SMART dashboards + ICDRRMO AI
       </p>
     </IcdAuthShell>
+    <IcdrrmoAiChat accessToken={null} portal="home" guestMode />
+    </>
   );
 }

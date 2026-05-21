@@ -119,6 +119,14 @@ body {
 }
 
 /* App shell — all interactive UI sits above backdrop with safe spacing */
+/* Unified auth template at `/` — hide duplicate chrome (health strip, footer). */
+.icd-app-shell:has(.icd-auth-page) > :not(.icd-app-main) {
+  display: none;
+}
+.icd-app-shell:has(.icd-auth-page) .icd-app-footer {
+  display: none;
+}
+
 .icd-app-shell {
   position: relative;
   z-index: 10;

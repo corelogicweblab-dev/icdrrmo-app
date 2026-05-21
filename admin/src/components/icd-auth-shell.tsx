@@ -2,6 +2,7 @@
 
 import type { ReactElement, ReactNode } from "react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
+import { WEB_BUILD_ID } from "@/lib/web-build-id";
 
 const ROLE_CHIPS = [
   { label: "Citizen", desc: "SOS · profile · alerts" },
@@ -67,7 +68,7 @@ export function IcdAuthShell(props: IcdAuthShellProps): ReactElement {
           <div className="icd-auth-status-bar">
             <span className="icd-live-dot inline-block h-2 w-2 rounded-full" aria-hidden />
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-orange-200/90">
-              Secure channel · ICDRRMO v2
+              LIVE BUILD {WEB_BUILD_ID.slice(0, 12)} · Secure channel
             </span>
           </div>
         </div>

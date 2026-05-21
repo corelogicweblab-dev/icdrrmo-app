@@ -1,13 +1,12 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Loader2,
-  Lock,
   LogOut,
   UserCircle,
   UserPlus,
@@ -70,9 +69,12 @@ function loadTokens(): Tokens | null {
 
 type PublicBarangay = { id: string; name: string; code: string };
 
-export default function CitizenPage(): ReactElement {
+function CitizenPageInner(): ReactElement {
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "register">("signin");
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"signin" | "register">(
+    searchParams.get("register") === "1" ? "register" : "signin",
+  );
   const [tokens, setTokens] = useState<Tokens | null>(null);
 
   const [email, setEmail] = useState("");
@@ -124,6 +126,16 @@ export default function CitizenPage(): ReactElement {
   }, []);
 
   useEffect(() => {
+    if (searchParams.get("register") === "1") setMode("register");
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!tokens && mode === "signin") {
+      router.replace("/");
+    }
+  }, [tokens, mode, router]);
+
+  useEffect(() => {
     if (mode !== "register") return;
     let cancelled = false;
     (async () => {
@@ -139,38 +151,6 @@ export default function CitizenPage(): ReactElement {
       cancelled = true;
     };
   }, [mode]);
-
-  async function login(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    setMsg(null);
-    setBusy(true);
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await res.json().catch(() => ({}))) as Partial<Tokens> & { message?: string };
-      if (!res.ok) {
-        setMsg(data.message ?? `Cannot sign in (${res.status}).`);
-        return;
-      }
-      if (!data.accessToken) {
-        setMsg("Invalid response from server.");
-        return;
-      }
-      const pair: Tokens = {
-        accessToken: data.accessToken,
-        ...(typeof data.refreshToken === "string" ? { refreshToken: data.refreshToken } : {}),
-      };
-      saveTokens(pair);
-      setTokens(pair);
-    } catch {
-      setMsg("Network error — check that the API is running and URL rewrites are correct.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function register(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -329,63 +309,15 @@ export default function CitizenPage(): ReactElement {
           </div>
         ) : null}
 
-        {!tokens ? (
+        {!tokens && mode === "register" ? (
           <section className="rounded-2xl icd-surface p-5 shadow-panel">
-            <div className="flex gap-2 rounded-xl bg-black/35 p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("signin");
-                  setMsg(null);
-                }}
-                className={`flex-1 rounded-lg py-2 text-xs font-semibold uppercase tracking-wide ${mode === "signin" ? "bg-white/10 text-white" : "text-zinc-500"}`}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("register");
-                  setMsg(null);
-                }}
-                className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-semibold uppercase tracking-wide ${mode === "register" ? "bg-white/10 text-white" : "text-zinc-500"}`}
-              >
-                <UserPlus className="h-3 w-3" aria-hidden /> Register
-              </button>
-            </div>
-
-            {mode === "signin" ? (
-              <form onSubmit={login} className="mt-6 space-y-4">
-                <Field label="Email">
-                  <input
-                    required
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
-                  />
-                </Field>
-                <Field label="Password">
-                  <PasswordInput
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    inputClassName="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
-                  />
-                </Field>
-                <button
-                  disabled={busy}
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-                  Unlock emergency tools
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={register} className="mt-6 space-y-4">
+            <p className="mb-4 text-center text-xs text-zinc-500">
+              Already registered?{" "}
+              <Link href="/" className="text-orange-300 underline">
+                Sign in on home
+              </Link>
+            </p>
+              <form onSubmit={register} className="space-y-4">
                 <Field label="Full name">
                   <input
                     required
@@ -529,7 +461,6 @@ export default function CitizenPage(): ReactElement {
                   Create citizen account
                 </button>
               </form>
-            )}
           </section>
         ) : tokens ? (
           <SmartCitizenDashboard accessToken={tokens.accessToken} onLogout={logout} />
@@ -539,6 +470,20 @@ export default function CitizenPage(): ReactElement {
         Powered by: CoreLogic
       </footer>
     </div>
+  );
+}
+
+export default function CitizenPage(): ReactElement {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50dvh] items-center justify-center text-sm text-zinc-500">
+          Loading citizen portal…
+        </div>
+      }
+    >
+      <CitizenPageInner />
+    </Suspense>
   );
 }
 
