@@ -31,6 +31,28 @@ export function tileLayersFromWeather(wx: EocWeatherBundle | null): Array<{
   return wx?.openWeather.layers ?? [];
 }
 
+export function applyOpenMeteoPagasaHint(
+  geo: MergedHazardGeoJson | null,
+  openMeteo: { weatherLabel: string; headline: string } | null,
+): MergedHazardGeoJson | null {
+  if (!openMeteo || (geo?.layers.pagasa.features.length ?? 0) > 0) return geo;
+  return applyPagasaWeatherToGeo(geo, {
+    pagasa: {
+      source: "Open-Meteo (browser)",
+      fetchedAt: new Date().toISOString(),
+      items: [
+        {
+          id: "open-meteo-live",
+          title: openMeteo.weatherLabel,
+          link: "https://open-meteo.com/",
+          pubDate: "",
+          summary: openMeteo.headline,
+        },
+      ],
+    },
+  } as EocWeatherBundle);
+}
+
 export function applyPagasaWeatherToGeo(
   geo: MergedHazardGeoJson | null,
   wx: EocWeatherBundle | null,
