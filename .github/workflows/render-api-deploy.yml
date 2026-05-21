@@ -1,4 +1,4 @@
-# Deploy ICDRRMO API to Render on push to main (configure RENDER_DEPLOY_HOOK_URL in repo secrets).
+# Deploy ICDRRMO API to Render on push to main (set RENDER_DEPLOY_HOOK_URL in repo secrets).
 name: Deploy API (Render)
 
 on:
@@ -23,10 +23,13 @@ jobs:
           npm run build
 
       - name: Trigger Render deploy hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
-        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-
-      - name: Skip hook (secret not set)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          echo "Set RENDER_DEPLOY_HOOK_URL repository secret to enable automatic Render deploys."
+          set -euo pipefail
+          if [ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set — skipping automatic Render deploy."
+            exit 0
+          fi
+          curl -fsS -X POST "${RENDER_DEPLOY_HOOK_URL}"
+          echo "Render deploy hook triggered."

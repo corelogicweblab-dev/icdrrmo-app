@@ -65,17 +65,21 @@ jobs:
           NEXT_PUBLIC_WEB_BUILD_ID: ${{ github.sha }}
         run: npm ci && npm run export
 
-      - name: Verify SMART citizen + AI bundles in export
+      - name: Verify SMART export bundles (auth template + dashboards)
         run: |
           set -euo pipefail
           test -f admin/out/citizen.html
           test -f admin/out/chairman.html
           test -f admin/out/ops.html
-          grep -q 'SMART Citizen Dashboard' admin/out/citizen.html
+          test -f admin/out/index.html
           grep -q 'icd-auth-page' admin/out/index.html
+          grep -q 'icd-hud-card' admin/out/index.html
           grep -q 'ICDRRMO SMART Emergency Response' admin/out/index.html
           grep -q 'Web build' admin/out/index.html
-          test -n "$(find admin/out/_next/static/chunks/app/citizen -name 'page-*.js' | head -1)"
+          grep -q 'SMART Citizen Dashboard' admin/out/citizen.html
+          CITIZEN_CHUNK="$(find admin/out/_next/static/chunks/app/citizen -maxdepth 1 -name 'page-*.js' -print -quit)"
+          test -n "${CITIZEN_CHUNK}"
+          grep -q 'smart-citizen-dashboard' "${CITIZEN_CHUNK}" || grep -q 'SmartCitizenDashboard' "${CITIZEN_CHUNK}"
 
       - name: Verify bundle is Next export (not Firebase default page)
         run: |
