@@ -31,8 +31,12 @@ export class WeatherController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...EOC_WEATHER_ROLES)
   @Get()
-  eocBundle() {
-    return this.weather.getEocWeatherBundle();
+  async eocBundle() {
+    const [bundle, hazardGeo] = await Promise.all([
+      this.weather.getEocWeatherBundle(),
+      this.geoMerge.buildMergedGeoJson(),
+    ]);
+    return { ...bundle, hazardGeo };
   }
 
   /**

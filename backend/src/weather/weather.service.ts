@@ -1,6 +1,4 @@
 import {
-  forwardRef,
-  Inject,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -10,8 +8,6 @@ import Redis from 'ioredis';
 import { ISABELA_HAZARD_DISCLAIMER, ISABELA_HAZARD_ZONES } from './isabela-hazard-reference';
 import { FreeWeatherTilesService } from './free-weather-tiles.service';
 import { PagasaRssService, type PagasaAdvisoryItem } from './pagasa-rss.service';
-import type { MergedHazardGeoJsonBundle } from './geojson.types';
-import { WeatherGeojsonMergeService } from './weather-geojson-merge.service';
 
 export type OpenWeatherLayerConfig = {
   id: string;
@@ -36,8 +32,6 @@ export type EocWeatherBundle = {
   };
   /** Client can use RainViewer without API key */
   rainViewer: { available: boolean };
-  /** Merged OWM + GDACS + PAGASA GeoJSON (single call for map desk). */
-  hazardGeo: MergedHazardGeoJsonBundle;
 };
 
 /** CDRRMO reference point — Isabela City proper (WGS84). */
@@ -151,8 +145,6 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly pagasa: PagasaRssService,
     private readonly freeTiles: FreeWeatherTilesService,
-    @Inject(forwardRef(() => WeatherGeojsonMergeService))
-    private readonly geoMerge: WeatherGeojsonMergeService,
   ) {}
 
   private redis: Redis | null = null;
@@ -545,18 +537,16 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getEocWeatherBundle(): Promise<EocWeatherBundle> {
-    const [situation, pagasa, openWeather, hazardGeo] = await Promise.all([
+    const [situation, pagasa, openWeather] = await Promise.all([
       this.getSituationSnapshot(),
       this.pagasa.fetchAdvisories(),
       this.resolveTileLayers(),
-      this.geoMerge.buildMergedGeoJson(),
     ]);
     return {
       situation,
       pagasa,
       openWeather,
       rainViewer: { available: true },
-      hazardGeo,
     };
   }
 }
