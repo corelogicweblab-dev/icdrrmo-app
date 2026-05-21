@@ -5,7 +5,7 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
-import { IncidentStatus } from '@prisma/client';
+import { IncidentStatus, RoutedAgency } from '@prisma/client';
 
 export class PatchIncidentDto {
   @IsOptional()
@@ -24,4 +24,9 @@ export class PatchIncidentDto {
   @IsOptional()
   @IsBoolean()
   notifyReporterSms?: boolean;
+
+  /** EOC override — reroute incident to another agency queue (audited). */
+  @IsOptional()
+  @IsEnum(RoutedAgency)
+  routedAgency?: RoutedAgency;
 }

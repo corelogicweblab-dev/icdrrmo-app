@@ -8,31 +8,10 @@ import type {
   IncidentNotifyJobData,
   SmsRetryJobData,
 } from '../jobs/jobs.service';
+import { sendOutboundSms } from '../communications/sms-sender';
 
 const NOTIFICATION_FANOUT = 'notification-fanout';
 const SMS_RETRY = 'sms-retry';
-
-async function sendViaGateway(
-  toPhone: string,
-  message: string,
-): Promise<{ ok: boolean; response: string }> {
-  const url = process.env.SMS_GATEWAY_URL?.trim();
-  const secret = process.env.SMS_GATEWAY_API_KEY?.trim();
-  if (!url) {
-    return { ok: false, response: 'SMS_GATEWAY_URL not configured' };
-  }
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
-    },
-    body: JSON.stringify({ to: toPhone, message }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  const text = await res.text();
-  return { ok: res.ok, response: text.slice(0, 2000) };
-}
 
 async function main(): Promise<void> {
   const redisUrl = process.env.REDIS_URL;
@@ -102,7 +81,7 @@ async function main(): Promise<void> {
         return;
       }
 
-      const { ok, response } = await sendViaGateway(phone, d.message);
+      const { ok, response } = await sendOutboundSms(phone, d.message);
       if (d.logId) {
         await smsOutbound.update({
           where: { id: d.logId },

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IcdAuthShell } from "@/components/icd-auth-shell";
 import { PasswordInput } from "@/components/password-input";
-import { fetchWithTimeout } from "@/lib/api-fetch";
+import { fetchWithTimeout, wakeEmergencyApi } from "@/lib/api-fetch";
 import { getApiBaseUrl, getApiConfigWarning } from "@/lib/env";
 import {
   dashboardPathForToken,
@@ -43,6 +43,10 @@ export function UnifiedLoginPage(): ReactElement {
   }, [router]);
 
   useEffect(() => {
+    void wakeEmergencyApi();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       const oidc = await fetchWithTimeout(`${getApiBaseUrl()}/auth/oidc/status`)
@@ -62,8 +66,6 @@ export function UnifiedLoginPage(): ReactElement {
     setMsg(null);
     setBusy(true);
     try {
-      setMsg("Connecting to ICDRRMO servers…");
-
       const result = await loginWithRoleRouting(email, password);
       if (!result.ok) {
         setMsg(result.message);
@@ -118,14 +120,8 @@ export function UnifiedLoginPage(): ReactElement {
           </p>
         ) : null}
         <button type="submit" disabled={busy} className="icd-btn-primary py-3">
-          {busy ? "Connecting… (up to 90s on first load)" : "Continue"}
+          {busy ? "Signing in…" : "Continue"}
         </button>
-        {!busy && !msg ? (
-          <p className="text-[10px] text-zinc-500 text-center">
-            First sign-in after idle may take up to 90 seconds — keep this page open and tap Continue
-            once.
-          </p>
-        ) : null}
       </form>
 
       {oidcEnabled ? (
@@ -148,10 +144,6 @@ export function UnifiedLoginPage(): ReactElement {
         New resident?{" "}
         <Link href="/citizen?register=1" className="icd-link">
           Create a citizen account
-        </Link>
-        {" · "}
-        <Link href="/portals" className="icd-link text-zinc-600">
-          Portal shortcuts
         </Link>
       </p>
       <p className="mt-3 text-center font-mono text-[9px] text-zinc-600" title="Firebase Hosting build">

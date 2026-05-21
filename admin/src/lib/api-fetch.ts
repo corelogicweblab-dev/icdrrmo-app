@@ -28,7 +28,9 @@ export function formatApiReachabilityError(err: unknown, context: "health" | "lo
         ? "Sign-in timed out. Start the API (npm run dev:api) and database (npm run db:setup), then try again."
         : "API timed out. Ensure Postgres is running (npm run db:setup) and the API is started (npm run dev:api).";
     }
-    return "The ICDRRMO server is waking up (first request can take up to 90 seconds on Render). Please wait, then tap Continue again.";
+    return context === "login"
+      ? "Sign-in is taking longer than usual. Keep this page open and tap Continue again in a moment."
+      : "The emergency API is slow to respond. Wait a moment, then try again.";
   }
   if (isLocalDevHost()) {
     return "Cannot reach the API. Run npm run db:setup, then npm run dev:api and npm run dev:admin.";

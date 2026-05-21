@@ -1,11 +1,24 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Users as UsersIcon } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
+import { decodeJwtPayload, isOpsGlobalAdmin } from "@/lib/decode-jwt-role";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
+
+const OPERATOR_ASSIGN_ROLES = ["BARANGAY_CHAIRMAN", "RESPONDER"] as const;
+const ADMIN_ASSIGN_ROLES = [
+  "CITIZEN",
+  "RESPONDER",
+  "BARANGAY_CHAIRMAN",
+  "OPERATOR",
+  "ADMIN",
+  "SUPER_ADMIN",
+] as const;
+
+const NO_ASSIGN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "OPERATOR", "AUDITOR"]);
 
 type UserRow = {
   id: string;
@@ -25,6 +38,14 @@ type ListResponse = {
 
 export default function OpsUsersPage(): ReactElement {
   const { tokens } = useOpsSession();
+  const actorRole = useMemo(
+    () => (tokens?.accessToken ? decodeJwtPayload(tokens.accessToken)?.role : undefined),
+    [tokens?.accessToken],
+  );
+  const globalAdmin = isOpsGlobalAdmin(tokens?.accessToken);
+  const assignableRoles = globalAdmin ? ADMIN_ASSIGN_ROLES : OPERATOR_ASSIGN_ROLES;
+  const canAssignRoles =
+    actorRole === "OPERATOR" || actorRole === "ADMIN" || actorRole === "SUPER_ADMIN";
   const [page, setPage] = useState(1);
   const [searchDraft, setSearchDraft] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -33,6 +54,8 @@ export default function OpsUsersPage(): ReactElement {
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [roleDraft, setRoleDraft] = useState<Record<string, string>>({});
+  const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -54,6 +77,25 @@ export default function OpsUsersPage(): ReactElement {
     }
   }, [tokens?.accessToken, page, appliedSearch, role]);
 
+  async function saveUserRole(userId: string): Promise<void> {
+    if (!tokens?.accessToken) return;
+    const nextRole = roleDraft[userId];
+    if (!nextRole) return;
+    setRoleBusyId(userId);
+    setErr(null);
+    try {
+      await opsFetchJson(`/users/${userId}`, tokens.accessToken, {
+        method: "PATCH",
+        body: JSON.stringify({ role: nextRole }),
+      });
+      setReloadNonce((n) => n + 1);
+    } catch (e: unknown) {
+      setErr(e instanceof OpsApiError ? e.body?.slice(0, 240) ?? e.message : "Role update failed");
+    } finally {
+      setRoleBusyId(null);
+    }
+  }
+
   useEffect(() => {
     void load();
   }, [load, reloadNonce]);
@@ -70,7 +112,14 @@ export default function OpsUsersPage(): ReactElement {
 
   return (
     <div className="p-4 lg:p-6 space-y-4">
-      <OpsPanelCard title="Directory" subtitle="Search and paginate user accounts (administrator tools)">
+      <OpsPanelCard
+        title="Directory"
+        subtitle={
+          canAssignRoles
+            ? "Search users · operators assign Barangay Chairman or Responder in their barangay"
+            : "Search and paginate user accounts"
+        }
+      >
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-[11px] text-zinc-500">
             Search email
@@ -101,6 +150,7 @@ export default function OpsUsersPage(): ReactElement {
             >
               <option value="">All</option>
               <option value="CITIZEN">CITIZEN</option>
+              <option value="BARANGAY_CHAIRMAN">BARANGAY_CHAIRMAN</option>
               <option value="RESPONDER">RESPONDER</option>
               <option value="OPERATOR">OPERATOR (dispatcher)</option>
               <option value="ADMIN">ADMIN</option>
@@ -133,10 +183,14 @@ export default function OpsUsersPage(): ReactElement {
                   <th className="px-3 py-2">Barangay</th>
                   <th className="px-3 py-2">Active</th>
                   <th className="px-3 py-2">Online*</th>
+                  {canAssignRoles ? <th className="px-3 py-2">Assign role</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04] text-zinc-200">
-                {(data?.items ?? []).map((u) => (
+                {(data?.items ?? []).map((u) => {
+                  const draft = roleDraft[u.id] ?? u.role;
+                  const showAssign = canAssignRoles && !NO_ASSIGN_ROLES.has(u.role);
+                  return (
                   <tr key={u.id} className="hover:bg-white/[0.02]">
                     <td className="px-3 py-2 font-mono text-[11px]">{u.email}</td>
                     <td className="px-3 py-2">{u.profile?.fullName ?? "—"}</td>
@@ -144,8 +198,40 @@ export default function OpsUsersPage(): ReactElement {
                     <td className="px-3 py-2 text-zinc-400">{u.profile?.barangay?.name ?? "—"}</td>
                     <td className="px-3 py-2">{u.isActive ? "yes" : "no"}</td>
                     <td className="px-3 py-2">{u.online ? "likely" : "—"}</td>
+                    {canAssignRoles ? (
+                      <td className="px-3 py-2">
+                        {showAssign ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <select
+                              value={draft}
+                              onChange={(e) =>
+                                setRoleDraft((prev) => ({ ...prev, [u.id]: e.target.value }))
+                              }
+                              className="rounded border border-orange-500/20 bg-black/40 px-2 py-1 text-[11px] text-zinc-100"
+                            >
+                              {assignableRoles.map((r) => (
+                                <option key={r} value={r}>
+                                  {r === "BARANGAY_CHAIRMAN" ? "Chairman" : r}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={roleBusyId === u.id || draft === u.role}
+                              onClick={() => void saveUserRole(u.id)}
+                              className="rounded border border-rose-500/30 px-2 py-1 text-[10px] font-semibold text-rose-100 disabled:opacity-40"
+                            >
+                              {roleBusyId === u.id ? "…" : "Save"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-zinc-600">—</span>
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -175,8 +261,9 @@ export default function OpsUsersPage(): ReactElement {
           </div>
         </div>
         <p className="mt-2 text-[10px] text-zinc-600">
-          *Online heuristic: device token seen in the last 2 minutes. User create, update, and retire actions require an
-          administrator account.
+          *Online heuristic: device token seen in the last 2 minutes. EOC operators assign{" "}
+          <span className="text-zinc-400">Chairman</span> or <span className="text-zinc-400">Responder</span> for users
+          in their barangay. Full account create/retire requires an administrator.
         </p>
       </OpsPanelCard>
     </div>

@@ -55,6 +55,14 @@ enum EmergencyType {
   OTHER
 }
 
+/// Agency queue for unified ops routing (BFP, PNP, ICDRRMO medical/ops).
+enum RoutedAgency {
+  BFP
+  PNP
+  ICDRRMO_MEDICAL
+  ICDRRMO_OPS
+}
+
 enum IncidentStatus {
   OPEN
   ACKNOWLEDGED
@@ -275,6 +283,8 @@ model Incident {
   assignedResponderId   String?          @map("assigned_responder_id")
   barangayId            String?          @map("barangay_id")
   type                  EmergencyType
+  routedAgency          RoutedAgency?    @map("routed_agency")
+  routedAgencyOverride  Boolean          @default(false) @map("routed_agency_override")
   status                IncidentStatus   @default(OPEN)
   channel               IncidentChannel  @default(MOBILE_APP)
   title                 String?
@@ -303,6 +313,7 @@ model Incident {
   @@index([assignedResponderId])
   @@index([barangayId])
   @@index([type, status])
+  @@index([routedAgency, status])
   @@map("incidents")
 }
 

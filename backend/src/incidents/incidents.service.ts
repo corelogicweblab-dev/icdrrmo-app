@@ -13,6 +13,7 @@ import {
   IncidentStatus,
   Prisma,
   ResponderStatus,
+  RoutedAgency,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,6 +30,8 @@ import {
 } from '../common/ops-operator-scope';
 import { ChairmanAlertsService } from '../chairman/chairman-alerts.service';
 import { CommunicationsService } from '../communications/communications.service';
+import { IncidentNotificationsService } from './incident-notifications.service';
+import { resolveRoutedAgency } from './incident-routing';
 
 const DEDUPE_WINDOW_MS = 120_000;
 
@@ -42,12 +45,13 @@ export class IncidentsService {
     private readonly jobs: JobsService,
     private readonly chairmanAlerts: ChairmanAlertsService,
     private readonly communications: CommunicationsService,
+    private readonly incidentNotify: IncidentNotificationsService,
   ) {}
 
   async createSosFromApp(
     user: JwtPayload,
     dto: CreateSosDto,
-  ): Promise<{ incidentId: string; deduplicated: boolean }> {
+  ): Promise<{ incidentId: string; deduplicated: boolean; routedAgency?: RoutedAgency }> {
     await this.assertSosRateLimit(user.sub);
     const recent = await this.prisma.incident.findFirst({
       where: {
@@ -59,7 +63,11 @@ export class IncidentsService {
     });
     if (recent) {
       this.logger.warn(`SOS dedupe hit for user=${user.sub} incident=${recent.id}`);
-      return { incidentId: recent.id, deduplicated: true };
+      return {
+        incidentId: recent.id,
+        deduplicated: true,
+        routedAgency: recent.routedAgency ?? undefined,
+      };
     }
     const profile = await this.prisma.userProfile.findUnique({
       where: { userId: user.sub },
@@ -72,10 +80,12 @@ export class IncidentsService {
       orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
       take: 5,
     });
+    const routedAgency = resolveRoutedAgency(dto.type);
     const incident = await this.prisma.incident.create({
       data: {
         reporterId: user.sub,
         type: dto.type,
+        routedAgency,
         channel: IncidentChannel.MOBILE_APP,
         latitude: dto.latitude,
         longitude: dto.longitude,
@@ -126,7 +136,7 @@ export class IncidentsService {
       barangayId: incident.barangayId,
       createdAt: incident.createdAt,
     });
-    return { incidentId: incident.id, deduplicated: false };
+    return { incidentId: incident.id, deduplicated: false, routedAgency };
   }
 
   async createFromSms(params: {
@@ -137,10 +147,12 @@ export class IncidentsService {
     battery: number | null;
     rawBody: string;
   }): Promise<{ incidentId: string }> {
+    const routedAgency = resolveRoutedAgency(params.type);
     const incident = await this.prisma.incident.create({
       data: {
         reporterId: params.reporterId,
         type: params.type,
+        routedAgency,
         channel: IncidentChannel.SMS,
         latitude: params.latitude,
         longitude: params.longitude,
@@ -153,8 +165,17 @@ export class IncidentsService {
       data: {
         incidentId: incident.id,
         action: 'incident_created',
-        details: { source: 'sms' },
+        details: { source: 'sms', routedAgency },
       },
+    });
+    void this.incidentNotify.notifyOnIncidentCreated({
+      incidentId: incident.id,
+      type: incident.type,
+      routedAgency,
+      reporterId: incident.reporterId,
+      latitude: Number(incident.latitude),
+      longitude: Number(incident.longitude),
+      barangayId: incident.barangayId,
     });
     this.realtime.emitIncidentCreated({
       incidentId: incident.id,
@@ -298,7 +319,12 @@ export class IncidentsService {
       }
     }
 
-    if (dto.status === undefined && dto.assignedResponderId === undefined && !dto.notifyReporterSms) {
+    if (
+      dto.status === undefined &&
+      dto.assignedResponderId === undefined &&
+      !dto.notifyReporterSms &&
+      dto.routedAgency === undefined
+    ) {
       throw new BadRequestException('No mutable fields supplied');
     }
 
@@ -337,6 +363,8 @@ export class IncidentsService {
       status?: IncidentStatus;
       assignedResponderId?: string | null;
       closedAt?: Date | null;
+      routedAgency?: RoutedAgency;
+      routedAgencyOverride?: boolean;
     } = {};
 
     if (dto.status !== undefined) {
@@ -361,6 +389,11 @@ export class IncidentsService {
 
     if (dto.assignedResponderId !== undefined) {
       data.assignedResponderId = dto.assignedResponderId;
+    }
+
+    if (dto.routedAgency !== undefined) {
+      data.routedAgency = dto.routedAgency;
+      data.routedAgencyOverride = true;
     }
 
     if (Object.keys(data).length === 0 && !dto.notifyReporterSms) {
@@ -409,12 +442,19 @@ export class IncidentsService {
       ...(dto.assignedResponderId !== undefined
         ? { assignedResponderId: dto.assignedResponderId }
         : {}),
+      ...(dto.routedAgency !== undefined
+        ? {
+            routedAgency: dto.routedAgency,
+            previousRoutedAgency: existing.routedAgency,
+            override: true,
+          }
+        : {}),
     };
 
     await this.prisma.incidentLog.create({
       data: {
         incidentId: id,
-        action: 'incident_updated',
+        action: dto.routedAgency !== undefined ? 'agency_reroute' : 'incident_updated',
         details: logDetails as Prisma.InputJsonValue,
         createdById: user.sub,
       },
@@ -495,10 +535,12 @@ export class IncidentsService {
       const b = await this.prisma.barangay.findUnique({ where: { id: barangayId } });
       if (!b) throw new BadRequestException('Invalid barangayId');
     }
+    const routedAgency = resolveRoutedAgency(dto.type);
     const incident = await this.prisma.incident.create({
       data: {
         reporterId: user.sub,
         type: dto.type,
+        routedAgency,
         status: dto.status ?? IncidentStatus.OPEN,
         channel: IncidentChannel.ADMIN,
         latitude: dto.latitude,

@@ -21,13 +21,15 @@ import {
 import { useCitizenRealtime } from "@/hooks/use-citizen-realtime";
 import { getApiBaseUrl, getOpsVoiceHotline } from "@/lib/env";
 import { SMART_CITIZEN_BUILD } from "@/lib/citizen-dashboard-meta";
+import { defaultAgencyForType, routedAgencyLabel } from "@/lib/incident-routing";
 import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 
 const SOS_TYPES = [
-  { id: "FLOOD", label: "Flood" },
-  { id: "FIRE", label: "Fire" },
   { id: "MEDICAL_EMERGENCY", label: "Medical" },
+  { id: "FIRE", label: "Fire" },
+  { id: "FLOOD", label: "Flood" },
   { id: "TYPHOON", label: "Typhoon" },
+  { id: "CRIME", label: "Crime" },
   { id: "OTHER", label: "Other" },
 ] as const;
 
@@ -46,6 +48,7 @@ type SosPanel = {
   userLat: number;
   userLon: number;
   emergencyLabel: string;
+  routedAgency?: string;
 };
 
 export function SmartCitizenDashboard(props: {
@@ -164,6 +167,7 @@ export function SmartCitizenDashboard(props: {
       const body = (await res.json()) as {
         incidentId?: string;
         deduplicated?: boolean;
+        routedAgency?: string;
         message?: string;
       };
       if (!res.ok) throw new Error(body.message ?? `SOS failed (${res.status})`);
@@ -174,6 +178,7 @@ export function SmartCitizenDashboard(props: {
         userLat: useLat!,
         userLon: useLon!,
         emergencyLabel: label,
+        routedAgency: body.routedAgency ?? defaultAgencyForType(sosKind),
       });
       void loadFeed();
     } catch (ex: unknown) {
@@ -270,6 +275,12 @@ export function SmartCitizenDashboard(props: {
 
           {sosPanel ? (
             <div className="rounded-xl border border-orange-500/30 bg-orange-950/25 p-4 space-y-3">
+              <p className="text-xs text-emerald-200/90" role="status">
+                Report received
+                {sosPanel.deduplicated ? " (existing open incident)" : ""}. Routed to{" "}
+                <strong>{routedAgencyLabel(sosPanel.routedAgency)}</strong>. Confirmation sent by push, SMS, and email
+                when configured.
+              </p>
               <CitizenSosLifecycle
                 accessToken={props.accessToken}
                 incidentId={sosPanel.incidentId}

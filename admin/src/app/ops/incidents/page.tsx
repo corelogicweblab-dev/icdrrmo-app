@@ -34,6 +34,7 @@ import { IncidentTimeline } from "@/components/ops/incident-timeline";
 import { OpsIncidentVoicePanel } from "@/components/ops-incident-voice-panel";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
+import { ROUTED_AGENCIES, routedAgencyLabel } from "@/lib/incident-routing";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 import { API_INCIDENTS_RESPONDERS_ASSIGNABLE_PATH } from "@/lib/ops-api-paths";
 import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
@@ -78,6 +79,7 @@ export default function OpsIncidentsPage(): ReactElement {
   const [statusDraft, setStatusDraft] = useState<string>("OPEN");
   const [assignDraft, setAssignDraft] = useState<string>("");
   const [notifySms, setNotifySms] = useState(false);
+  const [agencyDraft, setAgencyDraft] = useState("");
   const [patchError, setPatchError] = useState<string | null>(null);
   const [patchLoading, setPatchLoading] = useState(false);
 
@@ -159,6 +161,7 @@ export default function OpsIncidentsPage(): ReactElement {
     if (!selected) return;
     setStatusDraft(selected.status?.toUpperCase() ?? "OPEN");
     setAssignDraft(selected.assigned?.id ?? selected.assignedResponderId ?? "");
+    setAgencyDraft(selected.routedAgency ?? "");
   }, [selected]);
 
   useEffect(() => {
@@ -353,6 +356,12 @@ export default function OpsIncidentsPage(): ReactElement {
                       </span>
                     </div>
                   </div>
+                  {row.routedAgency ? (
+                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-amber-200/80">
+                      Queue: {routedAgencyLabel(row.routedAgency)}
+                      {row.routedAgencyOverride ? " · override" : ""}
+                    </p>
+                  ) : null}
                   <p className="mt-2 font-mono text-[10px] text-zinc-600 truncate" title={row.id}>
                     {row.id}
                   </p>
@@ -606,6 +615,29 @@ export default function OpsIncidentsPage(): ReactElement {
                       {patchError}
                     </div>
                   ) : null}
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="text-zinc-500 uppercase tracking-wider text-[10px]">Agency queue</span>
+                    <span className="rounded-full border border-amber-500/30 bg-amber-950/30 px-2 py-0.5 font-semibold text-amber-100">
+                      {routedAgencyLabel(selected.routedAgency)}
+                      {selected.routedAgencyOverride ? " (EOC override)" : ""}
+                    </span>
+                  </div>
+                  <label className="block text-[10px] uppercase tracking-wider text-zinc-500">
+                    Reroute agency (override)
+                    <select
+                      className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950/80 px-3 py-2 text-sm text-white outline-none focus:border-rose-500/40"
+                      value={agencyDraft}
+                      onChange={(ev) => setAgencyDraft(ev.target.value)}
+                      disabled={patchLoading}
+                    >
+                      <option value="">— Select agency —</option>
+                      {ROUTED_AGENCIES.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="block text-[10px] uppercase tracking-wider text-zinc-500">
                     Incident status
                     <select
@@ -708,6 +740,19 @@ export default function OpsIncidentsPage(): ReactElement {
                       className="rounded-lg border border-amber-500/25 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-100 disabled:opacity-40"
                     >
                       Queue jobs only (notify + SMS prefs)
+                    </button>
+                    <button
+                      type="button"
+                      disabled={
+                        patchLoading ||
+                        !selected ||
+                        !agencyDraft ||
+                        agencyDraft === (selected.routedAgency ?? "")
+                      }
+                      onClick={() => void patchIncident({ routedAgency: agencyDraft })}
+                      className="rounded-lg border border-amber-500/35 bg-amber-950/35 px-3 py-2 text-[11px] font-semibold text-amber-100 disabled:opacity-40"
+                    >
+                      Save agency reroute
                     </button>
                   </div>
                   <p className="text-[9px] text-zinc-600 leading-relaxed">

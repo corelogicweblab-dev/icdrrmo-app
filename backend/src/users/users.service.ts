@@ -21,6 +21,18 @@ import { FirestoreMirrorService } from '../firestore/firestore-mirror.service';
 const BCRYPT_ROUNDS = 12;
 const ONLINE_WINDOW_MS = 120_000;
 
+const OPERATOR_ASSIGNABLE_ROLES = new Set<UserRole>([
+  UserRole.BARANGAY_CHAIRMAN,
+  UserRole.RESPONDER,
+]);
+
+const PRIVILEGED_USER_ROLES = new Set<UserRole>([
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+  UserRole.OPERATOR,
+  UserRole.AUDITOR,
+]);
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -279,13 +291,34 @@ export class UsersService {
     });
     if (!existing) throw new NotFoundException('User not found');
 
+    let profileBarangayId = dto.barangayId;
+
     if (actor.role === UserRole.OPERATOR) {
-      if (dto.role !== undefined || dto.isActive !== undefined || dto.password !== undefined) {
-        throw new ForbiddenException('Operators may only update profile fields for users in their barangay.');
+      if (dto.password !== undefined || dto.isActive !== undefined) {
+        throw new ForbiddenException('Operators cannot change passwords or account active status.');
       }
       const bg = await getOperatorBarangayId(this.prisma, actor);
-      if (!bg || existing.profile?.barangayId !== bg) {
+      if (!bg) {
+        throw new ForbiddenException('Your operator account must be linked to a barangay.');
+      }
+      if (existing.profile?.barangayId !== bg) {
         throw new ForbiddenException('This user is outside your barangay scope.');
+      }
+      if (dto.role !== undefined) {
+        if (!OPERATOR_ASSIGNABLE_ROLES.has(dto.role)) {
+          throw new ForbiddenException(
+            'Operators may only assign Barangay Chairman or Responder roles.',
+          );
+        }
+        if (PRIVILEGED_USER_ROLES.has(existing.role)) {
+          throw new ForbiddenException('Cannot change role for this account.');
+        }
+        if (dto.role === UserRole.BARANGAY_CHAIRMAN) {
+          profileBarangayId = bg;
+        }
+      }
+      if (profileBarangayId !== undefined && profileBarangayId !== null && profileBarangayId !== bg) {
+        throw new ForbiddenException('Operators cannot move a user to another barangay.');
       }
     }
 
@@ -299,13 +332,6 @@ export class UsersService {
       const b = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
       if (!b) throw new ConflictException('Invalid barangayId');
     }
-    if (actor.role === UserRole.OPERATOR && dto.barangayId !== undefined && dto.barangayId !== null) {
-      const bg = await getOperatorBarangayId(this.prisma, actor);
-      if (dto.barangayId !== bg) {
-        throw new ForbiddenException('Operators cannot move a user to another barangay.');
-      }
-    }
-
     const passwordHash =
       dto.password !== undefined
         ? await bcrypt.hash(dto.password, BCRYPT_ROUNDS)
@@ -320,7 +346,7 @@ export class UsersService {
         profile: {
           update: {
             ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
-            ...(dto.barangayId !== undefined ? { barangayId: dto.barangayId } : {}),
+            ...(profileBarangayId !== undefined ? { barangayId: profileBarangayId } : {}),
             ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
             ...(dto.address !== undefined ? { address: dto.address } : {}),
             ...(dto.streetPurok !== undefined ? { streetPurok: dto.streetPurok } : {}),

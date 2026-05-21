@@ -29,4 +29,6 @@ export type OpsIncident = {
     user: { id: string; email: string };
   } | null;
   assignedResponderId?: string | null;
+  routedAgency?: string | null;
+  routedAgencyOverride?: boolean;
 };
