@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ApiHealthStripGate } from "@/components/api-health-strip-gate";
+import { AppFooterGate } from "@/components/app-footer-gate";
 import { AppInstallStrip } from "@/components/app-install-strip";
 import { PwaRegister } from "@/components/pwa-register";
 import { RouteLogoTransition } from "@/components/route-logo-transition";
@@ -51,9 +52,7 @@ export default function RootLayout({
           <AppInstallStrip />
           <RouteLogoTransition />
           <div className="icd-app-main">{children}</div>
-          <footer className="icd-app-footer py-2.5 text-center text-[11px] tracking-wide text-zinc-500">
-            <span className="icd-text-safe text-orange-400/80">Powered by: CoreLogic</span>
-          </footer>
+          <AppFooterGate />
         </div>
       </body>
     </html>

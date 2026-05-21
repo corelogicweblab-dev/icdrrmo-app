@@ -170,17 +170,21 @@ export async function fetchCitizenFeed(
 export async function fetchCitizenFeedWithRetry(
   token: string,
   coords?: { lat: number; lng: number },
-  maxAttempts = 4,
+  maxAttempts = 2,
 ): Promise<CitizenUnifiedFeed> {
   const q = coords != null ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
   const url = `${getApiBaseUrl()}/citizen/feed${q}`;
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const res = await fetchWithTimeout(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
+      const res = await fetchWithTimeout(
+        url,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        },
+        28_000,
+      );
       const text = await res.text();
       if (!res.ok) {
         throw new OpsApiError(`HTTP ${res.status}`, res.status, text);
@@ -194,7 +198,7 @@ export async function fetchCitizenFeedWithRetry(
     } catch (e: unknown) {
       lastErr = e;
       if (attempt < maxAttempts - 1) {
-        await delay(1500 * (attempt + 1));
+        await delay(800);
       }
     }
   }

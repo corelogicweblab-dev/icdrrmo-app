@@ -2,9 +2,9 @@
 export const ISABELA_CITY_LAT = 6.70325;
 export const ISABELA_CITY_LON = 121.98235;
 
-/** Wider Philippines / Sulu Sea context for the full-screen desk map. */
-export const PH_SYNOPTIC_LAT = 12.25;
-export const PH_SYNOPTIC_LON = 122.25;
-export const PH_SYNOPTIC_ZOOM = 6;
+/** Wider Sulu Sea / Zamboanga · Basilan · Jolo context (Windy synoptic desk). */
+export const PH_SYNOPTIC_LAT = 7.15;
+export const PH_SYNOPTIC_LON = 121.92;
+export const PH_SYNOPTIC_ZOOM = 7;
 
 export const ISABELA_CITY_ZOOM = 11;

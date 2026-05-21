@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell, ChevronRight, Loader2, LocateFixed, MapPin } from "lucide-react";
-import { EocUnifiedMap } from "@/components/eoc/eoc-unified-map";
+import { CitizenWeatherMap } from "@/components/citizen/citizen-weather-map";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { CitizenSafetyBadge } from "@/components/citizen/citizen-safety-badge";
@@ -45,12 +45,11 @@ export function SmartCitizenDashboard(props: {
   onLogout: () => void;
 }): ReactElement {
   const [tab, setTab] = useState<Tab>("home");
-  const [feed, setFeed] = useState<CitizenUnifiedFeed | null>(null);
+  const [feed, setFeed] = useState<CitizenUnifiedFeed>(() => createDegradedCitizenFeed());
   const [prep, setPrep] = useState<{
     checklist: Array<{ id: string; label: string; labelTl: string; done: boolean }>;
     badges: string[];
   } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
@@ -61,28 +60,25 @@ export function SmartCitizenDashboard(props: {
 
   const loadFeed = useCallback(
     async (opts?: { silent?: boolean }) => {
-      if (opts?.silent) {
-        setSyncing(true);
-      } else {
-        setLoading(true);
-      }
+      setSyncing(true);
       const coords = lat != null && lon != null ? { lat, lng: lon } : undefined;
       try {
-        const f = await fetchCitizenFeedWithRetry(props.accessToken, coords);
+        const f = await fetchCitizenFeedWithRetry(props.accessToken, coords, 2);
         setFeed(f);
         setErr(null);
-        const pRes = await fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
+        void fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
           headers: { Authorization: `Bearer ${props.accessToken}` },
-        });
-        if (pRes.ok) {
-          const p = (await pRes.json()) as typeof prep;
-          setPrep(p);
-        }
+        })
+          .then(async (pRes) => {
+            if (pRes.ok) {
+              const p = (await pRes.json()) as typeof prep;
+              setPrep(p);
+            }
+          })
+          .catch(() => {});
       } catch {
-        setFeed((prev) => prev ?? createDegradedCitizenFeed());
         setErr(null);
       } finally {
-        setLoading(false);
         setSyncing(false);
       }
     },
@@ -90,7 +86,7 @@ export function SmartCitizenDashboard(props: {
   );
 
   useEffect(() => {
-    void loadFeed();
+    void loadFeed({ silent: true });
   }, [loadFeed]);
 
   /** Background sync — no manual reload; upgrades degraded → live feed when API is ready. */
@@ -182,16 +178,7 @@ export function SmartCitizenDashboard(props: {
     { id: "prepare", label: "Prepare" },
   ];
 
-  if (loading && !feed) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-400" aria-label="Loading dashboard" />
-        <p className="text-[11px] text-zinc-500">Preparing your emergency dashboard…</p>
-      </div>
-    );
-  }
-
-  const activeFeed = feed ?? createDegradedCitizenFeed();
+  const activeFeed = feed;
 
   return (
     <div className="space-y-4">
@@ -338,18 +325,7 @@ export function SmartCitizenDashboard(props: {
         </div>
       ) : null}
 
-      {tab === "map" ? (
-        <div className="rounded-2xl border border-orange-500/20 overflow-hidden h-[min(55dvh,520px)] flex flex-col">
-          <p className="shrink-0 px-3 py-2 text-[10px] uppercase tracking-widest text-orange-400/80 bg-black/40 border-b border-orange-500/12">
-            Windy + GDACS + PAGASA · tap markers
-          </p>
-          <EocUnifiedMap
-            mode="citizen"
-            accessToken={props.accessToken}
-            className="flex-1 min-h-0"
-          />
-        </div>
-      ) : null}
+      {tab === "map" ? <CitizenWeatherMap accessToken={props.accessToken} /> : null}
 
       {tab === "alerts" ? (
         <div className="space-y-3">
