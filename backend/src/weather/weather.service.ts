@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import Redis from 'ioredis';
 import { ISABELA_HAZARD_DISCLAIMER, ISABELA_HAZARD_ZONES } from './isabela-hazard-reference';
+import { FreeWeatherTilesService } from './free-weather-tiles.service';
 import { PagasaRssService, type PagasaAdvisoryItem } from './pagasa-rss.service';
 
 export type OpenWeatherLayerConfig = {
@@ -24,7 +25,10 @@ export type EocWeatherBundle = {
   };
   openWeather: {
     configured: boolean;
+    provider: 'openweathermap' | 'rainviewer' | 'none';
     layers: OpenWeatherLayerConfig[];
+    /** Layers rendered from Open-Meteo point data (no tile URL). */
+    openMeteoOverlays: Array<'temp' | 'wind'>;
   };
   /** Client can use RainViewer without API key */
   rainViewer: { available: boolean };
@@ -40,7 +44,7 @@ const OPEN_METEO_UA =
 
 const OPEN_METEO_URL =
   `https://api.open-meteo.com/v1/forecast?latitude=${ISABELA_LAT}&longitude=${ISABELA_LON}` +
-  '&current=temperature_2m,relative_humidity_2m,weather_code,is_day,precipitation,rain' +
+  '&current=temperature_2m,relative_humidity_2m,weather_code,is_day,precipitation,rain,wind_speed_10m,wind_direction_10m' +
   '&hourly=precipitation_probability,precipitation,rain,weathercode' +
   '&timezone=Asia%2FManila&forecast_days=2';
 
@@ -62,6 +66,8 @@ type OpenMeteoCurrent = {
   precipitation?: number;
   rain?: number;
   is_day?: number;
+  wind_speed_10m?: number;
+  wind_direction_10m?: number;
 };
 
 type OpenMeteoResponse = {
@@ -83,6 +89,8 @@ export type WeatherSituationSnapshot = {
     precipitationMm: number | null;
     rainMm: number | null;
     isDay: boolean | null;
+    windSpeedKmh: number | null;
+    windDirectionDeg: number | null;
   };
   nextHours: Array<{
     time: string;
@@ -134,7 +142,10 @@ function sleep(ms: number): Promise<void> {
 export class WeatherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WeatherService.name);
 
-  constructor(private readonly pagasa: PagasaRssService) {}
+  constructor(
+    private readonly pagasa: PagasaRssService,
+    private readonly freeTiles: FreeWeatherTilesService,
+  ) {}
 
   private redis: Redis | null = null;
   /** Last successful JSON parse (no upstreamError). */
@@ -271,6 +282,8 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
         precipitationMm: null,
         rainMm: null,
         isDay: null,
+        windSpeedKmh: null,
+        windDirectionDeg: null,
       },
       nextHours: [],
       rainOutlook6h: {
@@ -392,6 +405,8 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
         precipitationMm: null,
         rainMm: null,
         isDay: null,
+        windSpeedKmh: null,
+        windDirectionDeg: null,
       },
       nextHours: [],
       rainOutlook6h: {
@@ -465,6 +480,10 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
         precipitationMm: cur?.precipitation ?? null,
         rainMm: cur?.rain ?? null,
         isDay: cur?.is_day === 1 ? true : cur?.is_day === 0 ? false : null,
+        windSpeedKmh:
+          cur?.wind_speed_10m != null ? Math.round(cur.wind_speed_10m * 10) / 10 : null,
+        windDirectionDeg:
+          cur?.wind_direction_10m != null ? Math.round(cur.wind_direction_10m) : null,
       },
       nextHours: slice,
       rainOutlook6h: {
@@ -477,6 +496,7 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /** Sync helper for geojson merge — prefer {@link resolveTileLayers}. */
   getOpenWeatherLayers(): { configured: boolean; layers: OpenWeatherLayerConfig[] } {
     const key = process.env.OPENWEATHERMAP_API_KEY?.trim();
     if (!key) {
@@ -496,15 +516,36 @@ export class WeatherService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async resolveTileLayers(): Promise<EocWeatherBundle['openWeather']> {
+    const key = process.env.OPENWEATHERMAP_API_KEY?.trim();
+    if (key) {
+      const owm = this.getOpenWeatherLayers();
+      return {
+        configured: true,
+        provider: 'openweathermap',
+        layers: owm.layers,
+        openMeteoOverlays: [],
+      };
+    }
+    const free = await this.freeTiles.getLayers();
+    return {
+      configured: free.length > 0,
+      provider: free.length > 0 ? 'rainviewer' : 'none',
+      layers: free,
+      openMeteoOverlays: ['temp', 'wind'],
+    };
+  }
+
   async getEocWeatherBundle(): Promise<EocWeatherBundle> {
-    const [situation, pagasa] = await Promise.all([
+    const [situation, pagasa, openWeather] = await Promise.all([
       this.getSituationSnapshot(),
       this.pagasa.fetchAdvisories(),
+      this.resolveTileLayers(),
     ]);
     return {
       situation,
       pagasa,
-      openWeather: this.getOpenWeatherLayers(),
+      openWeather,
       rainViewer: { available: true },
     };
   }

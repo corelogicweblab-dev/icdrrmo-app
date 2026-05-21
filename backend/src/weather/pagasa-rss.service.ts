@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
+import { parsePagasaHtmlAdvisories } from './pagasa-html.util';
 
 export type PagasaAdvisoryItem = {
   id: string;
@@ -9,7 +10,16 @@ export type PagasaAdvisoryItem = {
   summary: string;
 };
 
-const DEFAULT_RSS_URL = 'https://www.pagasa.dost.gov.ph/rss/weather';
+const RSS_FALLBACK_URLS = [
+  'https://www.pagasa.dost.gov.ph/rss/weather',
+  'https://pubfiles.pagasa.dost.gov.ph/rss/',
+];
+
+const HTML_FALLBACK_URLS = [
+  'https://www.pagasa.dost.gov.ph/weather/weather-advisory',
+  'https://www.pagasa.dost.gov.ph/tropical-cyclone/severe-weather-bulletin',
+];
+
 const REDIS_KEY = 'icd:v1:weather:pagasa';
 
 @Injectable()
@@ -28,8 +38,9 @@ export class PagasaRssService {
     }
   }
 
-  private rssUrl(): string {
-    return process.env.PAGASA_RSS_URL?.trim() || DEFAULT_RSS_URL;
+  private rssUrls(): string[] {
+    const custom = process.env.PAGASA_RSS_URL?.trim();
+    return custom ? [custom, ...RSS_FALLBACK_URLS] : RSS_FALLBACK_URLS;
   }
 
   private cacheTtlSec(): number {
@@ -45,7 +56,7 @@ export class PagasaRssService {
       .trim();
   }
 
-  private parseItems(xml: string): PagasaAdvisoryItem[] {
+  private parseRssItems(xml: string): PagasaAdvisoryItem[] {
     const items: PagasaAdvisoryItem[] = [];
     const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
     for (const block of blocks.slice(0, 25)) {
@@ -69,6 +80,38 @@ export class PagasaRssService {
     return items;
   }
 
+  private async fetchFromHtml(): Promise<PagasaAdvisoryItem[]> {
+    const items: PagasaAdvisoryItem[] = [];
+    const seen = new Set<string>();
+    for (const url of HTML_FALLBACK_URLS) {
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; ICDRRMO-EOC/1.0; +pagasa-html)',
+            Accept: 'text/html',
+          },
+          signal: AbortSignal.timeout(14_000),
+        });
+        if (!res.ok) continue;
+        const html = await res.text();
+        for (const a of parsePagasaHtmlAdvisories(html, url)) {
+          if (seen.has(a.id)) continue;
+          seen.add(a.id);
+          items.push({
+            id: a.id,
+            title: a.title,
+            link: a.link,
+            pubDate: '',
+            summary: a.excerpt,
+          });
+        }
+      } catch {
+        /* try next */
+      }
+    }
+    return items;
+  }
+
   async fetchAdvisories(): Promise<{
     source: string;
     fetchedAt: string;
@@ -79,44 +122,63 @@ export class PagasaRssService {
       try {
         const cached = await this.redis.get(REDIS_KEY);
         if (cached) {
-          return JSON.parse(cached) as {
+          const parsed = JSON.parse(cached) as {
             source: string;
             fetchedAt: string;
             items: PagasaAdvisoryItem[];
           };
+          if (parsed.items.length > 0) return parsed;
         }
       } catch {
         /* ignore */
       }
     }
 
-    try {
-      const res = await fetch(this.rssUrl(), {
-        headers: { 'User-Agent': 'ICDRRMO-EOC/1.0 (+pagasa-rss)' },
-        signal: AbortSignal.timeout(12_000),
-      });
-      if (!res.ok) {
-        throw new Error(`PAGASA RSS HTTP ${res.status}`);
+    let items: PagasaAdvisoryItem[] = [];
+    let source = 'PAGASA RSS';
+    const errors: string[] = [];
+
+    for (const rssUrl of this.rssUrls()) {
+      try {
+        const res = await fetch(rssUrl, {
+          headers: { 'User-Agent': 'ICDRRMO-EOC/1.0 (+pagasa-rss)' },
+          signal: AbortSignal.timeout(12_000),
+        });
+        if (!res.ok) {
+          errors.push(`RSS ${rssUrl}: HTTP ${res.status}`);
+          continue;
+        }
+        const xml = await res.text();
+        items = this.parseRssItems(xml);
+        if (items.length > 0) {
+          source = 'PAGASA RSS';
+          break;
+        }
+      } catch (e: unknown) {
+        errors.push(e instanceof Error ? e.message : String(e));
       }
-      const xml = await res.text();
-      const payload = {
-        source: 'PAGASA RSS',
-        fetchedAt: new Date().toISOString(),
-        items: this.parseItems(xml),
-      };
-      if (this.redis) {
-        await this.redis.setex(REDIS_KEY, this.cacheTtlSec(), JSON.stringify(payload));
-      }
-      return payload;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      this.logger.warn(`PAGASA RSS fetch failed: ${msg}`);
-      return {
-        source: 'PAGASA RSS',
-        fetchedAt: new Date().toISOString(),
-        items: [],
-        upstreamError: msg,
-      };
     }
+
+    if (!items.length) {
+      items = await this.fetchFromHtml();
+      source = 'PAGASA Portal HTML';
+    }
+
+    const payload = {
+      source,
+      fetchedAt: new Date().toISOString(),
+      items,
+      upstreamError: items.length ? undefined : errors.join('; ') || 'No PAGASA advisories',
+    };
+
+    if (this.redis && items.length > 0) {
+      await this.redis.setex(REDIS_KEY, this.cacheTtlSec(), JSON.stringify(payload));
+    }
+
+    if (!items.length) {
+      this.logger.warn(`PAGASA advisories empty: ${payload.upstreamError}`);
+    }
+
+    return payload;
   }
 }

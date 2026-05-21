@@ -1,9 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import type { HazardGeoJsonFeature, HazardGeoJsonFeatureCollection } from './geojson.types';
-import { offsetPoint, PH_CENTER, stripXmlTags } from './geojson-parse.util';
+import { offsetPoint, PH_CENTER } from './geojson-parse.util';
+import { parsePagasaHtmlAdvisories } from './pagasa-html.util';
 
-const DEFAULT_PORTAL_URL = 'https://www.pagasa.dost.gov.ph/';
+const DEFAULT_PORTAL_URL = 'https://www.pagasa.dost.gov.ph/weather/weather-advisory';
+const EXTRA_PORTAL_URLS = [
+  'https://www.pagasa.dost.gov.ph/tropical-cyclone/severe-weather-bulletin',
+  'https://www.pagasa.dost.gov.ph/',
+];
 const REDIS_KEY = 'icd:v1:weather:pagasa:portal:geojson';
 
 export type PagasaPortalAdvisory = {
@@ -58,55 +63,11 @@ export class PagasaPortalService {
     }
   }
 
-  /** Lightweight HTML scrape — no headless browser; respects public portal markup. */
   parsePortalHtml(html: string, baseUrl: string): PagasaPortalAdvisory[] {
-    const advisories: PagasaPortalAdvisory[] = [];
-    const seen = new Set<string>();
-
-    const linkRe =
-      /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-    let m: RegExpExecArray | null;
-    const keywords =
-      /weather|advisory|bulletin|tropical|cyclone|typhoon|rainfall|flood|warning|signal|bagyo|bagyo/i;
-
-    while ((m = linkRe.exec(html)) !== null) {
-      const href = m[1];
-      const text = stripXmlTags(m[2]);
-      if (!text || text.length < 12 || text.length > 220) continue;
-      if (!keywords.test(`${href} ${text}`)) continue;
-      const link = this.absoluteLink(href, baseUrl);
-      if (!link || seen.has(link)) continue;
-      seen.add(link);
-      advisories.push({
-        id: link,
-        title: text,
-        link,
-        excerpt: text,
-        publishedHint: '',
-      });
-      if (advisories.length >= 30) break;
-    }
-
-    const headingRe =
-      /<h[23][^>]*>([\s\S]*?)<\/h[23]>\s*(?:<p[^>]*>([\s\S]*?)<\/p>)?/gi;
-    while ((m = headingRe.exec(html)) !== null) {
-      const title = stripXmlTags(m[1]);
-      const body = stripXmlTags(m[2] ?? '');
-      if (!title || title.length < 10 || !keywords.test(title)) continue;
-      const id = `heading:${title.slice(0, 60)}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      advisories.push({
-        id,
-        title,
-        link: baseUrl,
-        excerpt: (body || title).slice(0, 800),
-        publishedHint: '',
-      });
-      if (advisories.length >= 35) break;
-    }
-
-    return advisories.slice(0, 25);
+    return parsePagasaHtmlAdvisories(html, baseUrl).map((a) => ({
+      ...a,
+      publishedHint: '',
+    }));
   }
 
   advisoriesToGeoJson(advisories: PagasaPortalAdvisory[]): HazardGeoJsonFeature[] {
@@ -149,18 +110,29 @@ export class PagasaPortalService {
     };
 
     try {
-      const res = await fetch(base, {
-        headers: {
-          'User-Agent': 'ICDRRMO-EOC/1.0 (+pagasa-portal-scraper)',
-          Accept: 'text/html,application/xhtml+xml',
-        },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!res.ok) {
-        throw new Error(`PAGASA portal HTTP ${res.status}`);
+      const urls = [base, ...EXTRA_PORTAL_URLS.filter((u) => u !== base)];
+      const seen = new Set<string>();
+      const advisories: PagasaPortalAdvisory[] = [];
+      for (const url of urls) {
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; ICDRRMO-EOC/1.0; +pagasa-portal)',
+            Accept: 'text/html,application/xhtml+xml',
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!res.ok) continue;
+        const html = await res.text();
+        for (const a of this.parsePortalHtml(html, url)) {
+          if (seen.has(a.id)) continue;
+          seen.add(a.id);
+          advisories.push(a);
+        }
+        if (advisories.length >= 20) break;
       }
-      const html = await res.text();
-      const advisories = this.parsePortalHtml(html, base);
+      if (!advisories.length) {
+        throw new Error('PAGASA portal scrape returned no advisories');
+      }
       const features = this.advisoriesToGeoJson(advisories);
       const payload: PagasaPortalFetchResult = {
         source: 'PAGASA Portal',

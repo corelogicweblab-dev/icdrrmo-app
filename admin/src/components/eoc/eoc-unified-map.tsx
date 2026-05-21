@@ -110,13 +110,13 @@ type Props = {
 
 const LAYER_META: Record<
   WeatherLayerId,
-  { label: string; icon: typeof CloudRain; needsOwm?: boolean }
+  { label: string; icon: typeof CloudRain; tile?: boolean }
 > = {
-  "rain-radar": { label: "Rain radar (live)", icon: CloudRain },
-  precipitation: { label: "Rain (OWM)", icon: CloudRain, needsOwm: true },
-  clouds: { label: "Clouds", icon: Cloud, needsOwm: true },
-  temp: { label: "Temperature", icon: Thermometer, needsOwm: true },
-  wind: { label: "Wind", icon: Wind, needsOwm: true },
+  "rain-radar": { label: "Rain radar (live)", icon: CloudRain, tile: true },
+  precipitation: { label: "Rain / precip", icon: CloudRain, tile: true },
+  clouds: { label: "Clouds / satellite", icon: Cloud, tile: true },
+  temp: { label: "Temperature (EOC)", icon: Thermometer },
+  wind: { label: "Wind (EOC)", icon: Wind },
 };
 
 export function EocUnifiedMap({
@@ -129,6 +129,7 @@ export function EocUnifiedMap({
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const basemapRef = useRef<import("leaflet").TileLayer | null>(null);
   const markersRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const meteoOverlayRef = useRef<import("leaflet").LayerGroup | null>(null);
   const weatherLayersRef = useRef<Partial<Record<WeatherLayerId, import("leaflet").TileLayer>>>({});
   const gdacsGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const pagasaGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
@@ -139,7 +140,7 @@ export function EocUnifiedMap({
   const [showGdacs, setShowGdacs] = useState(true);
   const [showPagasaPins, setShowPagasaPins] = useState(true);
   const [activeLayers, setActiveLayers] = useState<Set<WeatherLayerId>>(
-    () => new Set<WeatherLayerId>(["rain-radar"]),
+    () => new Set<WeatherLayerId>(["rain-radar", "precipitation", "clouds"]),
   );
   const [evac, setEvac] = useState<EvacMarker[]>([]);
   const [incidents, setIncidents] = useState<IncidentPin[]>([]);
@@ -161,10 +162,18 @@ export function EocUnifiedMap({
   const showAllIncidents = mode === "ops" || mode === "responder" || mode === "chairman";
   const showVehicles = mode === "ops";
   const owmLayers = owmTileLayersFromGeoJson(hazardGeo);
-  const owmReady =
-    Boolean(hazardGeo?.layers.openWeatherMap.properties?.configured) ||
-    Boolean(weather?.openWeather.configured) ||
-    owmLayers.length > 0;
+  const bundleLayers = weather?.openWeather.layers ?? owmLayers;
+  const openMeteoOverlays = new Set(
+    weather?.openWeather.openMeteoOverlays ??
+      (hazardGeo?.layers.openWeatherMap.properties?.openMeteoOverlays as string[] | undefined) ??
+      [],
+  );
+  const hasTileLayer = (id: WeatherLayerId): boolean => {
+    if (id === "rain-radar") return Boolean(rainViewerUrlRef.current);
+    if (id === "temp" || id === "wind") return openMeteoOverlays.has(id);
+    return bundleLayers.some((l) => l.id === id && l.urlTemplate);
+  };
+  const layerHint = hazardGeo?.properties.upstreamErrors;
   const pagasaAdvisories = pagasaAdvisoriesFromGeoJson(hazardGeo);
   const gdacsCount = hazardGeo?.layers.gdacs.features.length ?? 0;
 
@@ -373,6 +382,7 @@ export function EocUnifiedMap({
       basemapRef.current = basemap;
 
       markersRef.current = L.layerGroup().addTo(map);
+      meteoOverlayRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
 
       window.setTimeout(() => {
@@ -542,10 +552,15 @@ export function EocUnifiedMap({
         if (id === "rain-radar") {
           url = rainViewerUrlRef.current;
           opacity = 0.55;
-        } else if (owmReady) {
+        } else {
           const owm =
-            owmById.get(id) ?? weather?.openWeather.layers.find((l) => l.id === id);
+            owmById.get(id) ??
+            bundleLayers.find((l) => l.id === id) ??
+            weather?.openWeather.layers.find((l) => l.id === id);
           url = owm?.urlTemplate ?? null;
+          if (!url && id === "precipitation" && rainViewerUrlRef.current) {
+            url = rainViewerUrlRef.current;
+          }
         }
 
         if (!url) continue;
@@ -563,7 +578,49 @@ export function EocUnifiedMap({
         tile.addTo(map);
       }
     })();
-  }, [activeLayers, weather, owmReady, owmLayers]);
+  }, [activeLayers, weather, bundleLayers, owmLayers]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const g = meteoOverlayRef.current;
+    if (!map || !g) return;
+    void (async () => {
+      const L = await import("leaflet");
+      g.clearLayers();
+      const cur = weather?.situation?.current;
+      if (activeLayers.has("temp") && cur?.temperatureC != null) {
+        const t = cur.temperatureC;
+        const hue = t >= 32 ? 0 : t >= 28 ? 25 : t >= 24 ? 45 : 200;
+        L.circle([ISABELA_CITY_LAT, ISABELA_CITY_LON], {
+          radius: 28_000,
+          color: `hsl(${hue} 80% 45%)`,
+          fillColor: `hsl(${hue} 80% 50%)`,
+          fillOpacity: 0.28,
+          weight: 2,
+        })
+          .bindPopup(`<b>Temperature</b><br/>${t}°C at Isabela City EOC grid`)
+          .addTo(g);
+      }
+      if (
+        activeLayers.has("wind") &&
+        cur?.windSpeedKmh != null &&
+        cur?.windDirectionDeg != null
+      ) {
+        const spd = cur.windSpeedKmh;
+        const dir = cur.windDirectionDeg;
+        L.marker([ISABELA_CITY_LAT, ISABELA_CITY_LON], {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="transform:rotate(${dir}deg);font-size:22px;line-height:1;color:#38bdf8;text-shadow:0 0 6px #000">↑</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          }),
+        })
+          .bindPopup(`<b>Wind</b><br/>${spd} km/h · from ${dir}°`)
+          .addTo(g);
+      }
+    })();
+  }, [activeLayers, weather]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -697,21 +754,20 @@ export function EocUnifiedMap({
       </label>
       {(Object.keys(LAYER_META) as WeatherLayerId[]).map((id) => {
         const meta = LAYER_META[id];
-        const disabled = meta.needsOwm && !owmReady;
+        const available = hasTileLayer(id) || id === "temp" || id === "wind";
         const on = activeLayers.has(id);
         const Icon = meta.icon;
         return (
           <label
             key={id}
-            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer ${
-              disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-orange-500/10"
+            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-orange-500/10 ${
+              !available ? "opacity-70" : ""
             }`}
           >
             <input
               type="checkbox"
               checked={on}
-              disabled={disabled}
-              onChange={() => !disabled && toggleLayer(id)}
+              onChange={() => toggleLayer(id)}
               className="rounded border-zinc-600 text-orange-500"
             />
             <Icon className="h-3.5 w-3.5 text-orange-300 shrink-0" aria-hidden />
@@ -719,11 +775,17 @@ export function EocUnifiedMap({
           </label>
         );
       })}
-      {!owmReady ? (
-        <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
-          Rain radar: no key. Set OPENWEATHERMAP_API_KEY on API for OWM tiles.
+      {layerHint?.gdacs ? (
+        <p className="px-1 pt-1 text-[10px] text-amber-400/90">GDACS: {layerHint.gdacs}</p>
+      ) : null}
+      {layerHint?.pagasaRss || layerHint?.pagasaPortal ? (
+        <p className="px-1 text-[10px] text-sky-400/80">
+          PAGASA: {layerHint.pagasaPortal ?? layerHint.pagasaRss}
         </p>
       ) : null}
+      <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
+        Tiles: {weather?.openWeather.provider ?? "RainViewer"}. Temp/wind from Open-Meteo at EOC.
+      </p>
       {weather?.situation ? (
         <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">
           {weather.situation.current.weatherLabel}

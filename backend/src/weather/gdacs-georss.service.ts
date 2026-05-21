@@ -2,14 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import type { HazardGeoJsonFeature, HazardGeoJsonFeatureCollection } from './geojson.types';
 import {
+  alertLevelFromTitle,
   namespacedTag,
+  parseGdacsBbox,
   parseGeorssPoint,
   parseGeorssPolygon,
   stripXmlTags,
   tagValue,
 } from './geojson-parse.util';
 
-const DEFAULT_FEED = 'https://www.gdacs.org/xml/rss.xml';
+/** Main feed often times out; 24h feed is reliable and includes geo:Point. */
+const DEFAULT_FEED = 'https://www.gdacs.org/xml/rss_24h.xml';
 const REDIS_KEY = 'icd:v1:weather:gdacs:geojson';
 
 export type GdacsFetchResult = {
@@ -58,7 +61,8 @@ export class GdacsGeorssService {
     const alertLevel =
       namespacedTag(block, 'alertlevel') ||
       namespacedTag(block, 'episodealertlevel') ||
-      (block.match(/alertlevel="([^"]+)"/i)?.[1] ?? '').trim();
+      (block.match(/alertlevel="([^"]+)"/i)?.[1] ?? '').trim() ||
+      alertLevelFromTitle(title);
     const eventId = namespacedTag(block, 'eventid') || `gdacs-${index}`;
 
     let geometry: HazardGeoJsonFeature['geometry'] | null = null;
@@ -87,6 +91,12 @@ export class GdacsGeorssService {
       if (ring) {
         geometry = { type: 'Polygon', coordinates: [ring] };
       }
+    }
+
+    const bboxRaw = namespacedTag(block, 'bbox');
+    if (!geometry && bboxRaw) {
+      const poly = parseGdacsBbox(bboxRaw);
+      if (poly) geometry = poly;
     }
 
     if (!geometry) {
@@ -162,7 +172,7 @@ export class GdacsGeorssService {
           },
         },
       };
-      if (this.redis) {
+      if (this.redis && features.length > 0) {
         await this.redis.setex(REDIS_KEY, this.cacheTtlSec(), JSON.stringify(payload));
       }
       return payload;

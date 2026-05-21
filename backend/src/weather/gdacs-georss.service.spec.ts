@@ -10,6 +10,7 @@ describe('GdacsGeorssService', () => {
   <title>Green alert for Tropical Cyclone SAMPLE</title>
   <link>https://www.gdacs.org/report.aspx?eventid=123</link>
   <description>Test event</description>
+  <geo:Point><geo:lat>12.5</geo:lat><geo:long>121.0</geo:long></geo:Point>
   <georss:point>12.5 121.0</georss:point>
   <gdacs:eventtype>TC</gdacs:eventtype>
   <gdacs:alertlevel>Green</gdacs:alertlevel>

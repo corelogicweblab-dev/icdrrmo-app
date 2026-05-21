@@ -6,6 +6,8 @@ export type EocWeatherBundle = {
       temperatureC: number | null;
       weatherLabel: string;
       humidityPct: number | null;
+      windSpeedKmh?: number | null;
+      windDirectionDeg?: number | null;
     };
     rainOutlook6h: { headline: string; willRainLikely: boolean; maxPrecipProbPct: number };
   };
@@ -17,7 +19,9 @@ export type EocWeatherBundle = {
   };
   openWeather: {
     configured: boolean;
+    provider?: string;
     layers: Array<{ id: string; label: string; urlTemplate: string }>;
+    openMeteoOverlays?: Array<'temp' | 'wind'>;
   };
   rainViewer?: { available: boolean };
 };

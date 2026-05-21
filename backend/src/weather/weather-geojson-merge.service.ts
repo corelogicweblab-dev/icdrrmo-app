@@ -68,15 +68,15 @@ export class WeatherGeojsonMergeService {
       }
     }
 
-    const owmConfig = this.weather.getOpenWeatherLayers();
-    const [gdacsResult, pagasaPortalResult, pagasaRssResult] = await Promise.all([
+    const [tileConfig, gdacsResult, pagasaPortalResult, pagasaRssResult] = await Promise.all([
+      this.weather.resolveTileLayers(),
       this.gdacs.fetchGeoJson(),
       this.pagasaPortal.fetchGeoJson(),
       this.pagasaRss.fetchAdvisories(),
     ]);
 
     const owmFeatures = buildOwmRasterFeatures(
-      owmConfig.layers.map((l) => ({
+      tileConfig.layers.map((l) => ({
         id: l.id,
         label: l.label,
         urlTemplate: l.urlTemplate,
@@ -88,12 +88,13 @@ export class WeatherGeojsonMergeService {
       type: 'FeatureCollection',
       features: owmFeatures,
       properties: {
-        source: 'openweathermap',
-        configured: owmConfig.configured,
+        source: tileConfig.provider,
+        configured: tileConfig.configured,
         kind: 'raster-tile-background',
-        note: owmConfig.configured
-          ? 'Polygon AOI carries tile URL templates for map clients.'
-          : 'Set OPENWEATHERMAP_API_KEY to enable OWM raster layers.',
+        openMeteoOverlays: tileConfig.openMeteoOverlays,
+        note: tileConfig.configured
+          ? `Tile layers via ${tileConfig.provider}. Temp/wind use Open-Meteo at EOC pin when enabled.`
+          : 'Tile layers unavailable — check API connectivity.',
       },
     };
 
@@ -146,7 +147,7 @@ export class WeatherGeojsonMergeService {
       ],
     };
 
-    if (this.redis) {
+    if (this.redis && bundle.features.length > 0) {
       try {
         await this.redis.setex(
           REDIS_MERGE_KEY,

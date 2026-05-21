@@ -86,6 +86,22 @@ export function offsetPoint(base: GeoJsonPosition, index: number): GeoJsonPositi
   return [base[0] + d * 0.7, base[1] + d * 0.35];
 }
 
+/** GDACS bbox: lonmin lonmax latmin latmax */
+export function parseGdacsBbox(raw: string): GeoJsonPolygonGeometry | null {
+  const parts = raw.trim().split(/\s+/).map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return null;
+  const [lonMin, lonMax, latMin, latMax] = parts;
+  return bboxToPolygon([lonMin, latMin, lonMax, latMax]);
+}
+
+export function alertLevelFromTitle(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes('red')) return 'Red';
+  if (t.includes('orange')) return 'Orange';
+  if (t.includes('green')) return 'Green';
+  return 'unknown';
+}
+
 export function buildOwmRasterFeatures(
   layers: Array<{ id: string; label: string; urlTemplate: string }>,
   bbox: [number, number, number, number],
