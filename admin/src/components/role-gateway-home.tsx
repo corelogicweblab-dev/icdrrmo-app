@@ -2,8 +2,18 @@
 
 import type { ReactElement } from "react";
 import Link from "next/link";
-import { ArrowRight, Bot, Map, Radio, Shield, Smartphone, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Bot,
+  Landmark,
+  Map,
+  Radio,
+  Shield,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
+import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 import { WEB_BUILD_ID } from "@/lib/web-build-id";
 
 const FEATURES = [
@@ -72,13 +82,25 @@ export function RoleGatewayHome(): ReactElement {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5" role="navigation" aria-label="Role portals">
+        <div
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-5"
+          role="navigation"
+          aria-label="Role portals"
+        >
           <GatewayCard
             href="/citizen"
             title="Citizen"
-            tag="SMART · NEW"
+            tag="SMART · LIVE"
+            highlight
             icon={Smartphone}
             description="SMART dashboard: SOS lifecycle, Windy map, evac centers, community feed, preparedness, ICDRRMO AI."
+          />
+          <GatewayCard
+            href="/chairman"
+            title="Barangay Chairman"
+            tag="Governance"
+            icon={Landmark}
+            description="Executive overview, barangay KPIs, shelter capacity, advisories, ICDRRMO AI."
           />
           <GatewayCard
             href="/responder"
@@ -97,9 +119,12 @@ export function RoleGatewayHome(): ReactElement {
         </div>
 
         <p className="text-center font-mono text-[10px] text-zinc-600">
-          Build {WEB_BUILD_ID} · Hard refresh (Ctrl+Shift+R) if the page looks outdated
+          Build {WEB_BUILD_ID} · Orange <strong className="text-orange-400">ICDRRMO AI</strong> button
+          bottom-right · Hard refresh (Ctrl+Shift+R) if outdated
         </p>
       </main>
+
+      <IcdrrmoAiChat accessToken={null} portal="home" guestMode />
     </div>
   );
 }
@@ -110,12 +135,17 @@ function GatewayCard(props: {
   tag: string;
   icon: typeof Smartphone;
   description: string;
+  highlight?: boolean;
 }): ReactElement {
   const Icon = props.icon;
   return (
     <Link
       href={props.href}
-      className="group relative flex min-h-[200px] flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-zinc-950/65 p-6 shadow-panel transition hover:border-rose-500/25 hover:bg-zinc-950/95"
+      className={`group relative flex min-h-[200px] flex-col overflow-hidden rounded-2xl border p-6 shadow-panel transition hover:bg-zinc-950/95 ${
+        props.highlight
+          ? "border-orange-500/35 bg-gradient-to-b from-orange-950/25 to-zinc-950/65 ring-1 ring-orange-500/20 hover:border-orange-400/50"
+          : "border-white/[0.07] bg-zinc-950/65 hover:border-rose-500/25"
+      }`}
       prefetch
     >
       <div className="mb-4 flex items-center justify-between gap-3">

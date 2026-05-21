@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ApiHealthStrip } from "@/components/api-health-strip";
 import { AppInstallStrip } from "@/components/app-install-strip";
 import { PwaRegister } from "@/components/pwa-register";
 import { RouteLogoTransition } from "@/components/route-logo-transition";
+import { StaleBuildBanner } from "@/components/stale-build-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +48,8 @@ export default function RootLayout({
         </div>
         <PwaRegister />
         <div className="icd-app-shell">
+          <StaleBuildBanner />
+          <ApiHealthStrip />
           <AppInstallStrip />
           <RouteLogoTransition />
           <div className="icd-app-main">{children}</div>

@@ -1,12 +1,16 @@
-/* ICDRRMO Operation Center PWA · v2026-05-21-smart-ai — bump to force clients off stale SW */
+/* ICDRRMO Operation Center PWA · v2026-05-21-smart-v3 — bump to force clients off stale SW */
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(Promise.resolve());
 });
 
 self.addEventListener("activate", (event) => {
-  /* Do not delete every cache — avoids wiping unrelated storage and speeds activation. Static assets use long Cache-Control from Hosting. */
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
 });
 
 self.addEventListener("fetch", (event) => {

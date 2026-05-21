@@ -3,7 +3,12 @@
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, Loader2, MessageCircle, Send, X } from "lucide-react";
-import { sendAiChat, type AiLanguage, type AiChatResponse } from "@/lib/icdrrmo-ai";
+import {
+  sendAiChat,
+  sendGuestAiChat,
+  type AiLanguage,
+  type AiChatResponse,
+} from "@/lib/icdrrmo-ai";
 import { OpsApiError, opsApiErrorUserMessage } from "@/lib/ops-api";
 
 type ChatMessage = { role: "user" | "assistant"; text: string; engine?: string };
@@ -17,7 +22,9 @@ const LANG_OPTIONS: { id: AiLanguage; label: string }[] = [
 
 export function IcdrrmoAiChat(props: {
   accessToken: string | null;
-  portal: "citizen" | "chairman" | "responder" | "ops";
+  portal: "citizen" | "chairman" | "responder" | "ops" | "home";
+  /** When true, show chat without sign-in (uses /ai/guest-chat). */
+  guestMode?: boolean;
 }): ReactElement | null {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<AiLanguage>("en");
@@ -36,17 +43,21 @@ export function IcdrrmoAiChat(props: {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open]);
 
+  const canChat = Boolean(props.accessToken) || props.guestMode;
+
   const submit = useCallback(async () => {
     const text = input.trim();
-    if (!text || !props.accessToken || busy) return;
+    if (!text || !canChat || busy) return;
     setInput("");
     setMessages((m) => [...m, { role: "user", text }]);
     setBusy(true);
     try {
-      const res: AiChatResponse = await sendAiChat(props.accessToken, text, {
-        language: lang,
-        conversationId,
-      });
+      const res: AiChatResponse = props.accessToken
+        ? await sendAiChat(props.accessToken, text, {
+            language: lang,
+            conversationId,
+          })
+        : await sendGuestAiChat(text, { language: lang, conversationId });
       setConversationId(res.conversationId);
       setMessages((m) => [
         ...m,
@@ -56,14 +67,16 @@ export function IcdrrmoAiChat(props: {
       const err =
         e instanceof OpsApiError
           ? opsApiErrorUserMessage(e)
-          : "AI is temporarily unavailable. Check API connection.";
+          : e instanceof Error
+            ? e.message
+            : "AI is temporarily unavailable. Check API connection.";
       setMessages((m) => [...m, { role: "assistant", text: err }]);
     } finally {
       setBusy(false);
     }
-  }, [input, props.accessToken, busy, lang, conversationId]);
+  }, [input, props.accessToken, canChat, busy, lang, conversationId]);
 
-  if (!props.accessToken) return null;
+  if (!canChat) return null;
 
   return (
     <div

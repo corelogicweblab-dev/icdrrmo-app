@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { AiContextService } from './ai-context.service';
 import { AiChatDto } from './dto/ai-chat.dto';
-import type { AiChatResponse, AiLanguage } from './ai-assistant.types';
+import type { AiChatResponse, AiLanguage, AiRoleContext } from './ai-assistant.types';
 
 const LANG_NAMES: Record<AiLanguage, string> = {
   en: 'English',
@@ -29,6 +29,31 @@ export class AiAssistantService {
     if (/\b(cosa|con|el|ta|mira|peligro)\b/.test(m)) return 'cbk';
     if (/\b(ano|mga|barangay|lumikas|bagyo|ulan|sakuna|po\b|ho\b)\b/.test(m)) return 'fil';
     return 'en';
+  }
+
+  /** Public portal assistant (no JWT) — context-RAG only, rate-limited at controller. */
+  async guestChat(dto: AiChatDto): Promise<AiChatResponse> {
+    const lang = this.detectLanguage(dto.message, dto.language);
+    const conversationId = dto.conversationId?.trim() || randomUUID();
+    const ctx: AiRoleContext = {
+      role: 'CITIZEN',
+      generatedAt: new Date().toISOString(),
+      summary:
+        'Visitor on ICDRRMO SMART portal (not signed in). Direct them to Citizen portal for SOS, or sign-in for responders/operators.',
+      metrics: { label: 'ICDRRMO Portal', status: 'online' },
+    };
+    const reply = this.contextRagReply(dto.message, ctx, lang);
+    return {
+      reply,
+      language: lang,
+      engine: 'context-rag',
+      conversationId,
+      suggestedActions: [
+        lang === 'fil' ? 'Buksan ang Citizen portal' : 'Open Citizen portal',
+        lang === 'fil' ? 'Mag-sign in' : 'Sign in',
+        lang === 'fil' ? 'Tawag sa hotline' : 'Call emergency hotline',
+      ],
+    };
   }
 
   async chat(actor: JwtPayload, dto: AiChatDto): Promise<AiChatResponse> {

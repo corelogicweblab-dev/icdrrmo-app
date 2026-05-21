@@ -40,6 +40,12 @@ export class AiAssistantController {
     };
   }
 
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  @Post('guest-chat')
+  guestChat(@Body() dto: AiChatDto) {
+    return this.ai.guestChat(dto);
+  }
+
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...AI_ROLES)

@@ -1,3 +1,21 @@
+/** Live Firebase Hosting + Render API pairing (safety net when export env is wrong or PWA serves stale JS). */
+export const PRODUCTION_API_BASE = "https://icdrrmo-api.onrender.com/api/v1";
+export const PRODUCTION_WS_ORIGIN = "https://icdrrmo-api.onrender.com";
+
+const FIREBASE_HOSTING_HOSTS = new Set([
+  "icdrrmo-b204e.web.app",
+  "icdrrmo-b204e.firebaseapp.com",
+]);
+
+function isAbsoluteApiUrl(u: string | undefined): u is string {
+  return Boolean(u && /^https?:\/\//i.test(u) && !u.startsWith("/"));
+}
+
+function isFirebaseHostingOrigin(): boolean {
+  if (typeof window === "undefined") return false;
+  return FIREBASE_HOSTING_HOSTS.has(window.location.hostname);
+}
+
 /** Mapbox public token (client bundle). Set in `admin/.env.local` as `NEXT_PUBLIC_MAPBOX_TOKEN`. */
 export function getMapboxToken(): string {
   return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";
@@ -14,7 +32,8 @@ export function hasMapboxToken(): boolean {
  */
 export function getApiBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (raw) return raw.replace(/\/$/, "");
+  if (isAbsoluteApiUrl(raw)) return raw.replace(/\/$/, "");
+  if (isFirebaseHostingOrigin()) return PRODUCTION_API_BASE;
   if (typeof window !== "undefined") {
     return "/api/v1";
   }
@@ -76,9 +95,9 @@ export function getApiConfigWarning(): string | null {
  */
 export function getWsBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_WS_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv && /^https?:\/\//i.test(fromEnv)) return fromEnv.replace(/\/$/, "");
   const api = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (api && /^https?:\/\//i.test(api)) {
+  if (isAbsoluteApiUrl(api)) {
     try {
       const u = new URL(api);
       return `${u.protocol}//${u.host}`;
@@ -86,6 +105,7 @@ export function getWsBaseUrl(): string {
       /* fall through */
     }
   }
+  if (isFirebaseHostingOrigin()) return PRODUCTION_WS_ORIGIN;
   if (typeof window !== "undefined") return window.location.origin;
   return "http://127.0.0.1:4000";
 }

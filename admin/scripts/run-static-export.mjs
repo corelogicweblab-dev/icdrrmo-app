@@ -34,7 +34,17 @@ function isAbsoluteHttpUrl(u) {
 }
 
 const deployFile = join(adminRoot, ".env.deploy");
-const fromFile = parseEnvFile(deployFile);
+const deployExample = join(adminRoot, ".env.deploy.example");
+const fromFile = {
+  ...parseEnvFile(deployExample),
+  ...parseEnvFile(deployFile),
+};
+
+/** Production defaults when shell/CI secrets are missing (Firebase static hosting). */
+const PROD_DEFAULTS = {
+  NEXT_PUBLIC_API_URL: "https://icdrrmo-api.onrender.com/api/v1",
+  NEXT_PUBLIC_WS_URL: "https://icdrrmo-api.onrender.com",
+};
 
 const buildId =
   process.env.NEXT_PUBLIC_WEB_BUILD_ID?.trim() ||
@@ -49,8 +59,12 @@ const childEnv = {
   ...fromFile,
 };
 
-const api = childEnv.NEXT_PUBLIC_API_URL?.trim() ?? "";
-const ws = childEnv.NEXT_PUBLIC_WS_URL?.trim() ?? "";
+const api =
+  childEnv.NEXT_PUBLIC_API_URL?.trim() ||
+  PROD_DEFAULTS.NEXT_PUBLIC_API_URL;
+const ws =
+  childEnv.NEXT_PUBLIC_WS_URL?.trim() ||
+  PROD_DEFAULTS.NEXT_PUBLIC_WS_URL;
 
 if (!isAbsoluteHttpUrl(api)) {
   console.error(
