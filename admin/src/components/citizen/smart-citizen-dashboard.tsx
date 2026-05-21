@@ -15,6 +15,7 @@ import { CitizenEnterpriseStrip } from "@/components/citizen/citizen-enterprise-
 import {
   createDegradedCitizenFeed,
   fetchCitizenFeedWithRetry,
+  isLiveCitizenFeed,
   type CitizenUnifiedFeed,
 } from "@/lib/citizen-feed";
 import { useCitizenRealtime } from "@/hooks/use-citizen-realtime";
@@ -47,10 +48,10 @@ export function SmartCitizenDashboard(props: {
   const [tab, setTab] = useState<Tab>("home");
   const [feed, setFeed] = useState<CitizenUnifiedFeed>(() => createDegradedCitizenFeed());
   const [prep, setPrep] = useState<{
-    checklist: Array<{ id: string; label: string; labelTl: string; done: boolean }>;
+    checklist: Array<{ id: string; label: string; done: boolean }>;
     badges: string[];
   } | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const [live, setLive] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
@@ -58,49 +59,40 @@ export function SmartCitizenDashboard(props: {
   const [sosBusy, setSosBusy] = useState(false);
   const [sosPanel, setSosPanel] = useState<SosPanel | null>(null);
 
-  const loadFeed = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      setSyncing(true);
-      const coords = lat != null && lon != null ? { lat, lng: lon } : undefined;
-      try {
-        const f = await fetchCitizenFeedWithRetry(props.accessToken, coords, 2);
-        setFeed(f);
-        setErr(null);
-        void fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
-          headers: { Authorization: `Bearer ${props.accessToken}` },
+  const loadFeed = useCallback(async () => {
+    const coords = lat != null && lon != null ? { lat, lng: lon } : undefined;
+    try {
+      const f = await fetchCitizenFeedWithRetry(props.accessToken, coords, 4);
+      setFeed(f);
+      setLive(isLiveCitizenFeed(f));
+      setErr(null);
+      void fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
+        headers: { Authorization: `Bearer ${props.accessToken}` },
+      })
+        .then(async (pRes) => {
+          if (pRes.ok) {
+            const p = (await pRes.json()) as typeof prep;
+            setPrep(p);
+          }
         })
-          .then(async (pRes) => {
-            if (pRes.ok) {
-              const p = (await pRes.json()) as typeof prep;
-              setPrep(p);
-            }
-          })
-          .catch(() => {});
-      } catch {
-        setErr(null);
-      } finally {
-        setSyncing(false);
-      }
-    },
-    [props.accessToken, lat, lon],
-  );
+        .catch(() => {});
+    } catch {
+      /* Keep last good feed — realtime + interval will retry silently */
+    }
+  }, [props.accessToken, lat, lon]);
 
   useEffect(() => {
-    void loadFeed({ silent: true });
+    void loadFeed();
   }, [loadFeed]);
 
-  /** Background sync — no manual reload; upgrades degraded → live feed when API is ready. */
+  /** Steady background refresh + realtime push — no "syncing" UI. */
   useEffect(() => {
-    const id = window.setInterval(() => {
-      if (feed?.systemHealth.status === "degraded" || !feed) {
-        void loadFeed({ silent: true });
-      }
-    }, 20_000);
+    const id = window.setInterval(() => void loadFeed(), 45_000);
     return () => window.clearInterval(id);
-  }, [feed, loadFeed]);
+  }, [loadFeed]);
 
   useCitizenRealtime(props.accessToken, () => {
-    void loadFeed({ silent: true });
+    void loadFeed();
   });
 
   const captureLocation = useCallback(() => {
@@ -185,13 +177,12 @@ export function SmartCitizenDashboard(props: {
       <div className="flex flex-wrap items-center gap-2">
         <CitizenSafetyBadge
           status={activeFeed.safetyStatus}
-          labelTl={activeFeed.safetyLabels[activeFeed.safetyStatus]?.tl}
         />
         <span className="font-mono text-[9px] text-zinc-600">{SMART_CITIZEN_BUILD}</span>
-        {syncing || activeFeed.systemHealth.status === "degraded" ? (
-          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
-            <Loader2 className="h-3 w-3 animate-spin text-orange-400/80" aria-hidden />
-            Syncing live data…
+        {live ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/90">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
+            Live
           </span>
         ) : null}
       </div>
@@ -262,7 +253,7 @@ export function SmartCitizenDashboard(props: {
                 accessToken={props.accessToken}
                 incidentId={sosPanel.incidentId}
               />
-              <CitizenSosRouteCard {...sosPanel} />
+              <CitizenSosRouteCard {...sosPanel} accessToken={props.accessToken} />
               <CitizenSosVoiceLive
                 incidentId={sosPanel.incidentId}
                 accessToken={props.accessToken}

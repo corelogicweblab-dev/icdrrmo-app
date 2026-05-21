@@ -25,6 +25,7 @@ export type SituationMapProps = {
   incidentPins?: MapIncidentPin[];
   /** When passed (GIS page), heatmap / cluster / stub visibility follows ops checkboxes. Omit on dashboard. */
   layerToggles?: Record<string, boolean>;
+  accessToken?: string | null;
 };
 
 export function SituationMap(props: SituationMapProps): ReactElement {
@@ -193,7 +194,14 @@ export function SituationMap(props: SituationMapProps): ReactElement {
   }, [pins, mapReady, token, mapboxDisabled, showHtmlMarkers, layerToggles, showFloodHazard, showLandslideHazard]);
 
   if (!token || mapboxDisabled) {
-    return <SituationMapOsmFallback pins={pins} showMarkers={showHtmlMarkers} layerToggles={layerToggles} />;
+    return (
+      <SituationMapOsmFallback
+        pins={pins}
+        showMarkers={showHtmlMarkers}
+        layerToggles={layerToggles}
+        accessToken={props.accessToken}
+      />
+    );
   }
 
   const gisHud =

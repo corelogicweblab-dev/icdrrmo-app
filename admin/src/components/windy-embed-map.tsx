@@ -1,72 +1,29 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useMemo } from "react";
-import {
-  ISABELA_CITY_LAT,
-  ISABELA_CITY_LON,
-  PH_SYNOPTIC_LAT,
-  PH_SYNOPTIC_LON,
-  PH_SYNOPTIC_ZOOM,
-} from "@/lib/isabela-forecast-embed";
+import { IsabelaWeatherDesk } from "@/components/ops/isabela-weather-desk";
 
 type WindyOverlay = "wind" | "rain" | "temp" | "clouds" | "pressure";
 
 type Props = {
-  /** Wider Sulu / Zamboanga / Basilan view (matches enterprise desk map). */
   variant?: "synoptic" | "city";
   overlay?: WindyOverlay;
+  title?: string;
   className?: string;
 };
 
-/** Full Windy forecast desk — live layers + timeline (embed.windy.com). */
+/**
+ * @deprecated Windy embed iframe removed (third-party logo).
+ * Use {@link IsabelaWeatherDesk} or {@link EocUnifiedMap} — Windy API tiles via ICDRRMO.
+ */
 export function WindyEmbedMap(props: Props): ReactElement {
-  const variant = props.variant ?? "synoptic";
-  const overlay = props.overlay ?? "wind";
-
-  const src = useMemo(() => {
-    const lat = variant === "synoptic" ? PH_SYNOPTIC_LAT : ISABELA_CITY_LAT;
-    const lon = variant === "synoptic" ? PH_SYNOPTIC_LON : ISABELA_CITY_LON;
-    const zoom = variant === "synoptic" ? PH_SYNOPTIC_ZOOM : 10;
-    const params = new URLSearchParams({
-      lat: String(lat),
-      lon: String(lon),
-      detailLat: String(ISABELA_CITY_LAT),
-      detailLon: String(ISABELA_CITY_LON),
-      zoom: String(zoom),
-      level: "surface",
-      overlay,
-      product: "ecmwf",
-      menu: "",
-      message: "true",
-      marker: "true",
-      calendar: "now",
-      pressure: "false",
-      type: "map",
-      location: "coordinates",
-      detail: "true",
-      metricWind: "km/h",
-      metricTemp: "°C",
-      radarRange: "-1",
-    });
-    return `https://embed.windy.com/embed2.html?${params.toString()}`;
-  }, [variant, overlay]);
-
-  const heightClass =
-    variant === "synoptic" ? "min-h-[min(72vh,720px)] h-[min(72vh,720px)]" : "min-h-[420px] h-[420px]";
-
+  const variant = props.variant === "city" ? "compact" : "synoptic";
   return (
-    <div
-      className={`relative w-full overflow-hidden rounded-xl border border-orange-500/20 bg-[#0a1628] ${heightClass} ${props.className ?? ""}`}
-    >
-      <iframe
-        title="Windy live weather — Isabela City & Sulu Sea"
-        src={src}
-        className="absolute inset-0 h-full w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        allow="fullscreen"
-      />
-    </div>
+    <IsabelaWeatherDesk
+      variant={variant}
+      overlay={props.overlay ?? "wind"}
+      title={props.title ?? "ICDRRMO live weather map"}
+      className={props.className}
+    />
   );
 }

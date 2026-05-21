@@ -4,7 +4,8 @@ import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, MapPin } from "lucide-react";
 import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
-import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
+import { useWindyLeafletLayer } from "@/hooks/use-windy-leaflet-layer";
+import { WINDY_STYLE_BASEMAP_ATTRIBUTION, WINDY_STYLE_BASEMAP_URL } from "@/lib/windy-leaflet";
 import "leaflet/dist/leaflet.css";
 
 export type CitizenSosRouteCardProps = {
@@ -13,6 +14,7 @@ export type CitizenSosRouteCardProps = {
   userLat: number;
   userLon: number;
   emergencyLabel: string;
+  accessToken?: string | null;
 };
 
 export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactElement {
@@ -22,6 +24,15 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const overlayRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useWindyLeafletLayer({
+    mapRef,
+    mapReady,
+    accessToken: props.accessToken,
+    overlay: "rain",
+    opacity: 0.4,
+  });
 
   const externalDirectionsUrl = `https://www.google.com/maps/dir/${ISABELA_EOC_LAT},${ISABELA_EOC_LNG}/${props.userLat},${props.userLon}`;
   const externalNavigationUrl = `https://waze.com/ul?ll=${encodeURIComponent(String(props.userLat))},${encodeURIComponent(String(props.userLon))}&navigate=yes`;
@@ -57,11 +68,12 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
 
         if (!mapRef.current) {
           mapRef.current = L.map(mapEl.current, { zoomControl: true }).setView(user, 13);
-          L.tileLayer(OPS_LEAFLET_TILE_URL, {
-            attribution: OPS_LEAFLET_ATTRIBUTION,
+          L.tileLayer(WINDY_STYLE_BASEMAP_URL, {
+            attribution: WINDY_STYLE_BASEMAP_ATTRIBUTION,
             maxZoom: 19,
           }).addTo(mapRef.current);
           overlayRef.current = L.layerGroup().addTo(mapRef.current);
+          setMapReady(true);
         }
         const map = mapRef.current;
         const overlay = overlayRef.current;
@@ -102,6 +114,7 @@ export function CitizenSosRouteCard(props: CitizenSosRouteCardProps): ReactEleme
 
   useEffect(() => {
     return () => {
+      setMapReady(false);
       mapRef.current?.remove();
       mapRef.current = null;
       overlayRef.current = null;

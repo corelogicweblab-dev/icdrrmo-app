@@ -29,7 +29,7 @@ export default function OpsWeatherPage(): ReactElement {
         <div>
           <h1 className="text-sm font-semibold text-white">Unified hazard & weather map</h1>
           <p className="text-[11px] text-zinc-500 mt-0.5">
-            OpenWeatherMap · GDACS GeoRSS · PAGASA portal/RSS — single GeoJSON feed
+            Windy API tiles (ICDRRMO) · GDACS · PAGASA — no third-party map logo
           </p>
         </div>
         <Link
@@ -67,8 +67,8 @@ export default function OpsWeatherPage(): ReactElement {
         <OpsPanelCard title="Desk note">
           <p className="text-[11px] text-zinc-500 leading-relaxed flex gap-2">
             <CloudRain className="h-4 w-4 shrink-0 text-sky-400" aria-hidden />
-            Cross-check PAGASA official bulletins before dispatch. Raster overlays require{" "}
-            <code className="text-zinc-400">OPENWEATHERMAP_API_KEY</code> on the API service.
+            Cross-check PAGASA official bulletins before dispatch. Live weather tiles require{" "}
+            <code className="text-zinc-400">WINDY_API_KEY</code> on the API service (Render).
           </p>
         </OpsPanelCard>
       </div>

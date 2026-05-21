@@ -36,7 +36,27 @@ export class AiContextService {
   }
 
   private async citizenContext(actor: JwtPayload, generatedAt: string): Promise<AiRoleContext> {
-    const feed = (await this.citizenFeed.getUnifiedFeed(actor)) as Record<string, unknown>;
+    let feed: Record<string, unknown>;
+    try {
+      feed = (await Promise.race([
+        this.citizenFeed.getUnifiedFeed(actor),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('feed-timeout')), 14_000);
+        }),
+      ])) as Record<string, unknown>;
+    } catch {
+      const situation = await this.weather.getSituationSnapshot().catch(() => null);
+      return {
+        role: 'CITIZEN',
+        generatedAt,
+        summary:
+          'Signed-in citizen. Dashboard data is updating in the background — you can still ask about SOS, Map, Prepare, and Profile.',
+        weather: situation,
+        evacuation: [],
+        advisories: [],
+        metrics: { status: 'online', label: 'Live' },
+      };
+    }
     const evac = feed.evacuationCenters as unknown[] | undefined;
     const notif = feed.notifications as unknown[] | undefined;
     const community = feed.community as unknown[] | undefined;

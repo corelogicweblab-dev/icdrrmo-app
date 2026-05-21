@@ -15,7 +15,7 @@ export function CitizenWeatherMap(props: { accessToken: string }): ReactElement 
           Live weather layers
         </span>
         {" · "}
-        Wind, rain, temp · GDACS · PAGASA · ICDRRMO (no third-party branding)
+        Windy-style live layers · GDACS · PAGASA · ICDRRMO (no Windy logo)
       </p>
       <EocUnifiedMap
         mode="citizen"

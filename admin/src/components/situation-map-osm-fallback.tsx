@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin } from "lucide-react";
@@ -9,13 +9,15 @@ import type { MapIncidentPin } from "@/lib/map-pins";
 import { markerColorForIncidentType } from "@/lib/map-pins";
 import { hazardPinsForLayers } from "@/lib/isabela-hazard-barangay-locations";
 import { ISABELA_EOC_ADDRESS, ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
-import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
+import { useWindyLeafletLayer } from "@/hooks/use-windy-leaflet-layer";
+import { WINDY_STYLE_BASEMAP_ATTRIBUTION, WINDY_STYLE_BASEMAP_URL } from "@/lib/windy-leaflet";
 
 export type SituationMapOsmFallbackProps = {
   pins: MapIncidentPin[];
   showMarkers: boolean;
   /** When set (GIS page), flood / landslide reference dots follow layer checkboxes. When omitted, show all hazard pins. */
   layerToggles?: Record<string, boolean>;
+  accessToken?: string | null;
 };
 
 /**
@@ -27,6 +29,15 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const resizeObsRef = useRef<ResizeObserver | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useWindyLeafletLayer({
+    mapRef,
+    mapReady,
+    accessToken: props.accessToken,
+    overlay: "rain",
+    opacity: 0.5,
+  });
 
   useEffect(() => {
     const el = containerRef.current;
@@ -41,11 +52,12 @@ export function SituationMapOsmFallback(props: SituationMapOsmFallbackProps): Re
 
       if (!mapRef.current) {
         mapRef.current = L.map(el, { zoomControl: true }).setView(center, 12.2);
-        L.tileLayer(OPS_LEAFLET_TILE_URL, {
-          attribution: OPS_LEAFLET_ATTRIBUTION,
+        L.tileLayer(WINDY_STYLE_BASEMAP_URL, {
+          attribution: WINDY_STYLE_BASEMAP_ATTRIBUTION,
           maxZoom: 19,
         }).addTo(mapRef.current);
         layerRef.current = L.layerGroup().addTo(mapRef.current);
+        setMapReady(true);
         const ro = new ResizeObserver(() => {
           mapRef.current?.invalidateSize();
         });
@@ -123,6 +135,7 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
 
   useEffect(() => {
     return () => {
+      setMapReady(false);
       resizeObsRef.current?.disconnect();
       resizeObsRef.current = null;
       mapRef.current?.remove();
@@ -144,7 +157,7 @@ const allPoints: [number, number][] = [[ISABELA_EOC_LAT, ISABELA_EOC_LNG]];
           </p>
         </div>
         <div className="rounded-lg border border-amber-500/25 bg-amber-950/40 px-2 py-1.5 text-[9px] text-amber-100/90 backdrop-blur-sm">
-          English-first street basemap (Esri)
+          ICDRRMO live weather layers (no Windy logo)
         </div>
       </div>
     </div>

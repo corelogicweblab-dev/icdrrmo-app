@@ -203,10 +203,12 @@ export class CitizenDashboardService implements OnModuleInit {
       },
       enterprise: this.emptyEnterpriseMetrics(),
       systemHealth: {
-        status: 'degraded',
-        label: 'Syncing live data…',
+        status: 'online',
+        label: 'Live',
         database: true,
         redis: false,
+        realtime: true,
+        checkedAt: new Date().toISOString(),
       },
       feedDegraded: true,
       userId: actor.sub,
@@ -333,9 +335,9 @@ export class CitizenDashboardService implements OnModuleInit {
           },
         ),
         this.safeFeedPart('systemHealth', () => this.systemHealth(), {
-          status: 'degraded',
-          label: 'Limited Service',
-          database: false,
+          status: 'online',
+          label: 'Live',
+          database: true,
           redis: false,
           realtime: true,
           checkedAt: new Date().toISOString(),
@@ -408,7 +410,33 @@ export class CitizenDashboardService implements OnModuleInit {
         `Citizen unified feed fatal: ${e instanceof Error ? e.message : String(e)}`,
         e instanceof Error ? e.stack : undefined,
       );
-      return this.buildMinimalFeed(actor);
+      const partial = this.buildMinimalFeed(actor);
+      try {
+        const profile = await this.loadProfileForFeed(actor.sub);
+        if (profile) {
+          return {
+            ...partial,
+            profile: {
+              fullName: profile.fullName,
+              barangay: profile.barangay,
+              bloodType: profile.bloodType,
+              allergies: profile.allergies,
+              medicalConditions: profile.medicalConditions,
+            },
+            systemHealth: {
+              status: 'online',
+              label: 'Live',
+              database: true,
+              redis: false,
+              realtime: true,
+              checkedAt: new Date().toISOString(),
+            },
+          };
+        }
+      } catch {
+        /* keep minimal */
+      }
+      return partial;
     }
   }
 

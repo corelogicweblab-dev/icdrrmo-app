@@ -17,8 +17,8 @@ import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 import { WEB_BUILD_ID } from "@/lib/web-build-id";
 
 const FEATURES = [
-  { icon: Bot, label: "ICDRRMO AI", detail: "Multi-language assistant on every dashboard" },
-  { icon: Map, label: "Windy + hazards", detail: "GDACS · PAGASA · live GeoJSON map" },
+  { icon: Bot, label: "ICDRRMO AI", detail: "English assistant on every dashboard" },
+  { icon: Map, label: "Live weather map", detail: "Windy API layers · GDACS · PAGASA (no logo)" },
   { icon: Sparkles, label: "SMART Citizen", detail: "SOS lifecycle · evac · preparedness" },
 ] as const;
 

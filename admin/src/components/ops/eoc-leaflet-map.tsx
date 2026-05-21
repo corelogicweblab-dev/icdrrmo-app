@@ -6,7 +6,8 @@ import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { opsApiErrorUserMessage, opsFetchJson, OpsApiError } from "@/lib/ops-api";
 import { ISABELA_EOC_ADDRESS } from "@/lib/isabela-eoc";
-import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
+import { useWindyLeafletLayer } from "@/hooks/use-windy-leaflet-layer";
+import { WINDY_STYLE_BASEMAP_ATTRIBUTION, WINDY_STYLE_BASEMAP_URL } from "@/lib/windy-leaflet";
 
 type OpsLive = {
   eoc: { label: string; latitude: number; longitude: number };
@@ -66,6 +67,15 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
   const [data, setData] = useState<OpsLive | null>(null);
   const [routeEtaMin, setRouteEtaMin] = useState<number | null>(null);
   const [routeBusy, setRouteBusy] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+
+  useWindyLeafletLayer({
+    mapRef,
+    mapReady,
+    accessToken,
+    overlay: "rain",
+    opacity: 0.5,
+  });
 
   useEffect(() => {
     if (!accessToken) return;
@@ -101,11 +111,12 @@ export function EocLeafletMap({ accessToken }: Props): ReactElement {
       const center: LatLngExpression = [data.eoc.latitude, data.eoc.longitude];
       if (!mapRef.current) {
         mapRef.current = L.map(mapEl.current, { zoomControl: true }).setView(center, 13);
-        L.tileLayer(OPS_LEAFLET_TILE_URL, {
-          attribution: OPS_LEAFLET_ATTRIBUTION,
+        L.tileLayer(WINDY_STYLE_BASEMAP_URL, {
+          attribution: WINDY_STYLE_BASEMAP_ATTRIBUTION,
           maxZoom: 19,
         }).addTo(mapRef.current);
         layerRef.current = L.layerGroup().addTo(mapRef.current);
+        setMapReady(true);
       }
       const map = mapRef.current;
       const layer = layerRef.current;

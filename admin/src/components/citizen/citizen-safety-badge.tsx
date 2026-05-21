@@ -30,7 +30,6 @@ const STYLES: Record<
 
 export function CitizenSafetyBadge(props: {
   status: CitizenSafetyStatus;
-  labelTl?: string;
 }): ReactElement {
   const s = STYLES[props.status];
   const Icon = s.icon;
@@ -40,9 +39,6 @@ export function CitizenSafetyBadge(props: {
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
       <span>{s.label}</span>
-      {props.labelTl ? (
-        <span className="font-normal normal-case text-white/70">· {props.labelTl}</span>
-      ) : null}
     </div>
   );
 }

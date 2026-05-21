@@ -3,12 +3,12 @@ import type { OpenWeatherLayerConfig } from './weather.service';
 
 /** Windy raster layers — keys match https://tiles.windy.com/{layer}/… */
 const WINDY_RASTER_LAYERS: Array<{ id: string; windy: string; label: string }> = [
-  { id: 'rain-radar', windy: 'rain', label: 'Rain radar (Windy)' },
-  { id: 'precipitation', windy: 'rain', label: 'Rain / precip (Windy)' },
-  { id: 'clouds', windy: 'clouds', label: 'Clouds (Windy)' },
-  { id: 'temp', windy: 'temp', label: 'Temperature (Windy)' },
-  { id: 'wind', windy: 'wind', label: 'Wind (Windy)' },
-  { id: 'satellite', windy: 'satellite', label: 'Satellite (Windy)' },
+  { id: 'rain-radar', windy: 'rain', label: 'Rain radar (live)' },
+  { id: 'precipitation', windy: 'rain', label: 'Rain / precipitation' },
+  { id: 'clouds', windy: 'clouds', label: 'Clouds' },
+  { id: 'temp', windy: 'temp', label: 'Temperature' },
+  { id: 'wind', windy: 'wind', label: 'Wind' },
+  { id: 'satellite', windy: 'satellite', label: 'Satellite' },
 ];
 
 @Injectable()

@@ -19,7 +19,6 @@ import {
   Users,
   Wind,
 } from "lucide-react";
-import { getMapboxToken, hasMapboxToken } from "@/lib/env";
 import { opsFetchJson } from "@/lib/ops-api";
 import { fetchGdacsClientFeatures } from "@/lib/eoc-gdacs-client";
 import {
@@ -43,14 +42,14 @@ import {
 } from "@/lib/eoc-realtime";
 import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 import { ISABELA_CITY_LAT, ISABELA_CITY_LON } from "@/lib/isabela-forecast-embed";
-import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
+import { ICDRRMO_WEATHER_ATTRIBUTION, WINDY_STYLE_BASEMAP_ATTRIBUTION, WINDY_STYLE_BASEMAP_URL } from "@/lib/windy-leaflet";
 import {
   fetchOpenMeteoClient,
   fetchRainViewerTileUrl,
   RAINVIEWER_MAX_NATIVE_ZOOM,
   type ClientOpenMeteo,
 } from "@/lib/eoc-public-feeds";
-import { EOC_MAP_BUILD, mapboxDarkTileUrl } from "@/lib/eoc-map-layers";
+import { EOC_MAP_BUILD } from "@/lib/eoc-map-layers";
 
 export type EocMapMode = "ops" | "citizen" | "responder" | "chairman";
 
@@ -446,16 +445,10 @@ export function EocUnifiedMap({
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
 
-      const mbx = getMapboxToken();
-      const basemap = hasMapboxToken()
-        ? L.tileLayer(mapboxDarkTileUrl(mbx), {
-            attribution: "© Mapbox © OpenStreetMap",
-            maxZoom: 19,
-          })
-        : L.tileLayer(OPS_LEAFLET_TILE_URL, {
-            attribution: OPS_LEAFLET_ATTRIBUTION,
-            maxZoom: 19,
-          });
+      const basemap = L.tileLayer(WINDY_STYLE_BASEMAP_URL, {
+        attribution: WINDY_STYLE_BASEMAP_ATTRIBUTION,
+        maxZoom: 19,
+      });
       basemap.addTo(map);
       basemapRef.current = basemap;
 
@@ -665,7 +658,7 @@ export function EocUnifiedMap({
           zIndex: 450,
           pane: "overlayPane",
           attribution: isWindy
-            ? "ICDRRMO · Live weather layers"
+            ? ICDRRMO_WEATHER_ATTRIBUTION
             : isRainViewer
               ? "Radar © RainViewer"
               : "© OpenWeatherMap",
@@ -899,8 +892,8 @@ export function EocUnifiedMap({
         </p>
       ) : null}
       <p className="px-1 pt-1 text-[10px] text-zinc-500 leading-snug">
-        Tiles: {useWindy ? "ICDRRMO live layers (API)" : weather?.openWeather.provider ?? "RainViewer fallback"}.
-        {useWindy ? " Server-side WINDY_API_KEY on Render." : " Temp/wind point overlay when no tile URL."}
+        Tiles: {useWindy ? "ICDRRMO live weather (Windy API, no logo)" : weather?.openWeather.provider ?? "RainViewer fallback"}.
+        {!useWindy ? " Set WINDY_API_KEY on Render for full live layers." : ""}
       </p>
       {weather?.situation || clientMeteo ? (
         <p className="px-1 pt-1 text-[10px] text-orange-200/90 leading-snug">

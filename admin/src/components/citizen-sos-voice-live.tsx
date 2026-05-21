@@ -10,7 +10,7 @@ function statusLabel(s: string): string {
     case "connecting":
       return "Opening microphone…";
     case "joining":
-      return "Syncing with voice server…";
+      return "Connecting to voice server…";
     case "standby":
       return "Mic live — waiting for ops desk…";
     case "negotiating":

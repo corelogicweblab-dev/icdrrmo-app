@@ -25,13 +25,8 @@ export class AiAssistantService {
     private readonly weatherService: WeatherService,
   ) {}
 
-  detectLanguage(message: string, preferred?: AiLanguage): AiLanguage {
-    if (preferred) return preferred;
-    const m = message.toLowerCase();
-    if (/\b(unsa|kaayo|lugar|bagyo)\b/.test(m)) return 'ceb';
-    if (/\b(cosa|con|el|ta|mira|peligro)\b/.test(m)) return 'cbk';
-    if (/\b(ano|mga|barangay|lumikas|bagyo|ulan|sakuna|po\b|ho\b)\b/.test(m)) return 'fil';
-    return 'en';
+  detectLanguage(_message: string, preferred?: AiLanguage): AiLanguage {
+    return preferred ?? 'en';
   }
 
   /** Public portal assistant (no JWT) — uses Gemini when configured. */
@@ -42,7 +37,7 @@ export class AiAssistantService {
       role: 'CITIZEN',
       generatedAt: new Date().toISOString(),
       summary:
-        'Bisita sa ICDRRMO SMART portal (HapIsabela). Mag-sign in bilang Citizen para sa SOS, o gamitin ang Prepare tab para sa emergency kit.',
+        'Visitor on ICDRRMO SMART portal (HapIsabela). Sign in as Citizen for SOS, or use the Prepare tab for emergency kit guides.',
       metrics: { label: 'ICDRRMO Portal', status: 'online' },
       weather: await this.weatherService.getSituationSnapshot().catch(() => null),
     };
@@ -64,11 +59,7 @@ export class AiAssistantService {
           language: lang,
           engine: 'gemini',
           conversationId,
-          suggestedActions: [
-            'Buksan ang Citizen portal',
-            'Mag-sign in',
-            'Tingnan ang Map tab',
-          ],
+          suggestedActions: ['Open Citizen portal', 'Sign in', 'Open Map tab'],
         };
       } catch (e) {
         this.logger.warn(`Guest Gemini fallback: ${e instanceof Error ? e.message : String(e)}`);
@@ -81,13 +72,26 @@ export class AiAssistantService {
       language: lang,
       engine: 'context-rag',
       conversationId,
-      suggestedActions: ['Buksan ang Citizen portal', 'Mag-sign in', 'Emergency SOS'],
+      suggestedActions: ['Open Citizen portal', 'Sign in', 'Emergency SOS'],
     };
   }
 
   async chat(actor: JwtPayload, dto: AiChatDto): Promise<AiChatResponse> {
     const lang = this.detectLanguage(dto.message, dto.language);
-    const ctx = await this.context.build(actor);
+    let ctx: Awaited<ReturnType<AiContextService['build']>>;
+    try {
+      ctx = await this.context.build(actor);
+    } catch (e) {
+      this.logger.warn(
+        `AI context build failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      ctx = {
+        role: actor.role,
+        generatedAt: new Date().toISOString(),
+        summary: `${actor.role} session — live dashboard context is still loading.`,
+        metrics: { status: 'online', label: 'Live' },
+      };
+    }
     const conversationId = dto.conversationId?.trim() || randomUUID();
 
     const key =
@@ -124,8 +128,8 @@ export class AiAssistantService {
       'You are ICDRRMO AI for Isabela City, Basilan — greet with spirit of "HapIsabela!" (happy, prepared Isabela).',
       'Answer ANY reasonable question about: disasters, typhoon/flood/fire, this SMART app, SOS, evacuation, barangay DRRM, responders, weather, preparedness, profiles, and government coordination.',
       'Use CONTEXT when available; otherwise give accurate general DRRM guidance for the Philippines / BARMM context.',
-      'Always reply in the same language the user wrote (Tagalog, English, Cebuano, or Chavacano). Be helpful, concise, and calm.',
-      `Preferred tone language hint: ${LANG_NAMES[lang]}. User role: ${actor.role}.`,
+      'Reply in English only — clear, concise, professional emergency language.',
+      `User role: ${actor.role}.`,
       'Never refuse ICDRRMO-related questions. If unsure, suggest: Map tab, Prepare tab, Profile, SOS button, or contact barangay/ICDRRMO.',
     ].join('\n');
   }
@@ -174,183 +178,108 @@ export class AiAssistantService {
   private contextRagReply(
     message: string,
     ctx: Awaited<ReturnType<AiContextService['build']>>,
-    lang: AiLanguage,
+    _lang: AiLanguage,
   ): string {
-    const q = message.toLowerCase();
-    const lines: string[] = [];
+    const q = message.toLowerCase().trim();
+    const greet =
+      /hap\s*isabela|hello|hi\b|good (morning|afternoon|evening)/.test(q);
+    const prefix = greet ? 'HapIsabela! ' : '';
 
-    const t = (en: string, fil: string, ceb: string, cbk: string) => {
-      if (lang === 'fil') return fil;
-      if (lang === 'ceb') return ceb;
-      if (lang === 'cbk') return cbk;
-      return en;
-    };
+    const w = ctx.weather as {
+      rainOutlook6h?: { willRainLikely?: boolean; maxPrecipProbPct?: number; headline?: string };
+      current?: { weatherLabel?: string; temperatureC?: number | null };
+    } | null;
+    const evac = (ctx.evacuation as unknown[]) ?? [];
+    const inc = (ctx.incidents as unknown[]) ?? [];
+    const advisories = (ctx.advisories as unknown[]) ?? [];
 
-    if (/hap\s*isabela|hap isabela|kumusta|hello|hi\b|musta|good (morning|afternoon|evening)/.test(q)) {
-      lines.push(
-        t(
-          'HapIsabela! I am ICDRRMO AI — your Isabela City emergency assistant. Ask me anything about SOS, weather, evacuation, preparedness, or how to use this app.',
-          'HapIsabela! Ako ang ICDRRMO AI — opisyal na assistant ng Isabela City DRRMO. Magtanong ng kahit ano tungkol sa sakuna, panahon, evacuation, preparedness, o app.',
-          'HapIsabela! ICDRRMO AI ni para sa inyong emergency. Pangutana bahin sa SOS, panahon, evacuation, o app.',
-          'HapIsabela! Yo ta ICDRRMO AI — pregunta sobre emergencia, tiempo, evacuación, o el app.',
-        ),
+    if (/sos|emergency|tulong|responde|help me|danger/.test(q)) {
+      return (
+        prefix +
+        (inc.length
+          ? `You have ${inc.length} incident(s) on record. For a new emergency: open Home → choose type (flood, fire, medical, typhoon) → tap Send SOS with GPS enabled. Responders receive your location and medical profile automatically.`
+          : 'For an emergency: Home tab → select SOS type → tap Send SOS. Turn on GPS so ICDRRMO gets your exact location. Stay on the line if safe; follow barangay or EOC instructions.')
       );
     }
 
-    lines.push(t(
-      `ICDRRMO AI (${ctx.role} view): ${ctx.summary}`,
-      `ICDRRMO AI (${ctx.role}): ${ctx.summary}`,
-      `ICDRRMO AI (${ctx.role}): ${ctx.summary}`,
-      `ICDRRMO AI (${ctx.role}): ${ctx.summary}`,
-    ));
-
-    if (/weather|ulan|bagyo|pagasa|gdacs|windy|panahon/.test(q)) {
-      const w = ctx.weather as { rainOutlook6h?: { willRainLikely?: boolean; maxPrecipProbPct?: number } } | null;
-      if (w?.rainOutlook6h) {
-        lines.push(t(
-          `Rain outlook (6h): ${w.rainOutlook6h.willRainLikely ? 'rain likely' : 'lower rain chance'}, max precip probability ${w.rainOutlook6h.maxPrecipProbPct ?? 0}%. Check the Map tab for Windy layers and PAGASA/GDACS markers.`,
-          `Panahon (6 oras): ${w.rainOutlook6h.willRainLikely ? 'may ulan' : 'mas mababa ang tsansa ng ulan'}, max ${w.rainOutlook6h.maxPrecipProbPct ?? 0}%. Buksan ang Map para sa Windy at PAGASA/GDACS.`,
-          `Panahon (6 oras): ${w.rainOutlook6h.willRainLikely ? 'muulan' : 'ubos ang tsansa'}, max ${w.rainOutlook6h.maxPrecipProbPct ?? 0}%. Tan-awa ang Map.`,
-          `Tiempo (6 horas): ${w.rainOutlook6h.willRainLikely ? 'puede llueve' : 'menos lluvia'}, max ${w.rainOutlook6h.maxPrecipProbPct ?? 0}%. Mira el Mapa.`,
-        ));
-      } else {
-        lines.push(t(
-          'Weather data is loading from Open-Meteo, PAGASA, and GDACS. Open the weather map layer for live tiles.',
-          'Kinukuha ang datos ng panahon. Buksan ang mapa para sa live na layers.',
-          'Ga-load ang datos sa panahon. Abli ang mapa.',
-          'Ta carga el tiempo. Mira el mapa.',
-        ));
+    if (/weather|rain|bagyo|typhoon|pagasa|gdacs|wind|flood/.test(q)) {
+      const rain = w?.rainOutlook6h;
+      const temp = w?.current?.temperatureC;
+      const label = w?.current?.weatherLabel;
+      let body = 'Open the Map tab for live rain, wind, and temperature layers plus PAGASA/GDACS markers.';
+      if (rain) {
+        body = `${rain.headline ?? '6-hour outlook'} — ${rain.willRainLikely ? 'rain is likely' : 'lower rain chance'} (up to ${rain.maxPrecipProbPct ?? 0}% precip probability). ${body}`;
       }
+      if (label || temp != null) {
+        body = `Now: ${label ?? 'conditions available'}${temp != null ? `, ${temp}°C` : ''}. ${body}`;
+      }
+      return prefix + body;
     }
 
     if (/evac|evacuation|shelter|lumikas|center/.test(q)) {
-      const evac = (ctx.evacuation as unknown[]) ?? [];
-      if (evac.length) {
-        lines.push(t(
-          `${evac.length} evacuation site(s) in context. Prefer sites with available slots; use directions link on each center card.`,
-          `${evac.length} evacuation center sa data. Pumili ng may bakanteng slot; gamitin ang directions.`,
-          `${evac.length} evacuation center. Pilia ang naay slot; directions sa card.`,
-          `${evac.length} centro de evacuación. Usa el enlace de direcciones.`,
-        ));
-      }
-    }
-
-    if (/sos|incident|emergency|tulong|responde/.test(q)) {
-      const inc = (ctx.incidents as unknown[]) ?? [];
-      lines.push(
-        t(
-          inc.length
-            ? `${inc.length} incident(s) in your current feed. SOS lifecycle: reported → verified → responded → resolved.`
-            : 'No active incidents in your scoped feed. For new emergencies use the SOS button with GPS enabled.',
-          inc.length
-            ? `${inc.length} insidente sa feed. SOS: reported → verified → responded → resolved.`
-            : 'Walang aktibong insidente. Para sa emergency pindutin ang SOS at i-on ang GPS.',
-          inc.length
-            ? `${inc.length} insidente. SOS lifecycle: reported → verified → responded → resolved.`
-            : 'Walay aktibong insidente. Pinduta SOS kung emergency.',
-          inc.length
-            ? `${inc.length} incidente. SOS: reported → verified → responded → resolved.`
-            : 'No hay incidentes activos. Usa SOS con GPS.',
-        ),
+      return (
+        prefix +
+        (evac.length
+          ? `${evac.length} evacuation center(s) are in your feed. Map tab → enable GPS → pick a site with available slots → use Directions on the card. Bring go-bag, IDs, and meds.`
+          : 'Enable GPS on the Map tab to see nearest evacuation centers. Prepare tab lists go-bag and family plan steps before you leave.')
       );
     }
 
-    if (/governance|kpi|analytics|response time|utilization/.test(q)) {
-      const g = ctx.governance as Record<string, unknown> | undefined;
-      if (g) {
-        lines.push(t(
-          `Governance snapshot: ${JSON.stringify(g).slice(0, 400)}`,
-          `KPI: ${JSON.stringify(g).slice(0, 400)}`,
-          `KPI: ${JSON.stringify(g).slice(0, 400)}`,
-          `KPI: ${JSON.stringify(g).slice(0, 400)}`,
-        ));
-      }
-    }
-
-    if (/medical|blood|allergy|contact/.test(q)) {
-      lines.push(t(
-        'Medical profile (blood type, allergies, emergency contacts) is sent to responders when you trigger SOS. Update it under Profile.',
-        'Ang medical profile ay ipinapadala sa responders kapag SOS. I-update sa Profile.',
-        'Ang medical profile ipadala sa responders inig SOS. Update sa Profile.',
-        'El perfil médico se envía con SOS. Actualiza en Profile.',
-      ));
-    }
-
-    if (/community|volunteer|donation|prepared|gamif|kit|prepare|checklist|go bag|go-bag/.test(q)) {
-      lines.push(t(
-        'Community feed shows barangay posts, volunteer calls, and donations. Preparedness tab has emergency kit cards — tap each card for step-by-step guides in Filipino/English.',
-        'Ang Community tab ay may posts at volunteers. Sa Prepare tab, i-tap ang bawat card (go bag, evacuation route, tubig, gamot) para sa buong gabay.',
-        'Community feed ug Prepare tab — cards para sa emergency kit guides.',
-        'Feed de comunidad y pestaña Prepare con guías paso a paso.',
-      ));
-    }
-
-    if (/login|sign in|sign-in|register|account|password|email|mag-sign|gumawa/.test(q)) {
-      lines.push(t(
-        'Sign in on the home page with your issued email and password. New residents: Citizen portal → Create account (barangay, medical info, photo required).',
-        'Mag-sign in sa home page gamit ang email at password. Bagong residente: Citizen → gumawa ng account (kailangan barangay, medical info, at larawan).',
-        'Sign in sa home. Bag-ong residente: Citizen → create account.',
-        'Sign in en home. Nuevo residente: Citizen → crear cuenta.',
-      ));
-    }
-
-    if (/map|mapa|windy|layer|radar|gdacs|pagasa/.test(q)) {
-      lines.push(t(
-        'Open the Map tab for live weather layers (wind, rain, temperature) plus GDACS and PAGASA hazard markers. Enable GPS for nearest evacuation.',
-        'Buksan ang Map tab para sa live na panahon, GDACS, at PAGASA. I-on ang GPS para sa pinakamalapit na evacuation center.',
-        'Abli ang Map tab para sa panahon ug hazards.',
-        'Abre Mapa para tiempo en vivo y marcadores PAGASA/GDACS.',
-      ));
-    }
-
-    if (/isabela|icdrrmo|drrmo|basilan|lgu|siyudad/.test(q)) {
-      lines.push(t(
-        'ICDRRMO is Isabela City Disaster Risk Reduction and Management Office (Basilan). This SMART platform coordinates SOS, weather, evacuation, responders, and barangay governance.',
-        'Ang ICDRRMO ay opisina ng disaster risk reduction ng Lungsod ng Isabela, Basilan. Ang SMART app na ito ay para sa SOS, panahon, evacuation, at koordinasyon ng barangay.',
-        'ICDRRMO — Isabela City DRRMO. SMART app para sa emergency.',
-        'ICDRRMO — oficina de desastres de Isabela City, Basilan.',
-      ));
-    }
-
-    if (/help|tulong|unsaon|paano|how to|what is|ano ang|pano|guide/.test(q)) {
-      lines.push(t(
-        'I can explain: Emergency SOS (with GPS), Map/weather, Alerts, Community feed, Prepare/emergency kit guides, and Profile (medical info for responders). What do you need step-by-step?',
-        'Masasagot ko: SOS, Map/panahon, Alerts, Community, Prepare (mga card na may gabay), at Profile. Ano ang kailangan mong hakbang-hakbang?',
-        'Matabang ko: SOS, Map, Alerts, Prepare, Profile. Unsa imong kinahanglan?',
-        'Puedo ayudar: SOS, Mapa, Alertas, Prepare, Profile. ¿Qué necesitas?',
-      ));
-    }
-
-    if (/system|online|health|status/.test(q)) {
-      const m = ctx.metrics as { label?: string; status?: string } | undefined;
-      lines.push(
-        m?.label
-          ? t(
-              `System: ${m.label} (${m.status}).`,
-              `System: ${m.label}.`,
-              `System: ${m.label}.`,
-              `Sistema: ${m.label}.`,
-            )
-          : t(
-              'System health is monitored on the dashboard header.',
-              'Naka-monitor ang system health sa dashboard.',
-              'Gi-monitor ang system.',
-              'Se monitorea el sistema.',
-            ),
+    if (/prepare|go bag|go-bag|kit|checklist|ready/.test(q)) {
+      return (
+        prefix +
+        'Preparedness tab: tap each card (go bag, family plan, evacuation route, water, meds) for step-by-step guides. Check off items when done — progress saves to your account.'
       );
     }
 
-    if (lines.length <= 1) {
-      const snippet = message.trim().slice(0, 120);
-      lines.push(t(
-        `HapIsabela! About "${snippet}" — ${ctx.summary} I use live ICDRRMO data when you are signed in. For SOS press the red button with GPS on. For guides open Prepare tab. For weather open Map. Tell me which topic you want explained in detail.`,
-        `HapIsabela! Tungkol sa "${snippet}" — ${ctx.summary} Gamit ko ang live na data kapag naka-sign in ka. Para sa SOS pindutin ang pulang button na may GPS. Para sa gabay buksan ang Prepare tab. Sabihin kung anong paksa ang gusto mong detalye.`,
-        `HapIsabela! About "${snippet}" — ${ctx.summary} Pangutana kung unsa imong gusto: SOS, Map, Prepare, o Profile.`,
-        `HapIsabela! Sobre "${snippet}" — ${ctx.summary} Usa SOS, Mapa, Prepare o Profile.`,
-      ));
+    if (/map|layer|radar/.test(q)) {
+      return (
+        prefix +
+        'Map tab shows ICDRRMO live weather layers (no third-party logo), hazard markers, and shelters. Turn on GPS for distance to the nearest evacuation center.'
+      );
     }
 
-    return lines.join('\n\n');
+    if (/medical|blood|allergy|profile|contact/.test(q)) {
+      return (
+        prefix +
+        'Profile stores blood type, allergies, conditions, and emergency contacts. This data is sent to responders when you trigger SOS — keep it updated.'
+      );
+    }
+
+    if (/community|volunteer|donation|advisory|alert/.test(q)) {
+      return (
+        prefix +
+        `Community tab has barangay posts and volunteer calls. Alerts tab shows your notifications${advisories.length ? `; ${advisories.length} hazard advisory point(s) are active in the region` : ''}.`
+      );
+    }
+
+    if (/login|sign in|register|account|password/.test(q)) {
+      return (
+        prefix +
+        'Sign in at the home page with your email and password. New residents: Citizen registration — barangay, medical info, and photo are required.'
+      );
+    }
+
+    if (/what is icdrrmo|who are you|icdrrmo|isabela|drrmo/.test(q)) {
+      return (
+        prefix +
+        'ICDRRMO is Isabela City Disaster Risk Reduction and Management Office (Basilan). This SMART app handles SOS, live weather map, evacuation info, preparedness guides, and barangay coordination.'
+      );
+    }
+
+    if (/help|how to|guide|what can/.test(q)) {
+      return (
+        prefix +
+        `I can help with: SOS (GPS emergency), Map & weather, Alerts, Community feed, Prepare guides, and Profile. ${ctx.summary} What would you like step-by-step?`
+      );
+    }
+
+    const topic = message.trim().slice(0, 80);
+    return (
+      prefix +
+      `About "${topic}": ${ctx.summary} ` +
+      'Try: SOS (emergency), Map (weather & shelters), Prepare (kits), or Profile (medical). Ask a specific question and I will walk you through it.'
+    );
   }
 
   private suggestedActions(

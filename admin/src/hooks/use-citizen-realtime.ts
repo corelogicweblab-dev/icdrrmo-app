@@ -17,11 +17,21 @@ export function useCitizenRealtime(
     const socket: Socket = io(`${base}/realtime`, {
       auth: { token: accessToken },
       transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 12,
     });
-    socket.on("citizen_feed_updated", () => cbRef.current());
-    socket.on("incident_updated", () => cbRef.current());
-    socket.on("incident_created", () => cbRef.current());
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const schedule = (): void => {
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(() => cbRef.current(), 400);
+    };
+    socket.on("connect", () => schedule());
+    socket.on("citizen_feed_updated", schedule);
+    socket.on("incident_updated", schedule);
+    socket.on("incident_created", schedule);
+    socket.on("notification_created", schedule);
     return () => {
+      if (debounce) clearTimeout(debounce);
       socket.disconnect();
     };
   }, [accessToken]);

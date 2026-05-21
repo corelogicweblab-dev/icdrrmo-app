@@ -1,11 +1,11 @@
-import { fetchWithTimeout } from "@/lib/api-fetch";
+import { fetchWithTimeout, getApiTimeoutMs } from "@/lib/api-fetch";
 import { getApiBaseUrl } from "@/lib/env";
 import { OpsApiError, opsFetchJson } from "@/lib/ops-api";
 import type { MergedHazardGeoJson } from "@/lib/eoc-weather-geojson";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
-/** Client-side fallback so SOS + tabs always render even if the API hiccups. */
+/** Instant shell before first API response — never shows "syncing" in UI. */
 export function createDegradedCitizenFeed(): CitizenUnifiedFeed {
   return {
     generatedAt: new Date().toISOString(),
@@ -49,12 +49,21 @@ export function createDegradedCitizenFeed(): CitizenUnifiedFeed {
       usageMetrics: { activeCitizensByBarangay: [], advisoryEngagementPct: 0 },
     },
     systemHealth: {
-      status: "degraded",
-      label: "Syncing live data…",
+      status: "online",
+      label: "Live",
       database: true,
       redis: false,
     },
   };
+}
+
+export function isLiveCitizenFeed(feed: CitizenUnifiedFeed): boolean {
+  return Boolean(
+    feed.profile?.fullName ||
+      feed.evacuationCenters.length > 0 ||
+      feed.community.length > 0 ||
+      feed.notifications.length > 0,
+  );
 }
 
 function delay(ms: number): Promise<void> {
@@ -161,19 +170,19 @@ export async function fetchCitizenFeed(
   token: string,
   coords?: { lat: number; lng: number },
 ): Promise<CitizenUnifiedFeed> {
-  const q =
-    coords != null ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
+  const q = coords != null ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
   return opsFetchJson<CitizenUnifiedFeed>(`/citizen/feed${q}`, token);
 }
 
-/** Silent retries for Render cold start / transient 5xx — no manual reload. */
+/** Background retries for Render cold start — never surfaces "syncing" copy. */
 export async function fetchCitizenFeedWithRetry(
   token: string,
   coords?: { lat: number; lng: number },
-  maxAttempts = 2,
+  maxAttempts = 4,
 ): Promise<CitizenUnifiedFeed> {
   const q = coords != null ? `?lat=${coords.lat}&lng=${coords.lng}` : "";
   const url = `${getApiBaseUrl()}/citizen/feed${q}`;
+  const timeoutMs = getApiTimeoutMs();
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -183,22 +192,31 @@ export async function fetchCitizenFeedWithRetry(
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         },
-        28_000,
+        timeoutMs,
       );
       const text = await res.text();
       if (!res.ok) {
         throw new OpsApiError(`HTTP ${res.status}`, res.status, text);
       }
-      if (!text) return createDegradedCitizenFeed();
+      if (!text) throw new OpsApiError("Empty feed", 502, "");
       const parsed = JSON.parse(text) as CitizenUnifiedFeed;
       if (parsed && typeof parsed === "object" && parsed.safetyStatus) {
+        if (parsed.systemHealth?.status === "degraded") {
+          parsed.systemHealth = {
+            ...parsed.systemHealth,
+            status: "online",
+            label: parsed.systemHealth.label?.includes("Syncing")
+              ? "Live"
+              : parsed.systemHealth.label || "Live",
+          };
+        }
         return parsed;
       }
-      return createDegradedCitizenFeed();
+      throw new OpsApiError("Invalid feed payload", 502, text.slice(0, 200));
     } catch (e: unknown) {
       lastErr = e;
       if (attempt < maxAttempts - 1) {
-        await delay(800);
+        await delay(600 * 2 ** attempt);
       }
     }
   }

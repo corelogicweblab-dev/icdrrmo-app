@@ -34,13 +34,10 @@ const ICONS = {
   radio: Radio,
 } as const;
 
-type Lang = "tl" | "en";
-
 export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }): ReactElement {
   const { topic } = use(props.params);
   const router = useRouter();
   const guide = getPrepareGuide(topic);
-  const [lang, setLang] = useState<Lang>("tl");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -96,47 +93,27 @@ export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }):
   if (!guide) {
     return (
       <div className="mx-auto max-w-lg px-4 py-12 text-center text-sm text-zinc-400">
-        <p>Hindi mahanap ang gabay na ito.</p>
+        <p>Guide not found.</p>
         <Link href="/citizen" className="mt-4 inline-block text-orange-300 underline">
-          Bumalik sa dashboard
+          Back to dashboard
         </Link>
       </div>
     );
   }
 
   const Icon = ICONS[guide.icon];
-  const title = lang === "tl" ? guide.titleTl : guide.titleEn;
-  const summary = lang === "tl" ? guide.summaryTl : guide.summaryEn;
-  const steps = lang === "tl" ? guide.stepsTl : guide.stepsEn;
-  const tips = lang === "tl" ? guide.tipsTl : guide.tipsEn;
 
   return (
     <div className="mx-auto max-w-lg min-h-[100dvh] px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
-      <header className="mb-6 flex items-center gap-3">
+      <header className="mb-6">
         <button
           type="button"
           onClick={() => router.back()}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-200"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-          Bumalik
+          Back
         </button>
-        <div className="ml-auto flex gap-1 rounded-lg bg-black/40 p-0.5">
-          <button
-            type="button"
-            onClick={() => setLang("tl")}
-            className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${lang === "tl" ? "bg-orange-600/80 text-white" : "text-zinc-500"}`}
-          >
-            Filipino
-          </button>
-          <button
-            type="button"
-            onClick={() => setLang("en")}
-            className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${lang === "en" ? "bg-orange-600/80 text-white" : "text-zinc-500"}`}
-          >
-            English
-          </button>
-        </div>
       </header>
 
       <div className="rounded-2xl border border-orange-500/25 bg-gradient-to-b from-orange-950/30 to-black/50 p-5">
@@ -146,20 +123,18 @@ export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }):
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400/90">
-              Gabay sa paghahanda
+              Preparedness guide
             </p>
-            <h1 className="text-lg font-semibold text-white mt-0.5">{title}</h1>
-            <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{summary}</p>
+            <h1 className="text-lg font-semibold text-white mt-0.5">{guide.titleEn}</h1>
+            <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{guide.summaryEn}</p>
           </div>
         </div>
       </div>
 
       <section className="mt-6 space-y-3">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-          {lang === "tl" ? "Mga hakbang" : "Steps"}
-        </h2>
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Steps</h2>
         <ol className="space-y-3">
-          {steps.map((step, i) => (
+          {guide.stepsEn.map((step, i) => (
             <li
               key={i}
               className="flex gap-3 rounded-xl border border-white/[0.06] bg-black/25 px-4 py-3 text-sm text-zinc-200"
@@ -174,11 +149,9 @@ export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }):
       </section>
 
       <section className="mt-6 space-y-2">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-          {lang === "tl" ? "Mga paalala" : "Tips"}
-        </h2>
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Tips</h2>
         <ul className="space-y-2">
-          {tips.map((tip, i) => (
+          {guide.tipsEn.map((tip, i) => (
             <li
               key={i}
               className="rounded-lg border border-amber-500/15 bg-amber-950/20 px-3 py-2 text-xs text-amber-100/90"
@@ -203,20 +176,14 @@ export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }):
           ) : (
             <Circle className="h-4 w-4" aria-hidden />
           )}
-          {done
-            ? lang === "tl"
-              ? "Tapos na — i-uncheck kung hindi pa handa"
-              : "Marked done — tap to uncheck"
-            : lang === "tl"
-              ? "Markahan bilang tapos na"
-              : "Mark as completed"}
+          {done ? "Marked complete — tap to uncheck" : "Mark as completed"}
         </button>
       ) : (
         <p className="mt-8 text-center text-xs text-zinc-500">
           <Link href="/" className="text-orange-300 underline">
-            Mag-sign in
+            Sign in
           </Link>{" "}
-          para i-save ang progress.
+          to save your progress.
         </p>
       )}
 

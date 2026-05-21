@@ -5,12 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Navigation } from "lucide-react";
-import { OPS_LEAFLET_ATTRIBUTION, OPS_LEAFLET_TILE_URL } from "@/lib/ops-leaflet-basemap";
+import { useWindyLeafletLayer } from "@/hooks/use-windy-leaflet-layer";
+import { WINDY_STYLE_BASEMAP_ATTRIBUTION, WINDY_STYLE_BASEMAP_URL } from "@/lib/windy-leaflet";
 
 type Props = {
   incidentLat: number;
   incidentLon: number;
   label?: string;
+  accessToken?: string | null;
 };
 
 export function ChairmanLeafletMap(props: Props): ReactElement {
@@ -21,6 +23,15 @@ export function ChairmanLeafletMap(props: Props): ReactElement {
   const [routeEtaMin, setRouteEtaMin] = useState<number | null>(null);
   const [routeBusy, setRouteBusy] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useWindyLeafletLayer({
+    mapRef,
+    mapReady,
+    accessToken: props.accessToken,
+    overlay: "rain",
+    opacity: 0.45,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +40,7 @@ export function ChairmanLeafletMap(props: Props): ReactElement {
       if (cancelled || !mapEl.current || mapRef.current) return;
       const center: LatLngExpression = [props.incidentLat, props.incidentLon];
       const map = L.map(mapEl.current, { zoomControl: true }).setView(center, 15);
-      L.tileLayer(OPS_LEAFLET_TILE_URL, { attribution: OPS_LEAFLET_ATTRIBUTION }).addTo(map);
+      L.tileLayer(WINDY_STYLE_BASEMAP_URL, { attribution: WINDY_STYLE_BASEMAP_ATTRIBUTION }).addTo(map);
       const markers = L.layerGroup().addTo(map);
       markersRef.current = markers;
       L.circleMarker(center, {
@@ -42,9 +53,11 @@ export function ChairmanLeafletMap(props: Props): ReactElement {
         .bindPopup(props.label ?? "Incident")
         .addTo(markers);
       mapRef.current = map;
+      setMapReady(true);
     })();
     return () => {
       cancelled = true;
+      setMapReady(false);
       mapRef.current?.remove();
       mapRef.current = null;
     };

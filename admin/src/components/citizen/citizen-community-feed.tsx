@@ -17,7 +17,7 @@ export function CitizenCommunityFeed(props: {
   if (!props.posts.length) {
     return (
       <p className="text-xs text-zinc-500 py-4 text-center">
-        Walang community post sa ngayon. Bumalik mamaya.
+        No community posts yet. Check back soon.
       </p>
     );
   }

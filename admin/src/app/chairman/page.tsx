@@ -461,6 +461,7 @@ export default function ChairmanDashboardPage(): ReactElement {
                   </div>
                 </div>
                 <ChairmanLeafletMap
+                  accessToken={tokens.accessToken}
                   incidentLat={selected.latitude}
                   incidentLon={selected.longitude}
                   label={selected.type}
