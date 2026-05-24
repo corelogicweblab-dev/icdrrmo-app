@@ -247,6 +247,38 @@ body:has(.icd-auth-page) .icd-live-dot {
   }
 }
 
+.eoc-unified-map .icd-weather-radar-tiles {
+  filter: contrast(1.4) saturate(1.55) brightness(1.05);
+  pointer-events: none;
+}
+
+.eoc-unified-map .icd-weather-cloud-tiles {
+  filter: contrast(1.2) saturate(1.25);
+  pointer-events: none;
+}
+
+/* Windy particle overlay — hide Windy basemap, keep animated canvas only */
+.eoc-windy-particles-host {
+  pointer-events: none;
+}
+
+.eoc-windy-particles-host.icdrrmo-windy-root#windy,
+.eoc-unified-map .eoc-windy-particles-host.icdrrmo-windy-root#windy {
+  background: transparent !important;
+}
+
+.eoc-windy-particles-host .leaflet-tile-pane,
+.eoc-windy-particles-host .leaflet-map-pane > .leaflet-layer:first-child {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.eoc-windy-particles-host .leaflet-overlay-pane,
+.eoc-windy-particles-host canvas {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 /* Windy Map Forecast — ICDRRMO chrome only (no Windy logo / promo) */
 .icdrrmo-windy-root#windy,
 .eoc-unified-map .icdrrmo-windy-root#windy {
@@ -261,6 +293,12 @@ body:has(.icd-auth-page) .icd-live-dot {
 #windy .windy-picker,
 #windy .plugin-rhpane,
 #windy .menu-rhpane,
+#windy #playpause,
+#windy .playpause,
+#windy .ui-animation,
+#windy [class*="timeline"],
+#windy [class*="Timeline"],
+#windy [class*="progress"],
 #windy a[href*="windy.com"],
 #windy [class*="top-banner"],
 #windy [class*="TopBanner"] {

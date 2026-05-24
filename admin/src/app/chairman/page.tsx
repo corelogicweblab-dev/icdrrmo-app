@@ -28,6 +28,10 @@ import { getApiBaseUrl } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/api-fetch";
 import { opsFetchJson } from "@/lib/ops-api";
 import { connectChairmanRealtime, type ChairmanIncidentPayload } from "@/lib/chairman-realtime";
+import { connectChairmanAgencyCallRealtime, type AgencyCallAlertPayload } from "@/lib/agency-realtime";
+import { AgencyCallOverlay } from "@/components/agency/agency-call-overlay";
+import { startAgencyCallAlarmLoop } from "@/lib/agency-call-alarm";
+import { ackAgencyCall } from "@/lib/agency-api";
 import { decodeJwtPayload } from "@/lib/decode-jwt-role";
 import type { TokenPair } from "@/components/ops/ops-types";
 
@@ -115,6 +119,7 @@ export default function ChairmanDashboardPage(): ReactElement {
   const [loading, setLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [flashAlert, setFlashAlert] = useState<ChairmanIncidentPayload | null>(null);
+  const [agencyCall, setAgencyCall] = useState<AgencyCallAlertPayload | null>(null);
 
   useEffect(() => {
     const t = loadChairmanTokens();
@@ -164,10 +169,19 @@ export default function ChairmanDashboardPage(): ReactElement {
         void refresh(tokens.accessToken);
       },
     });
+    const callSocket = connectChairmanAgencyCallRealtime(tokens.accessToken, {
+      onAgencyCallAlert: (p) => setAgencyCall(p),
+    });
     return () => {
       socket.close();
+      callSocket.close();
     };
   }, [tokens?.accessToken, refresh]);
+
+  useEffect(() => {
+    if (!agencyCall) return;
+    return startAgencyCallAlarmLoop(() => {});
+  }, [agencyCall]);
 
   useEffect(() => {
     if (!flashAlert) return;
@@ -319,6 +333,19 @@ export default function ChairmanDashboardPage(): ReactElement {
             </button>
           </div>
         </div>
+      ) : null}
+      {agencyCall ? (
+        <AgencyCallOverlay
+          alert={agencyCall}
+          agencyLabel="Barangay Chairman"
+          onAnswer={() => {
+            if (tokens?.accessToken) {
+              void ackAgencyCall(tokens.accessToken, agencyCall.callId);
+            }
+            setAgencyCall(null);
+          }}
+          onDismiss={() => setAgencyCall(null)}
+        />
       ) : null}
 
       <header className="icd-header-bar">

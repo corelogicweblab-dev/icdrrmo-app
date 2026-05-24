@@ -112,6 +112,7 @@ export class IncidentsService {
       type: incident.type,
       title: incident.title,
       barangayId: incident.barangayId,
+      routedAgency: incident.routedAgency,
       medicalSummary: profile
         ? {
             fullName: profile.fullName,
@@ -184,6 +185,7 @@ export class IncidentsService {
       longitude: Number(incident.longitude),
       type: incident.type,
       title: incident.title,
+      routedAgency: incident.routedAgency,
     });
     const profile = incident.reporterId
       ? await this.prisma.userProfile.findUnique({
@@ -565,6 +567,7 @@ export class IncidentsService {
       longitude: Number(incident.longitude),
       type: incident.type,
       title: incident.title,
+      routedAgency: incident.routedAgency,
     });
     return { id: incident.id };
   }

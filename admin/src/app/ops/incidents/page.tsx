@@ -32,6 +32,7 @@ import type { OpsIncident } from "@/components/ops/ops-types";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { IncidentTimeline } from "@/components/ops/incident-timeline";
 import { OpsIncidentVoicePanel } from "@/components/ops-incident-voice-panel";
+import { OpsAgencyCallBar } from "@/components/ops/ops-agency-call-bar";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
 import { ROUTED_AGENCIES, routedAgencyLabel } from "@/lib/incident-routing";
@@ -607,6 +608,7 @@ export default function OpsIncidentsPage(): ReactElement {
                 </div>
 
                 <div className="mt-4 space-y-3 rounded-xl border border-orange-500/12 bg-black/30 p-4">
+                  <OpsAgencyCallBar incidentId={selected.id} />
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">
                     Operations actions
                   </p>

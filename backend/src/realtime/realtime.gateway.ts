@@ -11,7 +11,7 @@ import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
-import { UserRole } from '@prisma/client';
+import { UserRole, RoutedAgency } from '@prisma/client';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22,6 +22,18 @@ const OPS_ROLES: ReadonlySet<UserRole> = new Set([
 ]);
 
 const CHAIRMAN_ROLES: ReadonlySet<UserRole> = new Set([UserRole.BARANGAY_CHAIRMAN]);
+
+const AGENCY_ROLES: ReadonlySet<UserRole> = new Set([UserRole.BFP, UserRole.PNP]);
+
+export type AgencyCallAlertPayload = {
+  callId: string;
+  target: 'BFP' | 'PNP' | 'CHAIRMAN';
+  incidentId: string | null;
+  message: string;
+  opsUserId: string;
+  opsEmail: string | null;
+  at: string;
+};
 
 @WebSocketGateway({
   namespace: '/realtime',
@@ -67,6 +79,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       if (payload.role === UserRole.RESPONDER) {
         client.join('responders');
       }
+      if (payload.role === UserRole.BFP) {
+        client.join('bfp');
+      }
+      if (payload.role === UserRole.PNP) {
+        client.join('pnp');
+      }
       this.logger.log(`WS connected user=${payload.sub} role=${payload.role}`);
     } catch (e) {
       this.logger.warn(`WS rejected: ${e instanceof Error ? e.message : String(e)}`);
@@ -85,10 +103,25 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     return `voice:${incidentId}`;
   }
 
+  private agencyCallVoiceRoom(callId: string): string {
+    return `agency-call:${callId}`;
+  }
+
   private async assertVoiceRoomAccess(
     user: JwtPayload,
     incidentId: string,
   ): Promise<{ ok: true } | { ok: false; error: string }> {
+    if (incidentId.startsWith('agency-call:')) {
+      const callId = incidentId.slice('agency-call:'.length);
+      if (!callId) return { ok: false, error: 'invalid agency call room' };
+      const isOps = OPS_ROLES.has(user.role);
+      const isAgency =
+        AGENCY_ROLES.has(user.role) || CHAIRMAN_ROLES.has(user.role);
+      if (!isOps && !isAgency) {
+        return { ok: false, error: 'forbidden' };
+      }
+      return { ok: true };
+    }
     const incident = await this.prisma.incident.findUnique({
       where: { id: incidentId },
       select: { reporterId: true },
@@ -129,6 +162,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.server.to('ops').emit('voice_incident_ring', {
         incidentId,
         reporterId: user.sub,
+        at: new Date().toISOString(),
+      });
+    } else if (incidentId.startsWith('agency-call:')) {
+      this.server.to('ops').emit('agency_call_ack', {
+        callId: incidentId.slice('agency-call:'.length),
+        userId: user.sub,
+        role: user.role,
         at: new Date().toISOString(),
       });
     }
@@ -191,9 +231,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     type?: string;
     title?: string | null;
     barangayId?: string | null;
+    routedAgency?: RoutedAgency | null;
     medicalSummary?: Record<string, unknown> | null;
   }): void {
     this.server.to('ops').emit('incident_created', payload);
+    if (payload.routedAgency === RoutedAgency.BFP) {
+      this.server.to('bfp').emit('agency_incident', payload);
+    }
+    if (payload.routedAgency === RoutedAgency.PNP) {
+      this.server.to('pnp').emit('agency_incident', payload);
+    }
     this.server.to('chairman').emit('chairman_incident', {
       ...payload,
       feedStatus: 'new',
@@ -288,5 +335,29 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     isActive: boolean;
   }): void {
     this.server.emit('evacuation_center_updated', payload);
+  }
+
+  /** Ops desk triggers immediate call alert to BFP / PNP / Chairman dashboards. */
+  emitAgencyCallAlert(payload: AgencyCallAlertPayload): void {
+    const voiceRoomId = this.agencyCallVoiceRoom(payload.callId);
+    if (payload.target === 'BFP') {
+      this.server.to('bfp').emit('agency_call_alert', payload);
+    } else if (payload.target === 'PNP') {
+      this.server.to('pnp').emit('agency_call_alert', payload);
+    } else if (payload.target === 'CHAIRMAN') {
+      this.server.to('chairman').emit('agency_call_alert', payload);
+    }
+    this.server.to('ops').emit('agency_call_sent', { ...payload, voiceRoomId });
+  }
+
+  emitAgencyCallAck(payload: {
+    callId: string;
+    userId: string;
+    role: UserRole;
+    at: string;
+  }): void {
+    this.server.to('ops').emit('agency_call_ack', payload);
+    const room = this.agencyCallVoiceRoom(payload.callId);
+    this.server.to(room).emit('agency_call_ack', payload);
   }
 }

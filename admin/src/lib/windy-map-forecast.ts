@@ -82,13 +82,13 @@ export function deskLayerToWindyOverlay(layerId: string): string {
 }
 
 export function pickWindyOverlayFromActive(active: Iterable<string>): string {
-  const order = ["rain-radar", "precipitation", "wind", "clouds", "temp"];
+  const order = ["wind", "rain-radar", "precipitation", "clouds", "temp"];
   for (const id of order) {
     for (const a of active) {
       if (a === id) return deskLayerToWindyOverlay(id);
     }
   }
-  return "rain";
+  return "wind";
 }
 
 /** Hide Windy logo, menus, and promo links — ICDRRMO branding only. */
@@ -102,6 +102,15 @@ export function hideWindyChrome(container: HTMLElement): () => void {
     ".plugin-rhpane",
     ".menu-rhpane",
     ".windy-picker",
+    "#progress-bar",
+    "#timeline",
+    ".timeline",
+    ".timeline-wrapper",
+    ".timecode",
+    "#playpause",
+    ".playpause",
+    ".ui-animation",
+    '[class*="timeline"]',
     'a[href*="windy.com"]',
     '[class*="logo"]',
   ].join(",");
@@ -216,6 +225,26 @@ export function applyWindyOverlay(api: WindyApi | null, overlay: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Force Windy embed timeline to play continuously (UI hidden via CSS). */
+export function enableWindyLiveAnimation(api: WindyApi): () => void {
+  const play = (): void => {
+    try {
+      api.store.set("animation", true, { forceChange: true });
+      api.store.set("playAnimation", true, { forceChange: true });
+      const ts = api.store.get("timestamp");
+      if (typeof ts !== "number") {
+        api.store.set("timestamp", Math.floor(Date.now() / 1000), { forceChange: true });
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  play();
+  const timer = window.setInterval(play, 6000);
+  return () => window.clearInterval(timer);
 }
 
 export function teardownWindyContainer(container: HTMLElement | null): void {

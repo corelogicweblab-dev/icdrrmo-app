@@ -56,9 +56,14 @@ import {
   fetchPublicHazardGeoJson,
   fetchRainViewerTileLayers,
   fetchRainViewerTileUrl,
-  RAINVIEWER_MAX_NATIVE_ZOOM,
   type ClientOpenMeteo,
 } from "@/lib/eoc-public-feeds";
+import {
+  fetchRainViewerManifest,
+  type RainViewerFrame,
+} from "@/lib/rainviewer-radar";
+import { useRainViewerAnimatedLayers } from "@/hooks/use-rainviewer-map-layers";
+import { useWindyParticleOverlay } from "@/hooks/use-windy-particle-overlay";
 import { EOC_MAP_BUILD } from "@/lib/eoc-map-layers";
 
 export type EocMapMode = "ops" | "citizen" | "responder" | "chairman";
@@ -149,6 +154,7 @@ export function EocUnifiedMap({
   layout = "default",
 }: Props): ReactElement {
   const mapEl = useRef<HTMLDivElement | null>(null);
+  const windyOverlayRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const basemapRef = useRef<import("leaflet").TileLayer | null>(null);
   const labelsRef = useRef<import("leaflet").TileLayer | null>(null);
@@ -158,6 +164,8 @@ export function EocUnifiedMap({
   const gdacsGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const pagasaGeoLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const [rainViewerUrl, setRainViewerUrl] = useState<string | null>(null);
+  const [radarFrames, setRadarFrames] = useState<RainViewerFrame[]>([]);
+  const [satelliteFrames, setSatelliteFrames] = useState<RainViewerFrame[]>([]);
   const [layerEpoch, setLayerEpoch] = useState(0);
   const [proxyWindyLayers, setProxyWindyLayers] = useState<WindyTileLayer[]>([]);
   const [windyConfigured, setWindyConfigured] = useState(false);
@@ -168,8 +176,13 @@ export function EocUnifiedMap({
   const [showGdacs, setShowGdacs] = useState(true);
   const [showPagasaPins, setShowPagasaPins] = useState(true);
   const [activeLayers, setActiveLayers] = useState<Set<WeatherLayerId>>(
-    () => new Set<WeatherLayerId>(["rain-radar", "precipitation", "clouds"]),
+    () => new Set<WeatherLayerId>(["rain-radar", "precipitation", "clouds", "wind"]),
   );
+
+  const showRainLayers =
+    activeLayers.has("rain-radar") || activeLayers.has("precipitation");
+  const showCloudLayers = activeLayers.has("clouds");
+
   const [evac, setEvac] = useState<EvacMarker[]>([]);
   const [incidents, setIncidents] = useState<IncidentPin[]>([]);
   const [hazards, setHazards] = useState<OpsLive["hazardBarangayPins"]>([]);
@@ -216,16 +229,42 @@ export function EocUnifiedMap({
   const pagasaAdvisories = mergePagasaAdvisories(hazardGeo, weather);
   const gdacsCount = hazardGeo?.layers.gdacs.features.length ?? 0;
   const hasRainViewerLayers = proxyWindyLayers.some((l) => isRainViewerTileUrl(l.urlTemplate));
-  const dataStatus =
-    windyConfigured && proxyWindyLayers.some((l) => isWindyTileUrl(l.urlTemplate))
-      ? "Live · ICDRRMO weather intelligence"
-      : hasRainViewerLayers || rainViewerUrl
-        ? "Live · precipitation radar active"
-        : windyConfigured || proxyWindyLayers.length > 0
-          ? "Live · ICDRRMO weather radar active"
-          : gdacsCount > 0 || pagasaAdvisories.length > 0
-            ? "Live · hazard advisories"
-            : "Syncing weather intelligence…";
+
+  useRainViewerAnimatedLayers({
+    mapRef,
+    mapReady,
+    radarFrames,
+    satelliteFrames,
+    showRain: showRainLayers,
+    showClouds: showCloudLayers,
+    labelsRef,
+  });
+
+  const { windyActive } = useWindyParticleOverlay({
+    hostRef: windyOverlayRef,
+    mapRef,
+    mapReady,
+    activeLayerIds: activeLayers,
+    lat: ISABELA_CITY_LAT,
+    lon: ISABELA_CITY_LON,
+    zoom: 9,
+  });
+
+  const dataStatus = windyActive
+    ? "Live · Windy particles + radar loop"
+    : radarFrames.length > 1 && showRainLayers
+      ? `Live · radar loop (${radarFrames.length} frames)`
+      : radarFrames.length > 1
+        ? "Live · radar animation ready"
+        : windyConfigured && proxyWindyLayers.some((l) => isWindyTileUrl(l.urlTemplate))
+          ? "Live · ICDRRMO weather intelligence"
+          : hasRainViewerLayers || rainViewerUrl
+            ? "Live · precipitation radar active"
+            : windyConfigured || proxyWindyLayers.length > 0
+              ? "Live · ICDRRMO weather radar active"
+              : gdacsCount > 0 || pagasaAdvisories.length > 0
+                ? "Live · hazard advisories"
+                : "Syncing weather intelligence…";
 
   const loadData = useCallback(async () => {
     setBusy(true);
@@ -244,13 +283,21 @@ export function EocUnifiedMap({
       setProxyWindyLayers(tileLayers);
       setWindyConfigured(tileLayers.length > 0);
 
-      const [rainUrl, clientGdacsRaw, openMeteo, publicGeo] = await Promise.all([
+      const [rainUrl, clientGdacsRaw, openMeteo, publicGeo, rvManifest] = await Promise.all([
         fetchRainViewerTileUrl(),
         fetchGdacsClientFeatures(),
         fetchOpenMeteoClient(),
         fetchPublicHazardGeoJson(),
+        fetchRainViewerManifest(),
       ]);
       setRainViewerUrl(rainUrl);
+      if (rvManifest) {
+        setRadarFrames(rvManifest.radarFrames);
+        setSatelliteFrames(rvManifest.satelliteFrames);
+      } else {
+        setRadarFrames([]);
+        setSatelliteFrames([]);
+      }
       setClientMeteo(openMeteo);
 
       let wx: EocWeatherBundle | null = null;
@@ -405,6 +452,9 @@ export function EocUnifiedMap({
       setError(e instanceof Error ? e.message : "Failed to load map data");
     } finally {
       setBusy(false);
+      window.requestAnimationFrame(() => {
+        mapRef.current?.invalidateSize();
+      });
     }
   }, [accessToken, mode, showAllIncidents, showResponders, showVehicles]);
 
@@ -491,7 +541,6 @@ export function EocUnifiedMap({
       const center: LatLngExpression = [ISABELA_CITY_LAT, ISABELA_CITY_LON];
       const map = L.map(mapEl.current, {
         zoomControl: false,
-        preferCanvas: true,
         maxZoom: 18,
       }).setView(center, 9);
 
@@ -518,6 +567,12 @@ export function EocUnifiedMap({
       meteoOverlayRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
 
+      if (!map.getPane("weatherPane")) {
+        map.createPane("weatherPane");
+        const pane = map.getPane("weatherPane");
+        if (pane) pane.style.zIndex = "410";
+      }
+
       window.setTimeout(() => {
         map.invalidateSize();
         setMapReady(true);
@@ -534,6 +589,17 @@ export function EocUnifiedMap({
         mapRef.current = null;
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void fetchRainViewerManifest().then((manifest) => {
+        if (!manifest) return;
+        setRadarFrames(manifest.radarFrames);
+        setSatelliteFrames(manifest.satelliteFrames);
+      });
+    }, 180_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -668,16 +734,11 @@ export function EocUnifiedMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
     void (async () => {
       const L = await import("leaflet");
-      const rvById = new Map(
-        bundleLayers
-          .filter((l) => isRainViewerTileUrl(l.urlTemplate))
-          .map((l) => [l.id, l.urlTemplate]),
-      );
-      const allIds: WeatherLayerId[] = ["rain-radar", "precipitation", "clouds", "temp", "wind"];
       const owmById = new Map(owmLayers.map((l) => [l.id, l]));
+      const allIds: WeatherLayerId[] = ["temp", "wind"];
 
       for (const id of allIds) {
         const shouldShow = activeLayers.has(id);
@@ -690,31 +751,14 @@ export function EocUnifiedMap({
           continue;
         }
 
-        let url: string | null =
+        const url: string | null =
           bundleLayers.find((l) => l.id === id && !isWindyTileUrl(l.urlTemplate))?.urlTemplate ??
-          rvById.get(id) ??
           owmById.get(id)?.urlTemplate ??
           null;
 
-        const isWindyLayer = Boolean(url && isWindyTileUrl(url));
-        let opacity = 0.55;
-        if (id === "rain-radar" || id === "precipitation") {
-          opacity = isWindyLayer ? 0.88 : 0.85;
-          if (!url) url = rainViewerUrl ?? rvById.get("rain-radar") ?? rvById.get("precipitation") ?? null;
-        } else if (id === "clouds") {
-          opacity = isWindyLayer ? 0.78 : 0.65;
-          if (!url) url = rvById.get("clouds") ?? rainViewerUrl ?? null;
-        } else if (id === "temp") {
-          opacity = isWindyLayer ? 0.72 : 0.5;
-        } else if (id === "wind") {
-          opacity = isWindyLayer ? 0.75 : 0.55;
-        }
-
         if (!url || isWindyTileUrl(url)) continue;
 
-        const isRainViewer =
-          url.includes("rainviewer.com") || url.includes("tilecache.rainviewer");
-
+        const opacity = id === "temp" ? 0.72 : 0.75;
         if (existing) {
           map.removeLayer(existing);
           delete weatherLayersRef.current[id];
@@ -723,9 +767,8 @@ export function EocUnifiedMap({
           opacity,
           minZoom: 3,
           maxZoom: 18,
-          maxNativeZoom: isRainViewer ? RAINVIEWER_MAX_NATIVE_ZOOM : 18,
-          zIndex: 450,
-          pane: "overlayPane",
+          pane: "weatherPane",
+          zIndex: 430,
           attribution: "",
         });
         weatherLayersRef.current[id] = tile;
@@ -733,23 +776,8 @@ export function EocUnifiedMap({
       }
 
       labelsRef.current?.bringToFront();
-
-      if (
-        activeLayers.has("rain-radar") ||
-        activeLayers.has("precipitation") ||
-        activeLayers.has("clouds")
-      ) {
-        const z = map.getZoom();
-        const usesRainViewer = Object.values(weatherLayersRef.current).some((layer) => {
-          const src = (layer as { _url?: string } | undefined)?._url ?? "";
-          return src.includes("rainviewer.com") || src.includes("tilecache.rainviewer");
-        });
-        if (usesRainViewer && z > RAINVIEWER_MAX_NATIVE_ZOOM + 2) {
-          map.setZoom(RAINVIEWER_MAX_NATIVE_ZOOM + 1);
-        }
-      }
     })();
-  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch, windyConfigured]);
+  }, [mapReady, activeLayers, weather, bundleLayers, owmLayers, layerEpoch, windyConfigured]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -762,10 +790,17 @@ export function EocUnifiedMap({
       const tempC = cur?.temperatureC ?? clientMeteo?.temperatureC ?? null;
       const windSpd = cur?.windSpeedKmh ?? clientMeteo?.windSpeedKmh ?? null;
       const windDir = cur?.windDirectionDeg ?? clientMeteo?.windDirectionDeg ?? null;
+      const hasAnimatedWeather =
+        windyActive ||
+        activeLayers.has("rain-radar") ||
+        activeLayers.has("precipitation") ||
+        activeLayers.has("clouds");
       const usePointTemp =
+        !hasAnimatedWeather &&
         activeLayers.has("temp") &&
         !bundleLayers.some((l) => l.id === "temp" && l.urlTemplate);
       const usePointWind =
+        !hasAnimatedWeather &&
         activeLayers.has("wind") &&
         !bundleLayers.some((l) => l.id === "wind" && l.urlTemplate);
 
@@ -797,7 +832,7 @@ export function EocUnifiedMap({
           .addTo(g);
       }
     })();
-  }, [activeLayers, weather, clientMeteo]);
+  }, [activeLayers, weather, clientMeteo, bundleLayers, windyActive]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1086,6 +1121,11 @@ export function EocUnifiedMap({
       <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
         <div className="relative flex-1 min-h-[200px] sm:min-h-[260px] lg:min-h-[280px] min-w-0 order-1">
           <div ref={mapEl} className="absolute inset-0 z-0 bg-zinc-950 eoc-map-canvas" />
+          <div
+            ref={windyOverlayRef}
+            className="eoc-windy-particles-host absolute inset-0 z-[2] hidden bg-transparent"
+            aria-hidden="true"
+          />
         </div>
 
         <aside className="hidden lg:flex lg:flex-col lg:w-56 xl:w-64 shrink-0 order-2 border-t lg:border-t-0 lg:border-l border-orange-500/15 bg-zinc-950/98 overflow-hidden">

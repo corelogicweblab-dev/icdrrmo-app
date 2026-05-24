@@ -53,6 +53,7 @@ export default {
         "live-pulse": "live-pulse 2s ease-in-out infinite",
         "alert-blink": "alert-blink 1.6s ease-in-out infinite",
         "voice-ring-flash": "voice-ring-flash 0.9s ease-in-out infinite",
+        "agency-call-flash": "agency-call-flash 0.75s ease-in-out infinite",
         "icd-scan": "icd-scan 8s linear infinite",
       },
       keyframes: {
@@ -78,6 +79,18 @@ export default {
           "50%": {
             boxShadow:
               "0 0 0 2px rgba(251, 146, 60, 0.9), 0 0 56px rgba(220, 38, 38, 0.5)",
+          },
+        },
+        "agency-call-flash": {
+          "0%, 100%": {
+            boxShadow:
+              "0 0 0 1px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.25)",
+            transform: "scale(1)",
+          },
+          "50%": {
+            boxShadow:
+              "0 0 0 3px rgba(251, 191, 36, 0.95), 0 0 72px rgba(245, 158, 11, 0.55)",
+            transform: "scale(1.02)",
           },
         },
         "icd-scan": {

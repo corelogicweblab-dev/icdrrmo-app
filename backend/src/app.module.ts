@@ -32,6 +32,7 @@ import { CommunicationsModule } from './communications/communications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CitizenDashboardModule } from './citizen-dashboard/citizen-dashboard.module';
 import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
+import { AgencyModule } from './agency/agency.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
     AnalyticsModule,
     CitizenDashboardModule,
     AiAssistantModule,
+    AgencyModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

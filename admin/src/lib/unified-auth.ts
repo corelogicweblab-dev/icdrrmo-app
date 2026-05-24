@@ -12,6 +12,15 @@ import {
   saveChairmanTokens,
 } from "@/components/chairman/chairman-storage";
 import { clearOpsTokens, loadOpsTokens, saveOpsTokens } from "@/components/ops/ops-storage";
+import {
+  clearAllAgencyTokens,
+  clearBfpTokens,
+  clearPnpTokens,
+  loadBfpTokens,
+  loadPnpTokens,
+  saveBfpTokens,
+  savePnpTokens,
+} from "@/components/agency/agency-storage";
 import type { TokenPair } from "@/components/ops/ops-types";
 
 export const CITIZEN_STORAGE_KEY = "icdrrmo_citizen_tokens";
@@ -53,6 +62,14 @@ export function purgeInvalidStoredSessions(): void {
   if (chairman?.accessToken && !isAccessTokenUsable(chairman.accessToken)) {
     clearChairmanTokens();
   }
+  const pnp = loadPnpTokens();
+  if (pnp?.accessToken && !isAccessTokenUsable(pnp.accessToken)) {
+    clearPnpTokens();
+  }
+  const bfp = loadBfpTokens();
+  if (bfp?.accessToken && !isAccessTokenUsable(bfp.accessToken)) {
+    clearBfpTokens();
+  }
 }
 
 /** Resolve dashboard path from JWT role (client-side UX only). */
@@ -61,6 +78,8 @@ export function dashboardPathForRole(role: string | undefined): string | null {
   if (role === "CITIZEN") return "/citizen";
   if (role === "RESPONDER") return "/responder";
   if (role === "BARANGAY_CHAIRMAN") return "/chairman";
+  if (role === "PNP") return "/pnp";
+  if (role === "BFP") return "/bfp";
   if (OPS_CONSOLE_ROLES.has(role)) return "/ops";
   return null;
 }
@@ -121,7 +140,7 @@ export async function loginWithRoleRouting(
     clearCitizenTokens();
     return {
       ok: false,
-      message: "This account is not authorized for citizen, responder, or operations access.",
+      message: "This account is not authorized for a SMART dashboard role.",
     };
   }
 
@@ -129,14 +148,29 @@ export async function loginWithRoleRouting(
   if (role === "CITIZEN") {
     clearOpsTokens();
     clearChairmanTokens();
+    clearAllAgencyTokens();
     saveCitizenTokens(pair);
   } else if (role === "BARANGAY_CHAIRMAN") {
     clearCitizenTokens();
     clearOpsTokens();
+    clearAllAgencyTokens();
     saveChairmanTokens(pair);
+  } else if (role === "PNP") {
+    clearCitizenTokens();
+    clearOpsTokens();
+    clearChairmanTokens();
+    clearBfpTokens();
+    savePnpTokens(pair);
+  } else if (role === "BFP") {
+    clearCitizenTokens();
+    clearOpsTokens();
+    clearChairmanTokens();
+    clearPnpTokens();
+    saveBfpTokens(pair);
   } else {
     clearCitizenTokens();
     clearChairmanTokens();
+    clearAllAgencyTokens();
     saveOpsTokens(pair);
   }
 

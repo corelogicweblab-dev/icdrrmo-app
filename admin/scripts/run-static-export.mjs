@@ -44,6 +44,7 @@ const fromFile = {
 const PROD_DEFAULTS = {
   NEXT_PUBLIC_API_URL: "https://icdrrmo-backend.onrender.com/api/v1",
   NEXT_PUBLIC_WS_URL: "https://icdrrmo-backend.onrender.com",
+  NEXT_PUBLIC_WINDY_API_KEY: "T83LrJCjvUNucXIIOCxFAjEdxj5GK7Fb",
 };
 
 const buildId =
@@ -84,6 +85,9 @@ if (!isAbsoluteHttpUrl(ws)) {
 
 childEnv.NEXT_PUBLIC_API_URL = api;
 childEnv.NEXT_PUBLIC_WS_URL = ws;
+if (!childEnv.NEXT_PUBLIC_WINDY_API_KEY?.trim()) {
+  childEnv.NEXT_PUBLIC_WINDY_API_KEY = PROD_DEFAULTS.NEXT_PUBLIC_WINDY_API_KEY;
+}
 
 const r = spawnSync(process.execPath, [nextBin, "build"], {
   cwd: adminRoot,

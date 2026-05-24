@@ -23,7 +23,7 @@ export function isAccessTokenUsable(token: string | undefined): boolean {
   const p = decodeJwtPayload(token);
   if (!p?.role) return false;
   if (typeof p.exp === "number" && p.exp * 1000 < Date.now() - 30_000) return false;
-  if (p.role === "CITIZEN" || p.role === "RESPONDER" || p.role === "BARANGAY_CHAIRMAN") return true;
+  if (p.role === "CITIZEN" || p.role === "RESPONDER" || p.role === "BARANGAY_CHAIRMAN" || p.role === "PNP" || p.role === "BFP") return true;
   return OPS_CONSOLE_ROLES.has(p.role ?? "");
 }
 

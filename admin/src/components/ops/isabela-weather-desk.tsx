@@ -59,7 +59,7 @@ type Props = {
   className?: string;
 };
 
-/** ICDRRMO weather desk — dark basemap + Windy API tiles (no embed / no Windy logo). */
+/** ICDRRMO weather desk — Leaflet basemap + live RainViewer/Windy proxy tiles. */
 export function IsabelaWeatherDesk(props: Props): ReactElement {
   const { tokens } = useOpsSession();
   const mapEl = useRef<HTMLDivElement | null>(null);
@@ -129,7 +129,7 @@ export function IsabelaWeatherDesk(props: Props): ReactElement {
     let map: import("leaflet").Map | null = null;
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       const L = await import("leaflet");
       if (cancelled || !mapEl.current || mapRef.current) return;
 
@@ -165,7 +165,10 @@ export function IsabelaWeatherDesk(props: Props): ReactElement {
       }
 
       mapRef.current = map;
-      setMapReady(true);
+      window.setTimeout(() => {
+        map?.invalidateSize();
+        setMapReady(true);
+      }, 150);
     })();
 
     return () => {
