@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   fetchWindyTileLayers,
-  ICDRRMO_WEATHER_ATTRIBUTION,
   pickWindyTileUrl,
 } from "@/lib/windy-leaflet";
 
@@ -48,7 +47,7 @@ export function useWindyLeafletLayer(opts: {
           minZoom: 3,
           maxZoom: 18,
           zIndex: 400,
-          attribution: ICDRRMO_WEATHER_ATTRIBUTION,
+          attribution: "",
         });
         tile.addTo(map);
         tile.bringToFront();

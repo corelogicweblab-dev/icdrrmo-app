@@ -26,10 +26,16 @@ export class FreeWeatherTilesService {
 
       const layers: OpenWeatherLayerConfig[] = [];
       if (radarPath) {
+        const radarTpl = `https://tilecache.rainviewer.com${radarPath}/256/{z}/{x}/{y}/2/1_1.png`;
+        layers.push({
+          id: 'rain-radar',
+          label: 'Rain radar (live)',
+          urlTemplate: radarTpl,
+        });
         layers.push({
           id: 'precipitation',
-          label: 'Rain / precipitation (RainViewer)',
-          urlTemplate: `https://tilecache.rainviewer.com${radarPath}/256/{z}/{x}/{y}/2/1_1.png`,
+          label: 'Rain / precipitation',
+          urlTemplate: radarTpl,
         });
       }
       if (satPath) {

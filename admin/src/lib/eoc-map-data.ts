@@ -28,7 +28,11 @@ export function tileLayersFromWeather(wx: EocWeatherBundle | null): Array<{
   label: string;
   urlTemplate: string;
 }> {
-  return wx?.openWeather.layers ?? [];
+  return (wx?.openWeather.layers ?? []).filter(
+    (l) =>
+      !l.urlTemplate.includes("/weather/tiles/") &&
+      !l.urlTemplate.includes("tiles.windy.com"),
+  );
 }
 
 export function applyOpenMeteoPagasaHint(

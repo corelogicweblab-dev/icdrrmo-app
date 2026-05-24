@@ -16,6 +16,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { WeatherService } from './weather.service';
 import { WeatherGeojsonMergeService } from './weather-geojson-merge.service';
 import { WindyTilesService } from './windy-tiles.service';
+import { FreeWeatherTilesService } from './free-weather-tiles.service';
 
 const EOC_WEATHER_ROLES = [
   UserRole.ADMIN,
@@ -33,16 +34,32 @@ export class WeatherController {
     private readonly weather: WeatherService,
     private readonly geoMerge: WeatherGeojsonMergeService,
     private readonly windyTiles: WindyTilesService,
+    private readonly freeTiles: FreeWeatherTilesService,
   ) {}
 
   /**
-   * Public Windy layer catalog — URLs point at ICDRRMO tile proxy (no embed / no on-map Windy logo).
-   * Requires WINDY_API_KEY on the API service.
+   * Public weather layer catalog — Windy proxy when configured, else RainViewer (no third-party logo).
    */
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Get('tiles/layers')
-  windyTileLayers() {
-    return this.windyTiles.getPublicLayers();
+  async publicTileLayers() {
+    const windy = this.windyTiles.getPublicLayers();
+    if (windy.layers.length > 0 && (await this.windyTiles.probeUpstreamTile('rain'))) {
+      return { ...windy, configured: true };
+    }
+    const free = await this.freeTiles.getLayers();
+    return {
+      configured: free.length > 0,
+      provider: free.length > 0 ? 'rainviewer' : 'none',
+      layers: free,
+    };
+  }
+
+  /** Public hazard context (GDACS + PAGASA) — no login required for map overlays. */
+  @Throttle({ default: { limit: 45, ttl: 60_000 } })
+  @Get('public/hazards')
+  async publicHazards() {
+    return this.geoMerge.buildMergedGeoJson();
   }
 
   /** Proxies Windy raster tiles server-side so the browser never loads windy.com embed assets. */

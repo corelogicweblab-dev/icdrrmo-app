@@ -44,14 +44,17 @@ import { ISABELA_EOC_LAT, ISABELA_EOC_LNG } from "@/lib/isabela-eoc";
 import { ISABELA_CITY_LAT, ISABELA_CITY_LON } from "@/lib/isabela-forecast-embed";
 import {
   fetchPublicWindyTileLayers,
-  ICDRRMO_WEATHER_ATTRIBUTION,
+  isRainViewerTileUrl,
   isWindyTileUrl,
   WINDY_STYLE_BASEMAP_ATTRIBUTION,
   WINDY_STYLE_BASEMAP_URL,
+  WINDY_STYLE_LABELS_URL,
   type WindyTileLayer,
 } from "@/lib/windy-leaflet";
 import {
   fetchOpenMeteoClient,
+  fetchPublicHazardGeoJson,
+  fetchRainViewerTileLayers,
   fetchRainViewerTileUrl,
   RAINVIEWER_MAX_NATIVE_ZOOM,
   type ClientOpenMeteo,
@@ -148,6 +151,7 @@ export function EocUnifiedMap({
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const basemapRef = useRef<import("leaflet").TileLayer | null>(null);
+  const labelsRef = useRef<import("leaflet").TileLayer | null>(null);
   const markersRef = useRef<import("leaflet").LayerGroup | null>(null);
   const meteoOverlayRef = useRef<import("leaflet").LayerGroup | null>(null);
   const weatherLayersRef = useRef<Partial<Record<WeatherLayerId, import("leaflet").TileLayer>>>({});
@@ -176,6 +180,7 @@ export function EocUnifiedMap({
     Array<{ plate: string; latitude: number; longitude: number }>
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [liveToast, setLiveToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -188,18 +193,16 @@ export function EocUnifiedMap({
   const owmLayers = owmTileLayersFromGeoJson(hazardGeo);
   const tileProvider = weather?.openWeather.provider ?? hazardGeo?.layers.openWeatherMap.properties?.source;
   const useWindy =
-    windyConfigured || tileProvider === "windy" || proxyWindyLayers.length > 0;
-  const fromWeather = tileLayersFromWeather(weather).filter((l) =>
-    useWindy ? isWindyTileUrl(l.urlTemplate) : true,
-  );
+    windyConfigured ||
+    tileProvider === "windy" ||
+    proxyWindyLayers.some((l) => isWindyTileUrl(l.urlTemplate));
+  const fromWeather = tileLayersFromWeather(weather);
   const bundleLayers =
-    fromWeather.length > 0
-      ? fromWeather
-      : proxyWindyLayers.length > 0
-        ? proxyWindyLayers
-        : useWindy
-          ? proxyWindyLayers
-          : owmLayers;
+    proxyWindyLayers.length > 0
+      ? proxyWindyLayers
+      : fromWeather.length > 0
+        ? fromWeather
+        : owmLayers;
   const hasTileLayer = (id: WeatherLayerId): boolean => {
     if (bundleLayers.some((l) => l.id === id && l.urlTemplate)) return true;
     if (id === "rain-radar" || id === "precipitation") return Boolean(rainViewerUrl);
@@ -212,53 +215,71 @@ export function EocUnifiedMap({
   const layerHint = hazardGeo?.properties.upstreamErrors;
   const pagasaAdvisories = mergePagasaAdvisories(hazardGeo, weather);
   const gdacsCount = hazardGeo?.layers.gdacs.features.length ?? 0;
+  const hasRainViewerLayers = proxyWindyLayers.some((l) => isRainViewerTileUrl(l.urlTemplate));
   const dataStatus =
-    gdacsCount > 0 || pagasaAdvisories.length > 0 || bundleLayers.length > 0 || Boolean(rainViewerUrl)
-      ? `Live · GDACS ${gdacsCount} · PAGASA ${pagasaAdvisories.length} · tiles ${Math.max(bundleLayers.length, rainViewerUrl ? 1 : 0)}`
-      : "No hazard data — tap Sync or check API deploy";
+    windyConfigured && proxyWindyLayers.some((l) => isWindyTileUrl(l.urlTemplate))
+      ? "Live · ICDRRMO weather intelligence"
+      : hasRainViewerLayers || rainViewerUrl
+        ? "Live · precipitation radar active"
+        : windyConfigured || proxyWindyLayers.length > 0
+          ? "Live · ICDRRMO weather radar active"
+          : gdacsCount > 0 || pagasaAdvisories.length > 0
+            ? "Live · hazard advisories"
+            : "Syncing weather intelligence…";
 
   const loadData = useCallback(async () => {
-    const token = accessToken;
-    if (!token) return;
     setBusy(true);
     setError(null);
+    setSessionNotice(null);
     const loadErrors: string[] = [];
+    let sessionExpired = false;
+    const token = accessToken?.trim() || null;
     try {
       const windyPub = await fetchPublicWindyTileLayers();
-      setProxyWindyLayers(windyPub.layers);
-      setWindyConfigured(windyPub.configured);
+      let tileLayers = windyPub.layers;
+      if (!tileLayers.some((l) => isRainViewerTileUrl(l.urlTemplate))) {
+        const rv = await fetchRainViewerTileLayers();
+        if (rv.length > 0) tileLayers = rv;
+      }
+      setProxyWindyLayers(tileLayers);
+      setWindyConfigured(tileLayers.length > 0);
 
-      const [rainUrl, clientGdacsRaw, openMeteo] = await Promise.all([
-        windyPub.configured ? Promise.resolve(null) : fetchRainViewerTileUrl(),
+      const [rainUrl, clientGdacsRaw, openMeteo, publicGeo] = await Promise.all([
+        fetchRainViewerTileUrl(),
         fetchGdacsClientFeatures(),
         fetchOpenMeteoClient(),
+        fetchPublicHazardGeoJson(),
       ]);
       setRainViewerUrl(rainUrl);
       setClientMeteo(openMeteo);
 
       let wx: EocWeatherBundle | null = null;
-      try {
-        wx = await fetchEocWeather(token);
-        setWeather(wx);
-      } catch (e: unknown) {
-        if (e instanceof OpsApiError && e.status === 401) {
-          loadErrors.push(
-            "Session expired (Unauthorized). Public radar/GDACS still load — sign in again for shelters and API advisories.",
-          );
-        } else {
-          loadErrors.push(
-            e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Weather API failed",
-          );
+      if (token) {
+        try {
+          wx = await fetchEocWeather(token);
+          setWeather(wx);
+        } catch (e: unknown) {
+          if (e instanceof OpsApiError && e.status === 401) {
+            sessionExpired = true;
+          } else {
+            loadErrors.push(
+              e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Weather API failed",
+            );
+          }
+          setWeather(null);
         }
+      } else {
         setWeather(null);
       }
 
-      let geo: MergedHazardGeoJson | null = wx?.hazardGeo ?? null;
-      if (!geo && wx) {
+      let geo: MergedHazardGeoJson | null = wx?.hazardGeo ?? publicGeo ?? null;
+      if (!geo && wx && token) {
         try {
           geo = await fetchEocHazardGeoJson(token);
         } catch (e: unknown) {
-          if (!(e instanceof OpsApiError && e.status === 401)) {
+          if (e instanceof OpsApiError && e.status === 401) {
+            sessionExpired = true;
+          } else {
             loadErrors.push(
               e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "GeoJSON API failed",
             );
@@ -274,27 +295,34 @@ export function EocUnifiedMap({
       setHazardGeo(geo);
 
       const live =
-        mode === "citizen"
-          ? null
-          : await opsFetchJson<OpsLive>("/map/ops-live", token).catch(() => null);
+        token && mode !== "citizen"
+          ? await opsFetchJson<OpsLive>("/map/ops-live", token).catch((e: unknown) => {
+              if (e instanceof OpsApiError && e.status === 401) sessionExpired = true;
+              return null;
+            })
+          : null;
 
-      const hasHazardData =
-        (geo?.layers.gdacs.features.length ?? 0) > 0 ||
-        (geo?.layers.pagasa.features.length ?? 0) > 0 ||
+      const hasLiveMapData =
+        windyPub.configured ||
+        windyPub.layers.length > 0 ||
         Boolean(rainUrl) ||
         Boolean(openMeteo) ||
-        (wx?.openWeather.layers.length ?? 0) > 0;
-      if (loadErrors.length && !hasHazardData) {
+        (geo?.layers.pagasa.features.length ?? 0) > 0 ||
+        (geo?.layers.gdacs.features.length ?? 0) > 0;
+
+      if (loadErrors.length && !hasLiveMapData) {
         setError(loadErrors.join(" · "));
-      } else if (loadErrors.some((m) => m.includes("Unauthorized"))) {
-        setError(loadErrors.find((m) => m.includes("Unauthorized")) ?? loadErrors[0]);
       } else {
         setError(null);
       }
 
+      if (sessionExpired) {
+        setSessionNotice("Session expired — sign in again for shelters and live ops overlays.");
+      }
+
       setLayerEpoch((n) => n + 1);
 
-      if (mode === "citizen") {
+      if (mode === "citizen" && token) {
         type EvacRow = {
           id: string;
           name: string;
@@ -455,7 +483,8 @@ export function EocUnifiedMap({
   useEffect(() => {
     if (!mapEl.current) return;
     let destroyed = false;
-    (async () => {
+
+    void (async () => {
       const L = await import("leaflet");
       if (destroyed || !mapEl.current || mapRef.current) return;
 
@@ -475,6 +504,16 @@ export function EocUnifiedMap({
       basemap.addTo(map);
       basemapRef.current = basemap;
 
+      const labels = L.tileLayer(WINDY_STYLE_LABELS_URL, {
+        maxZoom: 19,
+        pane: "overlayPane",
+        zIndex: 520,
+        opacity: 1,
+        attribution: "",
+      });
+      labels.addTo(map);
+      labelsRef.current = labels;
+
       markersRef.current = L.layerGroup().addTo(map);
       meteoOverlayRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
@@ -484,8 +523,12 @@ export function EocUnifiedMap({
         setMapReady(true);
       }, 200);
     })();
+
     return () => {
       destroyed = true;
+      setMapReady(false);
+      labelsRef.current = null;
+      basemapRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -540,7 +583,7 @@ export function EocUnifiedMap({
   useEffect(() => {
     if (!mapRef.current || !markersRef.current) return;
     void (async () => {
-      const L = await import("leaflet");
+      const L = window.L ?? (await import("leaflet"));
       const g = markersRef.current!;
       g.clearLayers();
 
@@ -628,6 +671,11 @@ export function EocUnifiedMap({
     if (!map) return;
     void (async () => {
       const L = await import("leaflet");
+      const rvById = new Map(
+        bundleLayers
+          .filter((l) => isRainViewerTileUrl(l.urlTemplate))
+          .map((l) => [l.id, l.urlTemplate]),
+      );
       const allIds: WeatherLayerId[] = ["rain-radar", "precipitation", "clouds", "temp", "wind"];
       const owmById = new Map(owmLayers.map((l) => [l.id, l]));
 
@@ -642,33 +690,30 @@ export function EocUnifiedMap({
           continue;
         }
 
-        const fromBundle =
-          bundleLayers.find((l) => l.id === id)?.urlTemplate ??
-          weather?.openWeather.layers.find((l) => l.id === id)?.urlTemplate ??
+        let url: string | null =
+          bundleLayers.find((l) => l.id === id && !isWindyTileUrl(l.urlTemplate))?.urlTemplate ??
+          rvById.get(id) ??
           owmById.get(id)?.urlTemplate ??
           null;
 
-        let url: string | null = fromBundle;
+        const isWindyLayer = Boolean(url && isWindyTileUrl(url));
         let opacity = 0.55;
         if (id === "rain-radar" || id === "precipitation") {
-          opacity = id === "rain-radar" ? 0.55 : 0.5;
-          if (!url && !useWindy && !windyConfigured) url = rainViewerUrl;
+          opacity = isWindyLayer ? 0.88 : 0.85;
+          if (!url) url = rainViewerUrl ?? rvById.get("rain-radar") ?? rvById.get("precipitation") ?? null;
         } else if (id === "clouds") {
-          opacity = 0.45;
-          if (!url && !useWindy && !windyConfigured) url = rainViewerUrl;
+          opacity = isWindyLayer ? 0.78 : 0.65;
+          if (!url) url = rvById.get("clouds") ?? rainViewerUrl ?? null;
         } else if (id === "temp") {
-          opacity = 0.5;
+          opacity = isWindyLayer ? 0.72 : 0.5;
         } else if (id === "wind") {
-          opacity = 0.55;
+          opacity = isWindyLayer ? 0.75 : 0.55;
         }
 
-        if (!url) continue;
+        if (!url || isWindyTileUrl(url)) continue;
 
         const isRainViewer =
-          !useWindy &&
-          !windyConfigured &&
-          (url.includes("rainviewer.com") || url.includes("tilecache.rainviewer"));
-        const isWindyLayer = isWindyTileUrl(url);
+          url.includes("rainviewer.com") || url.includes("tilecache.rainviewer");
 
         if (existing) {
           map.removeLayer(existing);
@@ -681,29 +726,30 @@ export function EocUnifiedMap({
           maxNativeZoom: isRainViewer ? RAINVIEWER_MAX_NATIVE_ZOOM : 18,
           zIndex: 450,
           pane: "overlayPane",
-          attribution: isWindyLayer
-            ? ICDRRMO_WEATHER_ATTRIBUTION
-            : ICDRRMO_WEATHER_ATTRIBUTION,
+          attribution: "",
         });
         weatherLayersRef.current[id] = tile;
         tile.addTo(map);
-        tile.bringToFront();
       }
 
+      labelsRef.current?.bringToFront();
+
       if (
-        !useWindy &&
-        !windyConfigured &&
-        (activeLayers.has("rain-radar") ||
-          activeLayers.has("precipitation") ||
-          activeLayers.has("clouds"))
+        activeLayers.has("rain-radar") ||
+        activeLayers.has("precipitation") ||
+        activeLayers.has("clouds")
       ) {
         const z = map.getZoom();
-        if (z > RAINVIEWER_MAX_NATIVE_ZOOM + 2) {
+        const usesRainViewer = Object.values(weatherLayersRef.current).some((layer) => {
+          const src = (layer as { _url?: string } | undefined)?._url ?? "";
+          return src.includes("rainviewer.com") || src.includes("tilecache.rainviewer");
+        });
+        if (usesRainViewer && z > RAINVIEWER_MAX_NATIVE_ZOOM + 2) {
           map.setZoom(RAINVIEWER_MAX_NATIVE_ZOOM + 1);
         }
       }
     })();
-  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch, useWindy, windyConfigured]);
+  }, [activeLayers, weather, bundleLayers, owmLayers, rainViewerUrl, layerEpoch, windyConfigured]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1017,6 +1063,11 @@ export function EocUnifiedMap({
         {liveToast ? (
           <p className="text-[10px] text-emerald-200 bg-emerald-950/80 border border-emerald-500/30 rounded-md px-2 py-1">
             {liveToast}
+          </p>
+        ) : null}
+        {sessionNotice ? (
+          <p className="text-[10px] text-amber-200/90 bg-amber-950/50 border border-amber-500/25 rounded-md px-2 py-1">
+            {sessionNotice}
           </p>
         ) : null}
         {error ? (

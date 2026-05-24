@@ -42,8 +42,8 @@ const fromFile = {
 
 /** Production defaults when shell/CI secrets are missing (Firebase static hosting). */
 const PROD_DEFAULTS = {
-  NEXT_PUBLIC_API_URL: "https://icdrrmo-api.onrender.com/api/v1",
-  NEXT_PUBLIC_WS_URL: "https://icdrrmo-api.onrender.com",
+  NEXT_PUBLIC_API_URL: "https://icdrrmo-backend.onrender.com/api/v1",
+  NEXT_PUBLIC_WS_URL: "https://icdrrmo-backend.onrender.com",
 };
 
 const buildId =

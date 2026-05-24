@@ -247,6 +247,31 @@ body:has(.icd-auth-page) .icd-live-dot {
   }
 }
 
+/* Windy Map Forecast — ICDRRMO chrome only (no Windy logo / promo) */
+.icdrrmo-windy-root#windy,
+.eoc-unified-map .icdrrmo-windy-root#windy {
+  width: 100%;
+  height: 100%;
+}
+#windy #bottom,
+#windy #mobile-ovr-select,
+#windy #embed-zoom,
+#windy #logo-wrapper,
+#windy #logo,
+#windy .windy-picker,
+#windy .plugin-rhpane,
+#windy .menu-rhpane,
+#windy a[href*="windy.com"],
+#windy [class*="top-banner"],
+#windy [class*="TopBanner"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+}
+
 @keyframes icdrrmo-logo-route-flash {
   0% {
     opacity: 0;

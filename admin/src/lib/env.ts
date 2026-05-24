@@ -1,6 +1,6 @@
 /** Live Firebase Hosting + Render API pairing (safety net when export env is wrong or PWA serves stale JS). */
-export const PRODUCTION_API_BASE = "https://icdrrmo-api.onrender.com/api/v1";
-export const PRODUCTION_WS_ORIGIN = "https://icdrrmo-api.onrender.com";
+export const PRODUCTION_API_BASE = "https://icdrrmo-backend.onrender.com/api/v1";
+export const PRODUCTION_WS_ORIGIN = "https://icdrrmo-backend.onrender.com";
 
 const FIREBASE_HOSTING_HOSTS = new Set([
   "icdrrmo-b204e.web.app",
@@ -19,6 +19,15 @@ export function isFirebaseHostingOrigin(): boolean {
 /** Mapbox public token (client bundle). Set in `admin/.env.local` as `NEXT_PUBLIC_MAPBOX_TOKEN`. */
 export function getMapboxToken(): string {
   return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";
+}
+
+/** Windy tile API key — baked in at build (`NEXT_PUBLIC_WINDY_API_KEY`). */
+export function getWindyApiKey(): string {
+  return process.env.NEXT_PUBLIC_WINDY_API_KEY?.trim() ?? "";
+}
+
+export function hasWindyApiKey(): boolean {
+  return getWindyApiKey().length > 0;
 }
 
 export function hasMapboxToken(): boolean {
@@ -71,7 +80,7 @@ export function getApiConfigWarning(): string | null {
       const apiHost = new URL(base).hostname;
       if (apiHost === "icdrrmo-app-1.onrender.com") {
         devDetail =
-          "This build points at icdrrmo-app-1.onrender.com. Rebuild with NEXT_PUBLIC_API_URL=https://icdrrmo-api.onrender.com/api/v1 and NEXT_PUBLIC_WS_URL=https://icdrrmo-api.onrender.com (GitHub secret or admin/.env.deploy), then redeploy Firebase Hosting.";
+          "This build points at icdrrmo-app-1.onrender.com. Rebuild with NEXT_PUBLIC_API_URL=https://icdrrmo-backend.onrender.com/api/v1 and NEXT_PUBLIC_WS_URL=https://icdrrmo-backend.onrender.com (GitHub secret or admin/.env.deploy), then redeploy Firebase Hosting.";
       } else if (apiHost === h) {
         devDetail =
           "NEXT_PUBLIC_API_URL points at this same hostname as the admin UI. Use your Nest API host (different subdomain or domain).";

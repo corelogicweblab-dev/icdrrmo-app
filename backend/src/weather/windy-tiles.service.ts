@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { OpenWeatherLayerConfig } from './weather.service';
 
-/** Windy raster layers — keys match https://tiles.windy.com/{layer}/… */
+/** Windy raster layers — v9.0 tile API (https://tiles.windy.com/tiles/v9.0/{layer}/…) */
 const WINDY_RASTER_LAYERS: Array<{ id: string; windy: string; label: string }> = [
   { id: 'rain-radar', windy: 'rain', label: 'Rain radar (live)' },
   { id: 'precipitation', windy: 'rain', label: 'Rain / precipitation' },
@@ -29,7 +29,7 @@ export class WindyTilesService {
     const raw =
       process.env.API_PUBLIC_BASE_URL?.trim() ||
       process.env.RENDER_EXTERNAL_URL?.trim() ||
-      'https://icdrrmo-api.onrender.com';
+      'https://icdrrmo-backend.onrender.com';
     const base = raw.replace(/\/$/, '');
     return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
   }
@@ -53,7 +53,22 @@ export class WindyTilesService {
       label: l.label,
       urlTemplate: `${apiBase}/weather/tiles/${l.windy}/{z}/{x}/{y}.png`,
     }));
-    return { configured: true, provider: 'windy', layers };
+    return { configured: layers.length > 0, provider: 'windy', layers };
+  }
+
+  /** Probe upstream Windy v9.0 tile — Map Forecast keys often return transparent PNGs. */
+  async probeUpstreamTile(layer = 'rain'): Promise<boolean> {
+    const key = resolveWindyApiKey();
+    if (!key || !this.isAllowedProxyLayer(layer)) return false;
+    try {
+      const url = this.upstreamTileUrl(layer, '6', '53', '30');
+      const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+      if (!res.ok) return false;
+      const buf = Buffer.from(await res.arrayBuffer());
+      return buf.byteLength > 600;
+    } catch {
+      return false;
+    }
   }
 
   isAllowedProxyLayer(layer: string): boolean {
@@ -66,6 +81,6 @@ export class WindyTilesService {
       throw new NotFoundException('Weather tile not available');
     }
     const enc = encodeURIComponent(key);
-    return `https://tiles.windy.com/${layer}/${z}/${x}/${y}.png?key=${enc}`;
+    return `https://tiles.windy.com/tiles/v9.0/${layer}/${z}/${x}/${y}.png?key=${enc}`;
   }
 }
