@@ -16,6 +16,7 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from './types/jwt-payload.type';
@@ -40,6 +41,16 @@ export class AuthController {
   @Post('firebase-custom-token')
   firebaseCustomToken(@CurrentUser() user: JwtPayload): Promise<{ customToken: string }> {
     return this.auth.issueFirebaseCustomToken(user);
+  }
+
+  @Throttle({ default: { limit: 8, ttl: 60000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ ok: true }> {
+    return this.auth.changePassword(user.sub, dto);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })

@@ -16,7 +16,7 @@ import { PasswordInput } from "@/components/password-input";
 import { SmartCitizenDashboard } from "@/components/citizen/smart-citizen-dashboard";
 import { getApiBaseUrl } from "@/lib/env";
 import { loadBarangayPickList, barangayRegisterFields } from "@/lib/public-barangays";
-import { CITIZEN_STORAGE_KEY } from "@/lib/unified-auth";
+import { CITIZEN_STORAGE_KEY, signOutToHome } from "@/lib/unified-auth";
 
 type Tokens = { accessToken: string; refreshToken?: string };
 
@@ -97,6 +97,11 @@ function CitizenPageInner(): ReactElement {
     const a = computeAgeFromIso(registerBirthday);
     return a == null ? "" : String(a);
   }, [registerBirthday]);
+
+  const selectedRegisterBarangay = useMemo(
+    () => registerBarangays.find((b) => b.id === registerBarangayId) ?? null,
+    [registerBarangays, registerBarangayId],
+  );
 
   const onRegisterProfilePhotoChange = useCallback((ev: React.ChangeEvent<HTMLInputElement>) => {
     const f = ev.target.files?.[0];
@@ -246,10 +251,9 @@ function CitizenPageInner(): ReactElement {
   }
 
   function logout(): void {
-    localStorage.removeItem(STORAGE);
     setTokens(null);
     setMsg(null);
-    router.replace("/");
+    signOutToHome();
   }
 
   return (
@@ -382,16 +386,7 @@ function CitizenPageInner(): ReactElement {
                     className="w-full resize-y rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
                   />
                 </Field>
-                <Field label="Street / purok">
-                  <input
-                    required
-                    value={registerStreetPurok}
-                    onChange={(e) => setRegisterStreetPurok(e.target.value)}
-                    placeholder="e.g. Purok 3, Malamawi Road"
-                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
-                  />
-                </Field>
-                <Field label="Barangay">
+                <Field label="Barangay ID">
                   <select
                     required
                     value={registerBarangayId}
@@ -405,6 +400,27 @@ function CitizenPageInner(): ReactElement {
                       </option>
                     ))}
                   </select>
+                  {selectedRegisterBarangay ? (
+                    <p className="mt-1 text-[10px] text-zinc-500 font-mono">
+                      ID: {selectedRegisterBarangay.id} · Code: {selectedRegisterBarangay.code}
+                    </p>
+                  ) : null}
+                </Field>
+                <Field label="Role">
+                  <input
+                    readOnly
+                    value="Citizen"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-400"
+                  />
+                </Field>
+                <Field label="Address">
+                  <input
+                    required
+                    value={registerStreetPurok}
+                    onChange={(e) => setRegisterStreetPurok(e.target.value)}
+                    placeholder="Street, purok, sitio"
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40 placeholder:text-zinc-600"
+                  />
                 </Field>
                 <Field label="Contact number (e.g. +639171234567)">
                   <input

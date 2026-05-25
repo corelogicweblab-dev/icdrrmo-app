@@ -1,11 +1,11 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useEffect, useState } from "react";
-import { Globe, KeyRound, Shield, UserCog } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import { opsFetchJson } from "@/lib/ops-api";
+import { opsApiErrorUserMessage, opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type AuditRow = {
   id: string;
@@ -21,27 +21,44 @@ export default function OpsAuditPage(): ReactElement {
   const { tokens } = useOpsSession();
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     const token = tokens?.accessToken;
     if (!token) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await opsFetchJson<{ items: AuditRow[] }>("/audit-logs?take=50", token);
-        if (!cancelled) setRows(data.items ?? (data as unknown as AuditRow[]));
-      } catch (e: unknown) {
-        if (!cancelled) setErr(e instanceof Error ? e.message : "Failed to load audit logs");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setLoading(true);
+    setErr(null);
+    try {
+      const data = await opsFetchJson<{ items: AuditRow[] }>("/audit-logs?take=50", token);
+      const items = Array.isArray(data.items) ? data.items : Array.isArray(data) ? (data as AuditRow[]) : [];
+      setRows(items);
+    } catch (e: unknown) {
+      setRows([]);
+      setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Failed to load audit logs");
+    } finally {
+      setLoading(false);
+    }
   }, [tokens?.accessToken]);
 
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
-    <div className="p-4 lg:p-6 grid gap-4 lg:grid-cols-12">
-      <OpsPanelCard title="Immutable audit ledger" subtitle="COA · DILG · Data Privacy Act" className="lg:col-span-8">
+    <div className="p-4 lg:p-6">
+      <OpsPanelCard title="Audit ledger" subtitle="Recent system activity for compliance review" className="lg:col-span-12">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-[11px] text-zinc-500">Newest entries first · refreshes on load</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading || !tokens?.accessToken}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
+            Refresh
+          </button>
+        </div>
         {err ? <p className="text-sm text-rose-300 mb-3">{err}</p> : null}
         <div className="overflow-x-auto max-h-[520px] scroll-ops">
           <table className="min-w-full text-left text-[11px]">
@@ -56,11 +73,13 @@ export default function OpsAuditPage(): ReactElement {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-orange-500/08 text-zinc-300 font-mono">
-                  <td className="py-2 pr-4 text-zinc-500">{new Date(r.createdAt).toLocaleString("en-PH")}</td>
+                <tr key={r.id} className="border-b border-orange-500/08 text-zinc-300">
+                  <td className="py-2 pr-4 text-zinc-500 whitespace-nowrap">
+                    {new Date(r.createdAt).toLocaleString("en-PH")}
+                  </td>
                   <td className="py-2 pr-4">{r.actor?.email ?? "—"}</td>
                   <td className="py-2 pr-4 text-orange-200/90">{r.action}</td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-4 font-mono text-[10px]">
                     {r.entityType ?? "—"}
                     {r.entityId ? ` · ${r.entityId.slice(0, 8)}` : ""}
                   </td>
@@ -70,23 +89,12 @@ export default function OpsAuditPage(): ReactElement {
             </tbody>
           </table>
         </div>
-        {!rows.length && !err ? <p className="text-xs text-zinc-500 mt-3">No audit entries yet.</p> : null}
-      </OpsPanelCard>
-      <OpsPanelCard title="Security scope">
-        <ul className="space-y-2 text-sm text-zinc-400">
-          <li className="flex gap-2">
-            <KeyRound className="h-4 w-4 text-rose-400" aria-hidden /> Login attempts (JWT access)
-          </li>
-          <li className="flex gap-2">
-            <UserCog className="h-4 w-4 text-orange-400" aria-hidden /> Role mutation trail
-          </li>
-          <li className="flex gap-2">
-            <Globe className="h-4 w-4 text-orange-400" aria-hidden /> External API bearer usage
-          </li>
-          <li className="flex gap-2">
-            <Shield className="h-4 w-4 text-zinc-500" aria-hidden /> SSO via OIDC_ISSUER_URL (when configured)
-          </li>
-        </ul>
+        {!rows.length && !loading && !err ? <p className="text-xs text-zinc-500 mt-3">No audit entries yet.</p> : null}
+        {loading && !rows.length ? (
+          <p className="flex items-center gap-2 text-sm text-zinc-500 mt-3">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading…
+          </p>
+        ) : null}
       </OpsPanelCard>
     </div>
   );

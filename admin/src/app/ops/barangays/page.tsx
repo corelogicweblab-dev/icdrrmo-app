@@ -30,6 +30,7 @@ export default function OpsBarangaysPage(): ReactElement {
   const canHazard = role != null && HAZARD_ROLES.has(role);
   const [rows, setRows] = useState<BarangayRow[]>([]);
   const [operatorBarangayId, setOperatorBarangayId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -41,12 +42,19 @@ export default function OpsBarangaysPage(): ReactElement {
     setErr(null);
     try {
       const list = await opsFetchJson<BarangayRow[]>("/barangays", tokens.accessToken);
-      setRows(Array.isArray(list) ? list : []);
+      const next = Array.isArray(list) ? list : [];
+      setRows(next);
       if (role === "OPERATOR") {
         const me = await opsFetchJson<{ profile: MeProfile | null }>("/users/me", tokens.accessToken);
-        setOperatorBarangayId(me.profile?.barangayId ?? null);
+        const bg = me.profile?.barangayId ?? null;
+        setOperatorBarangayId(bg);
+        setSelectedId(bg && next.some((r) => r.id === bg) ? bg : "");
       } else {
         setOperatorBarangayId(null);
+        setSelectedId((prev) => {
+          if (prev && next.some((r) => r.id === prev)) return prev;
+          return next[0]?.id ?? "";
+        });
       }
     } catch (e: unknown) {
       setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Failed to load barangays");
@@ -63,6 +71,11 @@ export default function OpsBarangaysPage(): ReactElement {
     if (role !== "OPERATOR" || !operatorBarangayId) return rows;
     return rows.filter((r) => r.id === operatorBarangayId);
   }, [rows, role, operatorBarangayId]);
+
+  const selected = useMemo(
+    () => visibleRows.find((r) => r.id === selectedId) ?? visibleRows[0] ?? null,
+    [visibleRows, selectedId],
+  );
 
   function d(id: string): Partial<BarangayRow> {
     return draft[id] ?? {};
@@ -107,126 +120,132 @@ export default function OpsBarangaysPage(): ReactElement {
     }
   }
 
+  const merged = selected ? mergeRow(selected) : null;
+  const dis = !canHazard || !selected || savingId === selected.id;
+
   return (
     <div className="grid gap-4 p-4 lg:grid-cols-12 lg:p-6">
-      <OpsPanelCard title="Barangay hazard controls" subtitle="Flood + red zone — pushes citizens in that barangay" className="lg:col-span-12">
-        <p className="mb-4 max-w-3xl text-xs leading-relaxed text-zinc-500">
-          When <strong className="text-zinc-400">Flood advisory</strong> or <strong className="text-zinc-400">Red zone</strong> is
-          active and you save, every citizen app user registered in that barangay gets a{" "}
-          <strong className="text-zinc-400">high-priority push</strong> (sound + vibration on supported devices). Weather
-          digests go to <strong className="text-zinc-400">all citizens</strong> on a fixed schedule from the API server.
-        </p>
+      <OpsPanelCard
+        title="Barangay hazard alerts"
+        subtitle="Select a barangay, set flood or red-zone advisories, then save to notify citizens in that barangay"
+        className="lg:col-span-12"
+      >
         {role === "OPERATOR" && !operatorBarangayId ? (
-          <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
-            Your operator profile has no barangay assigned — contact an admin to set{" "}
-            <span className="font-mono">UserProfile.barangay_id</span> before you can update hazard flags.
+          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
+            Link your barangay on <strong>My profile</strong> before you can publish hazard alerts.
           </p>
         ) : null}
         {err ? <p className="mb-3 text-sm text-rose-300">{err}</p> : null}
         {loading ? (
           <p className="flex items-center gap-2 text-sm text-zinc-400">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading barangays…
           </p>
+        ) : visibleRows.length === 0 ? (
+          <p className="text-sm text-zinc-500">No barangays available.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-orange-500/12">
-            <table className="w-full min-w-[720px] text-left text-[13px] text-zinc-300">
-              <thead className="border-b border-orange-500/12 bg-black/30 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                <tr>
-                  <th className="px-3 py-2">Barangay</th>
-                  <th className="px-3 py-2">Code</th>
-                  <th className="px-3 py-2">Flood</th>
-                  <th className="px-3 py-2">Red zone</th>
-                  <th className="px-3 py-2">Instructions</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {visibleRows.map((b) => {
-                  const m = mergeRow(b);
-                  const dis = !canHazard || savingId === b.id;
-                  return (
-                    <tr key={b.id} className="border-b border-white/[0.04] align-top last:border-0">
-                      <td className="px-3 py-2 font-medium text-white">{b.name}</td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-zinc-500">{b.code}</td>
-                      <td className="px-3 py-2">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-zinc-600"
-                            checked={m.opsFloodActive}
-                            disabled={dis}
-                            onChange={(e) =>
-                              setDraft((p) => ({
-                                ...p,
-                                [b.id]: { ...d(b.id), opsFloodActive: e.target.checked },
-                              }))
-                            }
-                          />
-                          <Waves className="h-4 w-4 text-orange-400" aria-hidden />
-                        </label>
-                      </td>
-                      <td className="px-3 py-2">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-zinc-600"
-                            checked={m.opsRedZoneActive}
-                            disabled={dis}
-                            onChange={(e) =>
-                              setDraft((p) => ({
-                                ...p,
-                                [b.id]: { ...d(b.id), opsRedZoneActive: e.target.checked },
-                              }))
-                            }
-                          />
-                          <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden />
-                        </label>
-                      </td>
-                      <td className="px-3 py-2">
-                        <textarea
-                          className="mb-1 w-full min-h-[52px] rounded-lg border border-orange-500/20 bg-black/40 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600"
-                          placeholder="Flood message (routes, evacuation, avoid areas)…"
-                          value={m.opsFloodMessage ?? ""}
-                          disabled={dis}
-                          onChange={(e) =>
-                            setDraft((p) => ({
-                              ...p,
-                              [b.id]: { ...d(b.id), opsFloodMessage: e.target.value },
-                            }))
-                          }
-                        />
-                        <textarea
-                          className="w-full min-h-[52px] rounded-lg border border-orange-500/20 bg-black/40 px-2 py-1 text-[12px] text-zinc-200 placeholder:text-zinc-600"
-                          placeholder="Red zone message (stay out, checkpoints)…"
-                          value={m.opsRedZoneMessage ?? ""}
-                          disabled={dis}
-                          onChange={(e) =>
-                            setDraft((p) => ({
-                              ...p,
-                              [b.id]: { ...d(b.id), opsRedZoneMessage: e.target.value },
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        {canHazard ? (
-                          <button
-                            type="button"
-                            disabled={dis}
-                            onClick={() => void save(b)}
-                            className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-40"
-                          >
-                            {savingId === b.id ? "Saving…" : "Save & alert"}
-                          </button>
-                        ) : (
-                          <span className="text-zinc-600">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-5">
+            <label className="block max-w-md space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Barangay</span>
+              <select
+                value={selected?.id ?? ""}
+                onChange={(e) => setSelectedId(e.target.value)}
+                disabled={role === "OPERATOR" && visibleRows.length <= 1}
+                className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-rose-500/40 disabled:opacity-70"
+              >
+                {visibleRows.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.code})
+                  </option>
+                ))}
+              </select>
+              {selected ? (
+                <p className="text-[10px] text-zinc-500 font-mono">
+                  Barangay ID: {selected.id}
+                  {selected.opsHazardUpdatedAt
+                    ? ` · Updated ${new Date(selected.opsHazardUpdatedAt).toLocaleString("en-PH")}`
+                    : ""}
+                </p>
+              ) : null}
+            </label>
+
+            {merged && selected ? (
+              <div className="rounded-xl border border-orange-500/15 bg-black/35 p-4 space-y-4">
+                <div className="flex flex-wrap gap-6">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-200">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-zinc-600"
+                      checked={merged.opsFloodActive}
+                      disabled={dis}
+                      onChange={(e) =>
+                        setDraft((p) => ({
+                          ...p,
+                          [selected.id]: { ...d(selected.id), opsFloodActive: e.target.checked },
+                        }))
+                      }
+                    />
+                    <Waves className="h-4 w-4 text-orange-400" aria-hidden />
+                    Flood advisory
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-200">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-zinc-600"
+                      checked={merged.opsRedZoneActive}
+                      disabled={dis}
+                      onChange={(e) =>
+                        setDraft((p) => ({
+                          ...p,
+                          [selected.id]: { ...d(selected.id), opsRedZoneActive: e.target.checked },
+                        }))
+                      }
+                    />
+                    <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden />
+                    Red zone
+                  </label>
+                </div>
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Flood instructions</span>
+                  <textarea
+                    className="w-full min-h-[72px] rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600"
+                    placeholder="Routes, evacuation, areas to avoid…"
+                    value={merged.opsFloodMessage ?? ""}
+                    disabled={dis}
+                    onChange={(e) =>
+                      setDraft((p) => ({
+                        ...p,
+                        [selected.id]: { ...d(selected.id), opsFloodMessage: e.target.value },
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Red zone instructions</span>
+                  <textarea
+                    className="w-full min-h-[72px] rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600"
+                    placeholder="Stay-out areas, checkpoints, curfew…"
+                    value={merged.opsRedZoneMessage ?? ""}
+                    disabled={dis}
+                    onChange={(e) =>
+                      setDraft((p) => ({
+                        ...p,
+                        [selected.id]: { ...d(selected.id), opsRedZoneMessage: e.target.value },
+                      }))
+                    }
+                  />
+                </label>
+                {canHazard ? (
+                  <button
+                    type="button"
+                    disabled={dis}
+                    onClick={() => void save(selected)}
+                    className="rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-40"
+                  >
+                    {savingId === selected.id ? "Saving…" : "Save & alert citizens"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         )}
       </OpsPanelCard>

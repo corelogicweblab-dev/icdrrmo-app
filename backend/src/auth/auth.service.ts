@@ -15,6 +15,7 @@ import { FirestoreMirrorService } from '../firestore/firestore-mirror.service';
 import { FirebaseAdminService } from '../firestore/firebase-admin.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtPayload } from './types/jwt-payload.type';
 
 const BCRYPT_ROUNDS = 12;
@@ -72,6 +73,7 @@ export class AuthService {
             setupCompleted: true,
             barangayId: barangayId!,
             streetPurok: street,
+            address: street,
             birthday,
             gender,
             bloodType,
@@ -83,6 +85,23 @@ export class AuthService {
     });
     void this.firestoreMirror.syncUserProfile(user.id);
     return this.issueAccessToken(user.id, user.email, user.role);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ ok: true }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.isActive) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const ok = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!ok) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('New password must be different from the current password');
+    }
+    const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    return { ok: true };
   }
 
   /**

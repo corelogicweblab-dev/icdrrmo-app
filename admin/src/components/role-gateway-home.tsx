@@ -14,8 +14,6 @@ import {
 } from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
-import { WEB_BUILD_ID } from "@/lib/web-build-id";
-
 const FEATURES = [
   { icon: Bot, label: "ICDRRMO AI", detail: "English assistant on every dashboard" },
   { icon: Map, label: "Live weather map", detail: "Windy API layers · GDACS · PAGASA (no logo)" },
@@ -25,12 +23,6 @@ const FEATURES = [
 export function RoleGatewayHome(): ReactElement {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#040406] text-zinc-100">
-      <div className="border-b border-emerald-500/30 bg-emerald-950/40 px-4 py-2 text-center">
-        <p className="font-mono text-[11px] font-semibold text-emerald-200">
-          LIVE BUILD {WEB_BUILD_ID} · SMART dashboards + ICDRRMO AI deployed
-        </p>
-      </div>
-
       <header className="border-b border-white/[0.06] bg-black/35 backdrop-blur-md">
         <div className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8 text-center md:py-10">
           <div className="mx-auto flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-2xl bg-black/30 shadow-[0_20px_50px_-20px_rgba(225,29,72,0.45)] ring-1 ring-white/12 p-2">
@@ -118,10 +110,6 @@ export function RoleGatewayHome(): ReactElement {
           />
         </div>
 
-        <p className="text-center font-mono text-[10px] text-zinc-600">
-          Build {WEB_BUILD_ID} · Orange <strong className="text-orange-400">ICDRRMO AI</strong> button
-          bottom-right · Hard refresh (Ctrl+Shift+R) if outdated
-        </p>
       </main>
 
       <IcdrrmoAiChat accessToken={null} portal="home" guestMode />

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell, ChevronRight, Loader2, LocateFixed, MapPin } from "lucide-react";
 import { CitizenWeatherMap } from "@/components/citizen/citizen-weather-map";
@@ -17,6 +17,7 @@ import {
   fetchCitizenFeedWithRetry,
   isLiveCitizenFeed,
   type CitizenUnifiedFeed,
+  isPublicCitizenAlert,
 } from "@/lib/citizen-feed";
 import { useCitizenRealtime } from "@/hooks/use-citizen-realtime";
 import { getApiBaseUrl, getOpsVoiceHotline } from "@/lib/env";
@@ -197,6 +198,10 @@ export function SmartCitizenDashboard(props: {
   ];
 
   const activeFeed = feed;
+  const publicAlerts = useMemo(
+    () => activeFeed.notifications.filter(isPublicCitizenAlert),
+    [activeFeed.notifications],
+  );
 
   return (
     <div className="space-y-4">
@@ -354,32 +359,26 @@ export function SmartCitizenDashboard(props: {
         <div className="space-y-3">
           <p className="text-xs text-zinc-500 flex items-center gap-2">
             <Bell className="h-4 w-4 text-orange-400" />
-            Incidents & advisories near you
+            Public advisories for your barangay (flood, red zone, weather, evacuation)
           </p>
           <ul className="space-y-2 max-h-[400px] overflow-y-auto">
-            {activeFeed.notifications.map((n) => (
-              <li
-                key={n.id}
-                className={`rounded-xl border px-3 py-2.5 text-xs ${
-                  n.readAt ? "border-white/[0.05] opacity-70" : "border-orange-500/25 bg-orange-950/20"
-                }`}
-              >
-                <p className="font-semibold text-zinc-100">{n.title}</p>
-                <p className="text-zinc-400 mt-1">{n.body}</p>
-                <p className="text-[10px] text-zinc-600 mt-1">{n.type}</p>
+            {publicAlerts.length ? (
+              publicAlerts.map((n) => (
+                <li
+                  key={n.id}
+                  className={`rounded-xl border px-3 py-2.5 text-xs ${
+                    n.readAt ? "border-white/[0.05] opacity-70" : "border-orange-500/25 bg-orange-950/20"
+                  }`}
+                >
+                  <p className="font-semibold text-zinc-100">{n.title}</p>
+                  <p className="text-zinc-400 mt-1">{n.body}</p>
+                </li>
+              ))
+            ) : (
+              <li className="text-xs text-zinc-600 rounded-xl border border-white/[0.05] px-3 py-4 text-center">
+                No public advisories right now. Your SOS status is on the Home tab.
               </li>
-            ))}
-            {activeFeed.myIncidents.map((i) => (
-              <li
-                key={i.id}
-                className="rounded-xl border border-rose-500/20 bg-rose-950/15 px-3 py-2.5 text-xs"
-              >
-                <p className="font-semibold">{i.title ?? i.type}</p>
-                <p className="text-zinc-500">
-                  {i.lifecycle} · {new Date(i.createdAt).toLocaleString()}
-                </p>
-              </li>
-            ))}
+            )}
           </ul>
         </div>
       ) : null}

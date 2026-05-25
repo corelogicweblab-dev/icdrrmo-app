@@ -23,6 +23,7 @@ import { startAgencyCallAlarmLoop } from "@/lib/agency-call-alarm";
 import { getApiBaseUrl } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/api-fetch";
 import { decodeJwtPayload } from "@/lib/decode-jwt-role";
+import { signOutToHome } from "@/lib/unified-auth";
 import { useVoiceIncidentCall } from "@/hooks/use-voice-incident-call";
 import type { TokenPair } from "@/components/ops/ops-types";
 
@@ -141,10 +142,10 @@ export function AgencyDeskPage({ config }: { config: AgencyDeskConfig }): ReactE
   }
 
   function logout(): void {
-    clearAgencyTokens(config.storageKey);
     setTokens(null);
     setCallAlert(null);
     setVoiceActive(false);
+    signOutToHome();
   }
 
   async function answerCall(): Promise<void> {
@@ -222,6 +223,12 @@ export function AgencyDeskPage({ config }: { config: AgencyDeskConfig }): ReactE
         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-200">
           <Radio className="h-3 w-3" aria-hidden /> Live sync
         </span>
+        <Link
+          href={config.role === "PNP" ? "/pnp/profile" : "/bfp/profile"}
+          className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-white/5"
+        >
+          Profile
+        </Link>
         <button
           type="button"
           onClick={logout}

@@ -10,16 +10,15 @@ import {
   useState,
 } from "react";
 import type { Socket } from "socket.io-client";
-import { useRouter } from "next/navigation";
 import { ApiTimeoutError, fetchWithTimeout } from "@/lib/api-fetch";
 import { getApiBaseUrl, getApiConfigWarning, getHealthCheckUrl } from "@/lib/env";
 import { API_INCIDENTS_QUEUE_PATH } from "@/lib/ops-api-paths";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
 import { connectOpsRealtime, type IncidentCreatedPayload } from "@/lib/realtime";
+import { signOutToHome } from "@/lib/unified-auth";
 import { OpsChrome } from "@/components/ops/ops-chrome";
 import { OpsLoginView } from "@/components/ops/ops-login";
 import {
-  clearOpsTokens,
   loadOpsTokens,
   loadSoundMuted,
   saveOpsTokens,
@@ -97,7 +96,6 @@ export function useOpsSession(): OpsSessionContextValue {
 }
 
 export function OpsSessionProvider({ children }: { children: ReactNode }): ReactElement {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tokens, setTokens] = useState<TokenPair | null>(null);
@@ -339,21 +337,12 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   }
 
   const logout = useCallback((): void => {
-    clearOpsTokens();
-    setTokens(null);
-    setSocketState("off");
-    setQueue([]);
-    setLoginError(null);
-    setQueueError(null);
-    setWsErrorDetail(null);
-    setApiReachable(null);
-    setLastQueueSync(null);
-    setLastHealthAt(null);
-    setLastSocketAt(null);
-    setRealtimeSocket(null);
-    setVoiceRing(null);
-    router.replace("/");
-  }, [router]);
+    setRealtimeSocket((s) => {
+      s?.disconnect();
+      return null;
+    });
+    signOutToHome();
+  }, []);
 
   const ctx = useMemo<OpsSessionContextValue>(
     () => ({

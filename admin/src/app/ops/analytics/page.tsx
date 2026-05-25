@@ -82,7 +82,7 @@ export default function OpsAnalyticsPage(): ReactElement {
           </li>
           <li className="flex gap-2">
             <Cpu className="h-5 w-5 text-orange-400 shrink-0" aria-hidden />
-            NLP SMS classify: POST /command-center/nlp/classify
+            NLP SMS classification for inbound messages
           </li>
         </ul>
       </OpsPanelCard>

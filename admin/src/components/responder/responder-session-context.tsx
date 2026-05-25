@@ -2,11 +2,10 @@
 
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { clearOpsTokens, loadOpsTokens } from "@/components/ops/ops-storage";
+import { loadOpsTokens } from "@/components/ops/ops-storage";
 import type { TokenPair } from "@/components/ops/ops-types";
 import { decodeJwtPayload } from "@/lib/decode-jwt-role";
-import { loginWithRoleRouting } from "@/lib/unified-auth";
+import { loginWithRoleRouting, signOutToHome } from "@/lib/unified-auth";
 
 type Ctx = {
   tokens: TokenPair | null;
@@ -22,7 +21,6 @@ export function useResponderSession(): Ctx {
 }
 
 export function ResponderSessionProvider({ children }: { children: ReactNode }): ReactElement {
-  const router = useRouter();
   const [tokens, setTokens] = useState<TokenPair | null>(null);
 
   useEffect(() => {
@@ -30,10 +28,9 @@ export function ResponderSessionProvider({ children }: { children: ReactNode }):
   }, []);
 
   const logout = useCallback(() => {
-    clearOpsTokens();
     setTokens(null);
-    router.replace("/");
-  }, [router]);
+    signOutToHome();
+  }, []);
 
   const value = useMemo(() => ({ tokens, logout }), [tokens, logout]);
 

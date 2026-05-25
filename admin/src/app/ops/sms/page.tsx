@@ -71,7 +71,7 @@ export default function OpsSmsPage(): ReactElement {
     <div className="p-4 lg:p-6 grid gap-4 lg:grid-cols-12">
       <OpsPanelCard
         title="SMS communications archive"
-        subtitle="Inbound SOS relay · outbound BullMQ delivery log"
+        subtitle="Inbound SOS relay · outbound delivery log"
         className="lg:col-span-12"
       >
         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -84,10 +84,6 @@ export default function OpsSmsPage(): ReactElement {
             <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} aria-hidden />
             Refresh
           </button>
-          <span className="text-[11px] text-zinc-500">
-            Worker requires <span className="font-mono text-zinc-400">REDIS_URL</span> +{" "}
-            <span className="font-mono text-zinc-400">SMS_GATEWAY_URL</span>
-          </span>
         </div>
         {err ? <p className="text-sm text-rose-300 mb-3">{err}</p> : null}
       </OpsPanelCard>

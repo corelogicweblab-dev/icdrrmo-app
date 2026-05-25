@@ -72,6 +72,17 @@ function delay(ms: number): Promise<void> {
 
 export type CitizenSafetyStatus = "safe" | "caution" | "evacuate";
 
+/** Shown on the citizen Alerts tab — public LGU advisories only (not dispatch/responder updates). */
+export const CITIZEN_PUBLIC_ALERT_TYPES = new Set([
+  "EMERGENCY_ALERT",
+  "WEATHER_ALERT",
+  "EVACUATION",
+]);
+
+export function isPublicCitizenAlert(notification: { type: string }): boolean {
+  return CITIZEN_PUBLIC_ALERT_TYPES.has(notification.type);
+}
+
 export type CitizenUnifiedFeed = {
   generatedAt: string;
   safetyStatus: CitizenSafetyStatus;

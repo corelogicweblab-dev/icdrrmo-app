@@ -314,7 +314,16 @@ export class CitizenDashboardService implements OnModuleInit {
           'notifications',
           () =>
             this.prisma.notification.findMany({
-              where: { userId: actor.sub },
+              where: {
+                userId: actor.sub,
+                type: {
+                  in: [
+                    NotificationType.EMERGENCY_ALERT,
+                    NotificationType.WEATHER_ALERT,
+                    NotificationType.EVACUATION,
+                  ],
+                },
+              },
               orderBy: { createdAt: 'desc' },
               take: 20,
             }),

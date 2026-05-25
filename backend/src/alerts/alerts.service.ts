@@ -40,7 +40,7 @@ export class AlertsService {
     });
     return {
       queued,
-      note: queued ? undefined : 'REDIS_URL unset — SMS job not queued (configure Redis + worker).',
+      note: queued ? undefined : 'SMS delivery is temporarily unavailable.',
     };
   }
 
@@ -65,7 +65,7 @@ export class AlertsService {
         ipAddress: meta.ip,
         userAgent: meta.ua,
       });
-      return { sent: false, note: 'Set SMTP_HOST, SMTP_PORT, ALERT_EMAIL_FROM, and optionally SMTP_USER/SMTP_PASS.' };
+      return { sent: false, note: 'Email alerts are not configured on the server. Contact ICT support.' };
     }
     const transporter = nodemailer.createTransport({
       host,

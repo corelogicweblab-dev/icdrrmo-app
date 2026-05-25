@@ -2,7 +2,7 @@
 
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Loader2, Mail, Megaphone, RefreshCw, Send, Smartphone } from "lucide-react";
+import { Loader2, Mail, Megaphone, RefreshCw, Smartphone } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -117,8 +117,11 @@ export default function OpsNotificationsPage(): ReactElement {
           message: smsMessage.trim(),
         }),
       });
-      const q = res.queued === true ? "Queued for worker." : "Not queued.";
-      setSmsMsg(res.note ? `${q} ${res.note}` : `${q}`);
+      setSmsMsg(
+        res.queued === true
+          ? "SMS queued for delivery."
+          : "SMS could not be queued. Contact ICT if this continues.",
+      );
     } catch (e: unknown) {
       setSmsMsg(e instanceof OpsApiError ? e.body?.slice(0, 280) ?? e.message : "Request failed");
     } finally {
@@ -153,7 +156,7 @@ export default function OpsNotificationsPage(): ReactElement {
 
   return (
     <div className="p-4 lg:p-6 grid gap-4 lg:grid-cols-12">
-      <OpsPanelCard title="In-app broadcast" subtitle="POST /notifications/broadcast — targets user IDs" className="lg:col-span-6">
+      <OpsPanelCard title="In-app broadcast" subtitle="Send alerts to selected user accounts" className="lg:col-span-6">
         {!canAdminAlerts ? (
           <p className="text-sm text-zinc-500">Admin or Super Admin role required for broadcast and direct SMS/email.</p>
         ) : (
@@ -213,7 +216,7 @@ export default function OpsNotificationsPage(): ReactElement {
         )}
       </OpsPanelCard>
 
-      <OpsPanelCard title="SMS alert" subtitle="POST /alerts/sms — queued when Redis is configured" className="lg:col-span-3">
+      <OpsPanelCard title="SMS alert" subtitle="Outbound text message to a mobile number" className="lg:col-span-3">
         {!canAdminAlerts ? (
           <p className="text-sm text-zinc-500">Admin role required.</p>
         ) : (
@@ -250,7 +253,7 @@ export default function OpsNotificationsPage(): ReactElement {
         )}
       </OpsPanelCard>
 
-      <OpsPanelCard title="Email alert" subtitle="POST /alerts/email — SMTP from API env" className="lg:col-span-3">
+      <OpsPanelCard title="Email alert" subtitle="Send an operational email alert" className="lg:col-span-3">
         {!canAdminAlerts ? (
           <p className="text-sm text-zinc-500">Admin role required.</p>
         ) : (
@@ -294,7 +297,7 @@ export default function OpsNotificationsPage(): ReactElement {
         )}
       </OpsPanelCard>
 
-      <OpsPanelCard title="Recent notifications" subtitle="GET /notifications" className="lg:col-span-12">
+      <OpsPanelCard title="Recent notifications" subtitle="Latest in-app alerts" className="lg:col-span-12">
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className="text-[11px] text-zinc-500">Latest rows from the database (all roles with ops access).</p>
           <button
@@ -330,22 +333,6 @@ export default function OpsNotificationsPage(): ReactElement {
         </ul>
       </OpsPanelCard>
 
-      <OpsPanelCard title="Channels" subtitle="Operational notes" className="lg:col-span-12">
-        <ul className="space-y-3 text-sm text-zinc-400">
-          <li className="flex gap-2">
-            <Bell className="h-5 w-5 text-rose-400 shrink-0" aria-hidden />
-            In-app broadcast creates per-user notification rows; mobile clients should poll or subscribe when wired.
-          </li>
-          <li className="flex gap-2">
-            <Send className="h-5 w-5 text-orange-400 shrink-0" aria-hidden />
-            SMS uses the API job queue when <span className="font-mono text-zinc-500">REDIS_URL</span> and workers are running.
-          </li>
-          <li className="flex gap-2">
-            <Mail className="h-5 w-5 text-amber-400 shrink-0" aria-hidden />
-            Email requires SMTP variables on the API host (see backend env).
-          </li>
-        </ul>
-      </OpsPanelCard>
     </div>
   );
 }

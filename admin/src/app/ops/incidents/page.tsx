@@ -389,7 +389,7 @@ export default function OpsIncidentsPage(): ReactElement {
       </aside>
 
       <div className="xl:col-span-8 space-y-4">
-        <OpsPanelCard title="Create incident (EOC)" subtitle="POST /incidents/ops · ADMIN channel">
+        <OpsPanelCard title="Create incident (EOC)" subtitle="Manual incident intake from the operations console">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-[10px] uppercase text-zinc-500">
               Type
@@ -683,7 +683,7 @@ export default function OpsIncidentsPage(): ReactElement {
                       disabled={patchLoading}
                       className="rounded border-zinc-600 bg-black/60 text-rose-600 focus:ring-rose-500/30"
                     />
-                    Queue outbound SMS (<code className="text-[10px] font-mono">sms-retry</code> worker)
+                    Notify reporter by SMS
                   </label>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <button

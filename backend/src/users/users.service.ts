@@ -260,6 +260,7 @@ export class UsersService {
           create: {
             fullName: dto.fullName,
             barangayId: dto.barangayId,
+            address: dto.address?.trim() || undefined,
             setupCompleted: true,
           },
         },

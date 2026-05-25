@@ -39,6 +39,11 @@ export class CreateUserDto {
   barangayId?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }

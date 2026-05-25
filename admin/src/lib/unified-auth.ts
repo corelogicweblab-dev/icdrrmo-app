@@ -48,6 +48,17 @@ export function clearCitizenTokens(): void {
   localStorage.removeItem(CITIZEN_STORAGE_KEY);
 }
 
+/** Clear every portal session and return to the unified sign-in home. */
+export function signOutToHome(): void {
+  clearCitizenTokens();
+  clearOpsTokens();
+  clearChairmanTokens();
+  clearAllAgencyTokens();
+  if (typeof window !== "undefined") {
+    window.location.replace("/");
+  }
+}
+
 /** Drop expired or unrecognized tokens so auto-redirect does not loop. */
 export function purgeInvalidStoredSessions(): void {
   const citizen = loadCitizenTokens();

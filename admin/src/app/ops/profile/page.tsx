@@ -5,15 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Save, Shield } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
-import {
-  barangayFieldsForPatch,
-  loadBarangaysForStaffSession,
-  resolveBarangaySelectValue,
-  withProfileBarangay,
-} from "@/lib/public-barangays";
+import { BarangayUserProfileCard } from "@/components/barangay-user-profile-card";
 import { opsFetchJson, OpsApiError } from "@/lib/ops-api";
-
-type Barangay = { id: string; name: string; code: string };
 
 type MeUser = {
   id: string;
@@ -31,7 +24,7 @@ type MeUser = {
     emergencyNotes: string | null;
     profilePhotoUrl: string | null;
     availabilityStatus: string;
-    barangay: Barangay | null;
+    barangay: { id: string; name: string; code: string } | null;
   };
   responder: null | {
     status: string;
@@ -65,15 +58,10 @@ export default function OpsProfilePage(): ReactElement {
   const { tokens } = useOpsSession();
   const access = tokens?.accessToken;
   const [me, setMe] = useState<MeUser | null>(null);
-  const [barangays, setBarangays] = useState<Barangay[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [barangayId, setBarangayId] = useState("");
-  const [address, setAddress] = useState("");
   const [bloodType, setBloodType] = useState<string>("UNKNOWN");
   const [allergies, setAllergies] = useState("");
   const [medicalConditions, setMedicalConditions] = useState("");
@@ -86,15 +74,8 @@ export default function OpsProfilePage(): ReactElement {
     setErr(null);
     try {
       const u = await opsFetchJson<MeUser>("/users/me", access);
-      const raw = await loadBarangaysForStaffSession(access);
-      const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
       setMe(u);
-      setBarangays(b);
       if (u.profile) {
-        setFullName(u.profile.fullName);
-        setPhone(u.phone ?? "");
-        setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
-        setAddress(u.profile.address ?? "");
         setBloodType(u.profile.bloodType ?? "UNKNOWN");
         setAllergies(u.profile.allergies ?? "");
         setMedicalConditions(u.profile.medicalConditions ?? "");
@@ -111,13 +92,9 @@ export default function OpsProfilePage(): ReactElement {
     void load();
   }, [load]);
 
-  async function onSave(e: React.FormEvent): Promise<void> {
+  async function onSaveMedical(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!access) return;
-    if ((me?.role === "OPERATOR" || me?.role === "BARANGAY_CHAIRMAN") && !barangayId.trim()) {
-      setErr("Barangay is required — select your official barangay (barangay ID) before saving.");
-      return;
-    }
     setBusy(true);
     setSaved(false);
     setErr(null);
@@ -125,10 +102,6 @@ export default function OpsProfilePage(): ReactElement {
       await opsFetchJson("/users/me", access, {
         method: "PATCH",
         body: JSON.stringify({
-          fullName,
-          phone: phone.trim() || null,
-          ...barangayFieldsForPatch(barangayId),
-          address: address.trim() || null,
           bloodType,
           allergies: allergies.trim() || null,
           medicalConditions: medicalConditions.trim() || null,
@@ -154,9 +127,9 @@ export default function OpsProfilePage(): ReactElement {
     <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white tracking-tight">Operator profile</h2>
+          <h2 className="text-lg font-semibold text-white tracking-tight">My profile</h2>
           <p className="text-xs text-zinc-500 mt-1">
-            Medical and contact data supports dispatch and evacuation coordination.
+            Barangay ID and contact details for EOC scope; medical data below for dispatch.
           </p>
         </div>
         {me ? (
@@ -177,67 +150,10 @@ export default function OpsProfilePage(): ReactElement {
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-          <form onSubmit={(ev) => void onSave(ev)} className="space-y-6 transition-all duration-300">
-            <OpsPanelCard title="Identity & assignment" subtitle="Synced to PostgreSQL user_profiles">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Full name</span>
-                  <input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
-                    required
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Email</span>
-                  <input
-                    value={me.email}
-                    readOnly
-                    className="w-full rounded-lg border border-white/5 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-500"
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Phone</span>
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
-                    placeholder="+639…"
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                    Barangay (required for EOC scope)
-                  </span>
-                  <select
-                    value={barangayId}
-                    onChange={(e) => setBarangayId(e.target.value)}
-                    required={me.role === "OPERATOR" || me.role === "BARANGAY_CHAIRMAN"}
-                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
-                  >
-                    <option value="">— Select barangay —</option>
-                    {barangays.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.code})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-zinc-500">
-                    Saves your official barangay ID for incident scope and direct agency calls.
-                  </p>
-                </label>
-                <label className="block space-y-1.5 sm:col-span-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Address</span>
-                  <input
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
-                  />
-                </label>
-              </div>
-            </OpsPanelCard>
+          <div className="space-y-6 transition-all duration-300">
+            <BarangayUserProfileCard accessToken={access} />
 
+            <form onSubmit={(ev) => void onSaveMedical(ev)}>
             <OpsPanelCard title="Medical & availability" subtitle="Responder desk + citizen care">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-1.5">
@@ -344,9 +260,10 @@ export default function OpsProfilePage(): ReactElement {
               className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-glow hover:bg-rose-500 disabled:opacity-50 transition-colors"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
-              Save profile
+              Save medical details
             </button>
-          </form>
+            </form>
+          </div>
 
           <aside className="space-y-4">
             <OpsPanelCard title="Recent alerts" subtitle="In-app notifications">

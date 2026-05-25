@@ -4,8 +4,7 @@ import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, LocateFixed, Save } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/env";
-import { barangayFieldsForPatch, loadBarangaysForStaffSession, resolveBarangaySelectValue, withProfileBarangay } from "@/lib/public-barangays";
+import { BarangayUserProfileCard } from "@/components/barangay-user-profile-card";
 import { opsApiErrorUserMessage, opsFetchJson, OpsApiError } from "@/lib/ops-api";
 
 type Tokens = { accessToken: string };
@@ -63,19 +62,13 @@ const BLOOD = [
 export default function CitizenProfilePage(): ReactElement {
   const [tokens] = useState<Tokens | null>(() => (typeof window === "undefined" ? null : loadTokens()));
   const [me, setMe] = useState<MeUser | null>(null);
-  const [barangays, setBarangays] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const [nearest, setNearest] = useState<EvacRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [geoBusy, setGeoBusy] = useState(false);
-
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [barangayId, setBarangayId] = useState("");
   const [bloodType, setBloodType] = useState("UNKNOWN");
   const [allergies, setAllergies] = useState("");
   const [medicalConditions, setMedicalConditions] = useState("");
-  const [streetPurok, setStreetPurok] = useState("");
+  const [medBusy, setMedBusy] = useState(false);
 
   const load = useCallback(async () => {
     const t = loadTokens();
@@ -83,18 +76,11 @@ export default function CitizenProfilePage(): ReactElement {
     setErr(null);
     try {
       const u = await opsFetchJson<MeUser>("/users/me", t.accessToken);
-      const raw = await loadBarangaysForStaffSession(t.accessToken);
-      const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
       setMe(u);
-      setBarangays(b);
       if (u.profile) {
-        setFullName(u.profile.fullName);
-        setPhone(u.phone ?? "");
-        setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
         setBloodType(u.profile.bloodType ?? "UNKNOWN");
         setAllergies(u.profile.allergies ?? "");
         setMedicalConditions(u.profile.medicalConditions ?? "");
-        setStreetPurok(u.profile.streetPurok ?? "");
       }
       const ev = await opsFetchJson<EvacRow[]>(`/evacuation-centers/nearest`, t.accessToken);
       setNearest(Array.isArray(ev) ? ev : []);
@@ -130,20 +116,16 @@ export default function CitizenProfilePage(): ReactElement {
     }
   }
 
-  async function onSave(e: React.FormEvent): Promise<void> {
+  async function onSaveMedical(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     const t = loadTokens();
     if (!t) return;
-    setBusy(true);
+    setMedBusy(true);
     setErr(null);
     try {
       await opsFetchJson("/users/me", t.accessToken, {
         method: "PATCH",
         body: JSON.stringify({
-          fullName,
-          phone: phone.trim() || null,
-          ...barangayFieldsForPatch(barangayId),
-          streetPurok: streetPurok.trim() || null,
           bloodType,
           allergies: allergies.trim() || null,
           medicalConditions: medicalConditions.trim() || null,
@@ -153,7 +135,7 @@ export default function CitizenProfilePage(): ReactElement {
     } catch (e: unknown) {
       setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e, 200) : "Save failed");
     } finally {
-      setBusy(false);
+      setMedBusy(false);
     }
   }
 
@@ -184,49 +166,10 @@ export default function CitizenProfilePage(): ReactElement {
           <Loader2 className="h-6 w-6 animate-spin text-zinc-500 mx-auto" aria-hidden />
         ) : (
           <>
-            <form onSubmit={(ev) => void onSave(ev)} className="rounded-2xl icd-surface p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-white">Your details</h2>
-              <label className="block space-y-1 text-xs">
-                <span className="text-zinc-500">Full name</span>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2.5 text-sm"
-                  required
-                />
-              </label>
-              <label className="block space-y-1 text-xs">
-                <span className="text-zinc-500">Phone</span>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2.5 text-sm"
-                />
-              </label>
-              <label className="block space-y-1 text-xs">
-                <span className="text-zinc-500">Barangay</span>
-                <select
-                  value={barangayId}
-                  onChange={(e) => setBarangayId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2.5 text-sm"
-                >
-                  <option value="">— Select —</option>
-                  {barangays.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1 text-xs">
-                <span className="text-zinc-500">Street / purok</span>
-                <input
-                  value={streetPurok}
-                  onChange={(e) => setStreetPurok(e.target.value)}
-                  placeholder="Hal. Purok 3, Malamawi Road"
-                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2.5 text-sm placeholder:text-zinc-600"
-                />
-              </label>
+            <BarangayUserProfileCard accessToken={tokens.accessToken} requireBarangay />
+
+            <form onSubmit={(ev) => void onSaveMedical(ev)} className="rounded-2xl icd-surface p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-white">Medical details</h2>
               <label className="block space-y-1 text-xs">
                 <span className="text-zinc-500">Blood type</span>
                 <select
@@ -261,11 +204,11 @@ export default function CitizenProfilePage(): ReactElement {
               </label>
               <button
                 type="submit"
-                disabled={busy}
+                disabled={medBusy}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 py-3 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save profile
+                {medBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save medical details
               </button>
             </form>
 
@@ -283,7 +226,7 @@ export default function CitizenProfilePage(): ReactElement {
                 </button>
               </div>
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                Sites linked to your barangay from <code className="text-zinc-400">{getApiBaseUrl()}/evacuation-centers/nearest</code>.
+                Nearest evacuation centers for your registered barangay.
               </p>
               <ul className="space-y-2 text-xs">
                 {nearest.length ? (

@@ -2,7 +2,6 @@
 
 import type { ReactElement } from "react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
-import { getApiBaseUrl } from "@/lib/env";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 
 export default function OpsSettingsPage(): ReactElement {
@@ -28,12 +27,6 @@ export default function OpsSettingsPage(): ReactElement {
             />
           </button>
         </label>
-        <div className="pt-4 text-xs text-zinc-500 space-y-2">
-          <p>
-            API base: <span className="font-mono text-zinc-400">{getApiBaseUrl()}</span>
-          </p>
-          <p>Multi-monitor: use browser fullscreen on each display; PWA per screen optional.</p>
-        </div>
       </OpsPanelCard>
     </div>
   );

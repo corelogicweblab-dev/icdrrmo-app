@@ -41,21 +41,6 @@ export function IcdAuthShell(props: IcdAuthShellProps): ReactElement {
             dashboard after authentication.
           </p>
 
-          <ul className="icd-auth-features">
-            <li>
-              <span className="icd-feature-dot" aria-hidden />
-              Real-time SOS · SMS · mobile push
-            </li>
-            <li>
-              <span className="icd-feature-dot" aria-hidden />
-              GIS dispatch · evacuation · weather
-            </li>
-            <li>
-              <span className="icd-feature-dot" aria-hidden />
-              Audited access · RBAC enforced
-            </li>
-          </ul>
-
           <div className="icd-role-chip-row">
             {ROLE_CHIPS.map((chip) => (
               <span key={chip.label} className="icd-role-chip" title={chip.desc}>

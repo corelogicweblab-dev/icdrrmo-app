@@ -48,9 +48,9 @@ export function SmartCommandCenter(): ReactElement {
       const missingBg = snapshot.summary.operatorBarangayMissing === true;
       setNotice(
         missingBg
-          ? "Your operator profile has no barangay assigned — city-wide counts are hidden. Ask an admin to set profile.barangayId."
+          ? "Link your barangay on My Profile to see city-wide command-center counts."
           : usedLegacyFallback
-            ? "Using dashboard fallback — redeploy the Nest API on Render for full command-center analytics."
+            ? "Showing summary data only. Full analytics will appear when the command desk service is available."
             : null,
       );
     } catch (e: unknown) {
@@ -59,7 +59,7 @@ export function SmartCommandCenter(): ReactElement {
       setErr(
         e instanceof Error
           ? e.message.startsWith("HTTP ")
-            ? "Command desk data is unavailable. Confirm the API is online and redeployed (Render), then use Sync."
+            ? "Command desk data is unavailable. Check your connection, then use Sync."
             : e.message
           : "Failed to load command center",
       );

@@ -33,6 +33,7 @@ import { AgencyCallOverlay } from "@/components/agency/agency-call-overlay";
 import { startAgencyCallAlarmLoop } from "@/lib/agency-call-alarm";
 import { ackAgencyCall } from "@/lib/agency-api";
 import { decodeJwtPayload } from "@/lib/decode-jwt-role";
+import { signOutToHome } from "@/lib/unified-auth";
 import type { TokenPair } from "@/components/ops/ops-types";
 
 type FeedStatus = "new" | "ongoing" | "resolved";
@@ -264,9 +265,8 @@ export default function ChairmanDashboardPage(): ReactElement {
   }
 
   function logout(): void {
-    clearChairmanTokens();
     setTokens(null);
-    router.replace("/");
+    signOutToHome();
   }
 
   if (!tokens?.accessToken) {
@@ -369,6 +369,12 @@ export default function ChairmanDashboardPage(): ReactElement {
           </div>
           <div className="flex items-center gap-2">
             <HealthPill health={health} />
+            <Link
+              href="/chairman/profile"
+              className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-1.5 text-xs font-medium text-amber-100 hover:bg-amber-900/40"
+            >
+              Profile
+            </Link>
             <button
               type="button"
               onClick={logout}
