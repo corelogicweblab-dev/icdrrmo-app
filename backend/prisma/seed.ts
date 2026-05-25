@@ -266,47 +266,55 @@ async function main(): Promise<void> {
     );
   }
 
-  const pnpEmail = process.env.SEED_PNP_EMAIL ?? 'pnp.ops@icdrrmo.local';
-  const pnpPasswordHash = await bcrypt.hash(
-    process.env.SEED_PNP_PASSWORD ?? 'ChangeMe!PnpDesk12',
-    12,
-  );
-  await prisma.user.upsert({
-    where: { email: pnpEmail },
-    create: {
-      email: pnpEmail,
-      phone: '+639170000004',
-      passwordHash: pnpPasswordHash,
-      role: UserRole.PNP,
-      profile: { create: { fullName: 'PNP Isabela City Desk', setupCompleted: true } },
-    },
-    update: {
-      ...(repushPasswords ? { passwordHash: pnpPasswordHash } : {}),
-      role: UserRole.PNP,
-    },
-  });
-  console.log(`Seeded PNP agency desk: ${pnpEmail}`);
+  try {
+    const pnpEmail = process.env.SEED_PNP_EMAIL ?? 'pnp.ops@icdrrmo.local';
+    const pnpPasswordHash = await bcrypt.hash(
+      process.env.SEED_PNP_PASSWORD ?? 'ChangeMe!PnpDesk12',
+      12,
+    );
+    await prisma.user.upsert({
+      where: { email: pnpEmail },
+      create: {
+        email: pnpEmail,
+        phone: '+639170000004',
+        passwordHash: pnpPasswordHash,
+        role: UserRole.PNP,
+        profile: { create: { fullName: 'PNP Isabela City Desk', setupCompleted: true } },
+      },
+      update: {
+        ...(repushPasswords ? { passwordHash: pnpPasswordHash } : {}),
+        role: UserRole.PNP,
+      },
+    });
+    console.log(`Seeded PNP agency desk: ${pnpEmail}`);
+  } catch (e: unknown) {
+    console.warn('PNP desk seed skipped (run migrations first):', e);
+  }
 
-  const bfpEmail = process.env.SEED_BFP_EMAIL ?? 'bfp.ops@icdrrmo.local';
-  const bfpPasswordHash = await bcrypt.hash(
-    process.env.SEED_BFP_PASSWORD ?? 'ChangeMe!BfpDesk12',
-    12,
-  );
-  await prisma.user.upsert({
-    where: { email: bfpEmail },
-    create: {
-      email: bfpEmail,
-      phone: '+639170000005',
-      passwordHash: bfpPasswordHash,
-      role: UserRole.BFP,
-      profile: { create: { fullName: 'BFP Isabela City Desk', setupCompleted: true } },
-    },
-    update: {
-      ...(repushPasswords ? { passwordHash: bfpPasswordHash } : {}),
-      role: UserRole.BFP,
-    },
-  });
-  console.log(`Seeded BFP agency desk: ${bfpEmail}`);
+  try {
+    const bfpEmail = process.env.SEED_BFP_EMAIL ?? 'bfp.ops@icdrrmo.local';
+    const bfpPasswordHash = await bcrypt.hash(
+      process.env.SEED_BFP_PASSWORD ?? 'ChangeMe!BfpDesk12',
+      12,
+    );
+    await prisma.user.upsert({
+      where: { email: bfpEmail },
+      create: {
+        email: bfpEmail,
+        phone: '+639170000005',
+        passwordHash: bfpPasswordHash,
+        role: UserRole.BFP,
+        profile: { create: { fullName: 'BFP Isabela City Desk', setupCompleted: true } },
+      },
+      update: {
+        ...(repushPasswords ? { passwordHash: bfpPasswordHash } : {}),
+        role: UserRole.BFP,
+      },
+    });
+    console.log(`Seeded BFP agency desk: ${bfpEmail}`);
+  } catch (e: unknown) {
+    console.warn('BFP desk seed skipped (run migrations first):', e);
+  }
 }
 
 main()

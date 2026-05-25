@@ -29,6 +29,8 @@ COPY prisma ./prisma
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
+COPY scripts/docker-start.sh ./scripts/docker-start.sh
+RUN chmod +x ./scripts/docker-start.sh
 EXPOSE 4000
-# Seed is idempotent (barangays + accounts; passwords unchanged unless FORCE_SEED_PASSWORDS=1).
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"]
+# Migrations required; seed is idempotent and must not block API boot on Render.
+CMD ["./scripts/docker-start.sh"]

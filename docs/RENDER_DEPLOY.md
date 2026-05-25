@@ -80,6 +80,22 @@ Or from repo root: `npm run seed` with the same env vars.
 
 Use **`/api/v1/health/ready`** (or `/api/v1/health` if you only expose liveness) as the Render health check path.
 
+## Troubleshooting: deploy failed but old version still responds
+
+If Render shows **Deploy failed** while `https://icdrrmo-backend.onrender.com/api/v1/health` still returns 200, the previous container is still running. Open **Logs** → find the first error after `prisma migrate deploy` or `prisma db seed`.
+
+Common fixes:
+
+| Symptom | Fix |
+|---------|-----|
+| `ADD VALUE` / enum inside transaction | Pull latest `main` (migrations use `prisma-migrate-disable-transaction` + safe `DO` blocks). **Manual Deploy** again. |
+| `JWT_ACCESS_SECRET` missing | Set in Render **Environment** (see top of this doc). |
+| `Pre-Deploy Command` = `backend/` | Clear pre-deploy or use `npx prisma migrate deploy` only — not a folder path. |
+| Seed blocks boot | Latest Dockerfile uses `scripts/docker-start.sh` — API starts even if seed warns. |
+| Migration stuck failed | Render shell or local: `npx prisma migrate resolve --rolled-back 20260521160000_agency_user_roles` then redeploy. |
+
+**Health check path:** `/api/v1/health/ready` (checks database).
+
 ## Troubleshooting: “Exited with status 1 while building”
 
 1. Open the **full** build log (scroll past “Downloaded cache” / “Cloning”) and find the first `npm` / `nest` / `prisma` / `COPY` error line.

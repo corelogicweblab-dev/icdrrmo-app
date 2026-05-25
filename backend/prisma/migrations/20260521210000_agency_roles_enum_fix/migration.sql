@@ -1,4 +1,4 @@
--- PNP / BFP agency operator roles (must run outside a transaction on PostgreSQL)
+-- Recovery: ensure PNP/BFP exist if 20260521160000 failed mid-deploy on Render
 -- prisma-migrate-disable-transaction
 DO $$ BEGIN
   IF NOT EXISTS (
