@@ -114,6 +114,10 @@ export default function OpsProfilePage(): ReactElement {
   async function onSave(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!access) return;
+    if ((me?.role === "OPERATOR" || me?.role === "BARANGAY_CHAIRMAN") && !barangayId.trim()) {
+      setErr("Barangay is required — select your official barangay (barangay ID) before saving.");
+      return;
+    }
     setBusy(true);
     setSaved(false);
     setErr(null);
@@ -203,19 +207,25 @@ export default function OpsProfilePage(): ReactElement {
                   />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Barangay</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    Barangay (required for EOC scope)
+                  </span>
                   <select
                     value={barangayId}
                     onChange={(e) => setBarangayId(e.target.value)}
+                    required={me.role === "OPERATOR" || me.role === "BARANGAY_CHAIRMAN"}
                     className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
                   >
-                    <option value="">— Select —</option>
+                    <option value="">— Select barangay —</option>
                     {barangays.map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.name}
+                        {b.name} ({b.code})
                       </option>
                     ))}
                   </select>
+                  <p className="text-[10px] text-zinc-500">
+                    Saves your official barangay ID for incident scope and direct agency calls.
+                  </p>
                 </label>
                 <label className="block space-y-1.5 sm:col-span-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Address</span>

@@ -36,6 +36,48 @@ export class AgencyService {
     return null;
   }
 
+  private async resolveBarangayTarget(
+    barangayId?: string,
+    barangayCode?: string,
+  ): Promise<{ id: string; name: string; code: string }> {
+    if (barangayId?.trim() && barangayCode?.trim()) {
+      throw new BadRequestException('Send either barangayId or barangayCode, not both');
+    }
+    if (barangayCode?.trim()) {
+      const b = await this.prisma.barangay.findUnique({
+        where: { code: barangayCode.trim().toUpperCase() },
+      });
+      if (!b) {
+        throw new BadRequestException(
+          `Unknown barangay code ${barangayCode}. Run database seed or pick from the live list.`,
+        );
+      }
+      return b;
+    }
+    const id = barangayId?.trim();
+    if (!id) {
+      throw new BadRequestException(
+        'Select a target barangay (barangayId or barangayCode) before calling an agency desk.',
+      );
+    }
+    if (/^IC-\d{3}$/i.test(id)) {
+      const b = await this.prisma.barangay.findUnique({
+        where: { code: id.toUpperCase() },
+      });
+      if (!b) {
+        throw new BadRequestException(`Barangay code ${id} not found in database.`);
+      }
+      return b;
+    }
+    const b = await this.prisma.barangay.findUnique({ where: { id } });
+    if (!b) {
+      throw new BadRequestException(
+        'Invalid barangayId — open My profile, set your barangay, or pick again from the dropdown.',
+      );
+    }
+    return b;
+  }
+
   async getDashboard(user: JwtPayload): Promise<{
     agency: string;
     stats: { open: number; dispatched: number; resolvedToday: number };
@@ -104,11 +146,12 @@ export class AgencyService {
       throw new ForbiddenException('Operations role required to trigger agency calls');
     }
 
-    let barangayId = dto.barangayId?.trim() || null;
+    let barangay = await this.resolveBarangayTarget(dto.barangayId, dto.barangayCode);
 
-    if (dto.incidentId) {
+    const incidentId = dto.incidentId?.trim() || undefined;
+    if (incidentId) {
       const incident = await this.prisma.incident.findUnique({
-        where: { id: dto.incidentId },
+        where: { id: incidentId },
         select: {
           id: true,
           barangayId: true,
@@ -120,23 +163,12 @@ export class AgencyService {
       }
       const fromIncident =
         incident.barangayId ?? incident.reporter?.profile?.barangayId ?? null;
-      if (!barangayId && fromIncident) {
-        barangayId = fromIncident;
+      if (fromIncident && fromIncident !== barangay.id) {
+        const incidentBg = await this.prisma.barangay.findUnique({
+          where: { id: fromIncident },
+        });
+        if (incidentBg) barangay = incidentBg;
       }
-    }
-
-    if (!barangayId) {
-      throw new BadRequestException(
-        'Select a target barangay so the call routes to the correct chairman and agency desk.',
-      );
-    }
-
-    const barangay = await this.prisma.barangay.findUnique({
-      where: { id: barangayId },
-      select: { id: true, name: true, code: true },
-    });
-    if (!barangay) {
-      throw new BadRequestException('Invalid barangayId');
     }
 
     const callId = randomUUID();
@@ -146,7 +178,7 @@ export class AgencyService {
     const payload = {
       callId,
       target: dto.target,
-      incidentId: dto.incidentId ?? null,
+      incidentId: incidentId ?? null,
       barangayId: barangay.id,
       barangayName: barangay.name,
       barangayCode: barangay.code,

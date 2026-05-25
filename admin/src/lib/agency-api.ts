@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/api-fetch";
+import { apiErrorMessageFromBody } from "@/lib/api-error-message";
 
 export type AgencyDashboardStats = {
   agency: string;
@@ -34,9 +35,9 @@ async function agencyFetch<T>(accessToken: string, path: string, init?: RequestI
       ...(init?.headers ?? {}),
     },
   });
-  const data = (await res.json().catch(() => ({}))) as T & { message?: string };
+  const data = (await res.json().catch(() => ({}))) as T;
   if (!res.ok) {
-    throw new Error(typeof data.message === "string" ? data.message : `Request failed (${res.status})`);
+    throw new Error(apiErrorMessageFromBody(data, res.status));
   }
   return data;
 }
@@ -53,7 +54,8 @@ export function triggerAgencyCall(
   accessToken: string,
   body: {
     target: "BFP" | "PNP" | "CHAIRMAN";
-    barangayId: string;
+    barangayId?: string;
+    barangayCode?: string;
     incidentId?: string;
     message?: string;
   },

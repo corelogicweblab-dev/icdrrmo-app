@@ -6,6 +6,7 @@ import { Flame, MapPin, Phone, Shield, Siren } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { isOpsAuditor } from "@/lib/decode-jwt-role";
 import { triggerAgencyCall } from "@/lib/agency-api";
+import { barangayRegisterFields, loadBarangaysForStaffSession } from "@/lib/public-barangays";
 import { opsFetchJson } from "@/lib/ops-api";
 
 type BarangayOpt = { id: string; name: string; code: string };
@@ -57,12 +58,19 @@ export function OpsAgencyCallBar({
     const token = tokens?.accessToken;
     if (!token) return;
     try {
-      const list = await opsFetchJson<BarangayOpt[]>("/barangays", token);
-      const sorted = (Array.isArray(list) ? list : []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      const list = await loadBarangaysForStaffSession(token);
+      const sorted = list.slice().sort((a, b) => a.name.localeCompare(b.name));
       setBarangays(sorted);
       setLoadErr(null);
+      const me = await opsFetchJson<{
+        profile: { barangayId: string | null; barangay: BarangayOpt | null } | null;
+      }>("/users/me", token);
+      const profileBg = me.profile?.barangay?.id ?? me.profile?.barangayId ?? "";
+      if (profileBg && sorted.some((b) => b.id === profileBg)) {
+        setBarangayId((prev) => prev || profileBg);
+      }
     } catch (e: unknown) {
-      setLoadErr(e instanceof Error ? e.message : "Could not load barangays");
+      setLoadErr(e instanceof Error ? e.message : "Could not load barangays — sign in again or open My profile");
     }
   }, [tokens?.accessToken]);
 
@@ -87,14 +95,21 @@ export function OpsAgencyCallBar({
     setBusy(target);
     setLastMsg(null);
     const bg = selectedBarangay;
+    const barFields = barangayRegisterFields(barangayId);
+    if (!barFields.barangayId && !barFields.barangayCode) {
+      setLastMsg("Invalid barangay selection — pick again from the list.");
+      setBusy(null);
+      return;
+    }
+    const incId = effectiveIncidentId?.trim();
     try {
       const res = await triggerAgencyCall(tokens.accessToken, {
         target,
-        barangayId,
-        incidentId: effectiveIncidentId ?? undefined,
+        ...barFields,
+        ...(incId ? { incidentId: incId } : {}),
         message: bg
           ? `EOC urgent call — ${bg.name} (${bg.code})${
-              effectiveIncidentId ? ` · incident ${effectiveIncidentId.slice(0, 8)}` : ""
+              incId ? ` · incident ${incId.slice(0, 8)}` : ""
             }`
           : undefined,
       });

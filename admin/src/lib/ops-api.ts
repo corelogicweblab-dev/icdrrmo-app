@@ -16,6 +16,10 @@ export class OpsApiError extends Error {
 export function opsApiErrorUserMessage(e: OpsApiError, bodyMax = 280): string {
   try {
     const o = JSON.parse(e.body ?? "{}") as { message?: unknown };
+    if (Array.isArray(o.message)) {
+      const parts = o.message.filter((x): x is string => typeof x === "string");
+      if (parts.length) return parts.join("; ");
+    }
     if (typeof o.message === "string" && o.message.trim()) {
       const m = o.message.trim();
       if (e.status >= 500 && /internal server error/i.test(m)) {

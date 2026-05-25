@@ -398,10 +398,10 @@ function CitizenPageInner(): ReactElement {
                     onChange={(e) => setRegisterBarangayId(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:ring-2 focus:ring-rose-500/40"
                   >
-                    <option value="">— Select barangay —</option>
+                    <option value="">— Select your barangay (required) —</option>
                     {registerBarangays.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
+                      <option key={`${b.id}-${b.code}`} value={b.id}>
+                        {b.name} ({b.code})
                       </option>
                     ))}
                   </select>
