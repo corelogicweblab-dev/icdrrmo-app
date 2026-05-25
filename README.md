@@ -174,8 +174,8 @@ Rules, indexes, and seed data live in **`infra/firebase/`**. Root **`firebase.js
 
 Set repo secrets **`FIREBASE_SERVICE_ACCOUNT_ICDRRMO_B204E`** (JSON), **`NEXT_PUBLIC_API_URL`**, and **`NEXT_PUBLIC_WS_URL`**. For the Render service **`icdrrmo-api`**, use exactly:
 
-- **`NEXT_PUBLIC_API_URL`** = `https://icdrrmo-api.onrender.com/api/v1`
-- **`NEXT_PUBLIC_WS_URL`** = `https://icdrrmo-api.onrender.com`
+- **`NEXT_PUBLIC_API_URL`** = `https://icdrrmo-backend-q04d.onrender.com/api/v1`
+- **`NEXT_PUBLIC_WS_URL`** = `https://icdrrmo-backend-q04d.onrender.com`
 
 Do **not** use `icdrrmo-app-1.onrender.com` (that is a different Render hostname); the Hosting workflow will **fail the build** if those secrets still contain `icdrrmo-app-1`. Values are baked at **build** time — after changing secrets, run the workflow again (push to `main` or **Actions → re-run**).
 

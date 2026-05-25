@@ -47,7 +47,7 @@ jobs:
           fi
           if [ "$ok" -ne 0 ]; then exit 1; fi
           if echo "${NEXT_PUBLIC_API_URL}${NEXT_PUBLIC_WS_URL}" | grep -q 'icdrrmo-app-1\.onrender\.com'; then
-            echo "::error::Secrets still point at icdrrmo-app-1.onrender.com. Use https://icdrrmo-backend.onrender.com (API path /api/v1 on NEXT_PUBLIC_API_URL only)."
+            echo "::error::Secrets still point at icdrrmo-app-1.onrender.com. Use https://icdrrmo-backend-q04d.onrender.com (API path /api/v1 on NEXT_PUBLIC_API_URL only)."
             exit 1
           fi
 

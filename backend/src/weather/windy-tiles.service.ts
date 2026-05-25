@@ -29,7 +29,7 @@ export class WindyTilesService {
     const raw =
       process.env.API_PUBLIC_BASE_URL?.trim() ||
       process.env.RENDER_EXTERNAL_URL?.trim() ||
-      'https://icdrrmo-backend.onrender.com';
+      'https://icdrrmo-backend-q04d.onrender.com';
     const base = raw.replace(/\/$/, '');
     return base.endsWith('/api/v1') ? base : `${base}/api/v1`;
   }

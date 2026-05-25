@@ -82,7 +82,7 @@ Use **`/api/v1/health/ready`** (or `/api/v1/health` if you only expose liveness)
 
 ## Troubleshooting: deploy failed but old version still responds
 
-If Render shows **Deploy failed** while `https://icdrrmo-backend.onrender.com/api/v1/health` still returns 200, the previous container is still running. Open **Logs** → find the first error after `prisma migrate deploy` or `prisma db seed`.
+If Render shows **Deploy failed** while `https://icdrrmo-backend-q04d.onrender.com/api/v1/health` still returns 200, the previous container is still running. Open **Logs** → find the first error after `prisma migrate deploy` or `prisma db seed`.
 
 Common fixes:
 

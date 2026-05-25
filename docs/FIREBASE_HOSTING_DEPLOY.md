@@ -12,8 +12,8 @@ Hosting serves **`admin/out`** from a **static export** (`STATIC_EXPORT=1`). A n
 ## Required env (bake into JS bundle)
 
 ```
-NEXT_PUBLIC_API_URL=https://icdrrmo-api.onrender.com/api/v1
-NEXT_PUBLIC_WS_URL=https://icdrrmo-api.onrender.com
+NEXT_PUBLIC_API_URL=https://icdrrmo-backend-q04d.onrender.com/api/v1
+NEXT_PUBLIC_WS_URL=https://icdrrmo-backend-q04d.onrender.com
 ```
 
 GitHub repo secrets must match. Wrong host (e.g. `icdrrmo-app-1`) breaks login.

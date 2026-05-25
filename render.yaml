@@ -22,7 +22,7 @@ services:
       - key: CORS_ORIGINS
         value: https://icdrrmo-b204e.web.app,https://icdrrmo-b204e.firebaseapp.com
       - key: API_PUBLIC_BASE_URL
-        value: https://icdrrmo-backend.onrender.com/api/v1
+        value: https://icdrrmo-backend-q04d.onrender.com/api/v1
       # Required for live weather maps on all dashboards (Render → icdrrmo-api → Environment):
       - key: WINDY_API_KEY
         sync: false

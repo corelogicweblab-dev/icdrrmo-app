@@ -42,8 +42,8 @@ const fromFile = {
 
 /** Production defaults when shell/CI secrets are missing (Firebase static hosting). */
 const PROD_DEFAULTS = {
-  NEXT_PUBLIC_API_URL: "https://icdrrmo-backend.onrender.com/api/v1",
-  NEXT_PUBLIC_WS_URL: "https://icdrrmo-backend.onrender.com",
+  NEXT_PUBLIC_API_URL: "https://icdrrmo-backend-q04d.onrender.com/api/v1",
+  NEXT_PUBLIC_WS_URL: "https://icdrrmo-backend-q04d.onrender.com",
   NEXT_PUBLIC_WINDY_API_KEY: "T83LrJCjvUNucXIIOCxFAjEdxj5GK7Fb",
 };
 
