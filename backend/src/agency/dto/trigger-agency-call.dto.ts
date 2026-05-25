@@ -14,6 +14,11 @@ export class TriggerAgencyCallDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(64)
+  barangayId?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   message?: string;
 }

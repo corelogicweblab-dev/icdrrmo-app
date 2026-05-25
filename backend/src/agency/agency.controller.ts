@@ -44,7 +44,7 @@ export class AgencyController {
   @Roles(...OPS_DESK_WRITE_ROLES)
   @Post('call')
   triggerCall(@CurrentUser() user: JwtPayload, @Body() dto: TriggerAgencyCallDto) {
-    return this.agency.triggerCall(user, dto.target, dto.incidentId, dto.message);
+    return this.agency.triggerCall(user, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

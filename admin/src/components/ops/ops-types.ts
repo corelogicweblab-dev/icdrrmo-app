@@ -31,4 +31,6 @@ export type OpsIncident = {
   assignedResponderId?: string | null;
   routedAgency?: string | null;
   routedAgencyOverride?: boolean;
+  barangayId?: string | null;
+  barangay?: { id: string; name: string; code: string } | null;
 };

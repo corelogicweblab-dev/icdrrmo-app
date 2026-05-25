@@ -25,6 +25,10 @@ export function AgencyCallOverlay({ alert, agencyLabel, onAnswer, onDismiss }: P
         </p>
         <p className="mt-3 text-center text-xl font-bold text-white">{agencyLabel} desk alert</p>
         <p className="mt-2 text-center text-sm text-zinc-300 leading-relaxed">{alert.message}</p>
+        <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-center text-sm font-semibold text-amber-100">
+          Barangay: {alert.barangayName}
+          {alert.barangayCode ? ` (${alert.barangayCode})` : ""}
+        </p>
         {alert.incidentId ? (
           <p className="mt-4 rounded-lg bg-black/50 px-3 py-2 text-center font-mono text-[11px] text-amber-200/90 break-all">
             Incident {alert.incidentId}

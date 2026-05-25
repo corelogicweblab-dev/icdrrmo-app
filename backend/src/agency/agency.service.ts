@@ -12,6 +12,7 @@ import { OPS_DESK_WRITE_ROLES } from '../common/ops-desk-roles';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import type { AgencyCallTarget } from './dto/trigger-agency-call.dto';
+import { TriggerAgencyCallDto } from './dto/trigger-agency-call.dto';
 
 const OPEN_STATUSES: IncidentStatus[] = [
   IncidentStatus.OPEN,
@@ -90,25 +91,66 @@ export class AgencyService {
     });
   }
 
-  async triggerCall(user: JwtPayload, target: AgencyCallTarget, incidentId?: string, message?: string): Promise<{
+  async triggerCall(
+    user: JwtPayload,
+    dto: TriggerAgencyCallDto,
+  ): Promise<{
     callId: string;
     target: AgencyCallTarget;
+    barangayId: string;
+    barangayName: string;
   }> {
     if (!OPS_DESK_WRITE_ROLES.includes(user.role)) {
       throw new ForbiddenException('Operations role required to trigger agency calls');
     }
-    if (incidentId) {
-      const incident = await this.prisma.incident.findUnique({ where: { id: incidentId } });
+
+    let barangayId = dto.barangayId?.trim() || null;
+
+    if (dto.incidentId) {
+      const incident = await this.prisma.incident.findUnique({
+        where: { id: dto.incidentId },
+        select: {
+          id: true,
+          barangayId: true,
+          reporter: { select: { profile: { select: { barangayId: true } } } },
+        },
+      });
       if (!incident) {
         throw new NotFoundException('Incident not found');
       }
+      const fromIncident =
+        incident.barangayId ?? incident.reporter?.profile?.barangayId ?? null;
+      if (!barangayId && fromIncident) {
+        barangayId = fromIncident;
+      }
     }
+
+    if (!barangayId) {
+      throw new BadRequestException(
+        'Select a target barangay so the call routes to the correct chairman and agency desk.',
+      );
+    }
+
+    const barangay = await this.prisma.barangay.findUnique({
+      where: { id: barangayId },
+      select: { id: true, name: true, code: true },
+    });
+    if (!barangay) {
+      throw new BadRequestException('Invalid barangayId');
+    }
+
     const callId = randomUUID();
+    const baseMessage =
+      dto.message?.trim() ||
+      `ICDRRMO EOC — urgent contact for ${barangay.name} (${barangay.code}).`;
     const payload = {
       callId,
-      target,
-      incidentId: incidentId ?? null,
-      message: message?.trim() || 'ICDRRMO EOC is requesting immediate voice contact.',
+      target: dto.target,
+      incidentId: dto.incidentId ?? null,
+      barangayId: barangay.id,
+      barangayName: barangay.name,
+      barangayCode: barangay.code,
+      message: baseMessage,
       opsUserId: user.sub,
       opsEmail: user.email ?? null,
       at: new Date().toISOString(),
@@ -121,7 +163,12 @@ export class AgencyService {
       entityId: callId,
       metadata: payload,
     });
-    return { callId, target };
+    return {
+      callId,
+      target: dto.target,
+      barangayId: barangay.id,
+      barangayName: barangay.name,
+    };
   }
 
   async acknowledgeCall(user: JwtPayload, callId: string): Promise<{ ok: true }> {

@@ -29,6 +29,9 @@ export type AgencyCallAlertPayload = {
   callId: string;
   target: 'BFP' | 'PNP' | 'CHAIRMAN';
   incidentId: string | null;
+  barangayId: string;
+  barangayName: string;
+  barangayCode?: string;
   message: string;
   opsUserId: string;
   opsEmail: string | null;
@@ -340,11 +343,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   /** Ops desk triggers immediate call alert to BFP / PNP / Chairman dashboards. */
   emitAgencyCallAlert(payload: AgencyCallAlertPayload): void {
     const voiceRoomId = this.agencyCallVoiceRoom(payload.callId);
+    const barangayRoom = `chairman:${payload.barangayId}`;
     if (payload.target === 'BFP') {
       this.server.to('bfp').emit('agency_call_alert', payload);
     } else if (payload.target === 'PNP') {
       this.server.to('pnp').emit('agency_call_alert', payload);
     } else if (payload.target === 'CHAIRMAN') {
+      this.server.to(barangayRoom).emit('agency_call_alert', payload);
       this.server.to('chairman').emit('agency_call_alert', payload);
     }
     this.server.to('ops').emit('agency_call_sent', { ...payload, voiceRoomId });

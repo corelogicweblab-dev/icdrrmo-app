@@ -58,7 +58,7 @@ type ChairmanIncident = {
 
 type DashboardData = {
   chairmanName: string;
-  barangay: { name: string; code: string } | null;
+  barangay: { id: string; name: string; code: string } | null;
   stats: { openCount: number; ongoingCount: number; resolvedToday: number };
   firstResponder: boolean;
 };
@@ -170,13 +170,20 @@ export default function ChairmanDashboardPage(): ReactElement {
       },
     });
     const callSocket = connectChairmanAgencyCallRealtime(tokens.accessToken, {
-      onAgencyCallAlert: (p) => setAgencyCall(p),
+      onAgencyCallAlert: (p) => {
+        if (p.target !== "CHAIRMAN") return;
+        const myBg = dashboard?.barangay?.id;
+        if (myBg && p.barangayId !== myBg) return;
+        setAgencyCall(p);
+        playAlarmChime();
+        vibrateAlarm();
+      },
     });
     return () => {
       socket.close();
       callSocket.close();
     };
-  }, [tokens?.accessToken, refresh]);
+  }, [tokens?.accessToken, refresh, dashboard?.barangay?.id]);
 
   useEffect(() => {
     if (!agencyCall) return;

@@ -51,8 +51,13 @@ export function fetchAgencyIncidents(accessToken: string): Promise<AgencyInciden
 
 export function triggerAgencyCall(
   accessToken: string,
-  body: { target: "BFP" | "PNP" | "CHAIRMAN"; incidentId?: string; message?: string },
-): Promise<{ callId: string; target: string }> {
+  body: {
+    target: "BFP" | "PNP" | "CHAIRMAN";
+    barangayId: string;
+    incidentId?: string;
+    message?: string;
+  },
+): Promise<{ callId: string; target: string; barangayId: string; barangayName: string }> {
   return agencyFetch(accessToken, "/agency/call", {
     method: "POST",
     body: JSON.stringify(body),

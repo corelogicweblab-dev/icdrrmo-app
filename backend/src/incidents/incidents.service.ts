@@ -220,6 +220,7 @@ export class IncidentsService {
         orderBy: { createdAt: 'desc' },
         take: 200,
         include: {
+          barangay: { select: { id: true, name: true, code: true } },
           reporter: { select: { id: true, email: true, phone: true, profile: true } },
           assigned: { include: { user: { select: { id: true, email: true } } } },
         },
@@ -237,6 +238,7 @@ export class IncidentsService {
       orderBy: { createdAt: 'desc' },
       take: 200,
       include: {
+        barangay: { select: { id: true, name: true, code: true } },
         reporter: { select: { id: true, email: true, phone: true, profile: true } },
         assigned: { include: { user: { select: { id: true, email: true } } } },
       },

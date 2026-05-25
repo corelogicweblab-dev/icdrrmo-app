@@ -7,6 +7,9 @@ export type AgencyCallAlertPayload = {
   callId: string;
   target: "BFP" | "PNP" | "CHAIRMAN";
   incidentId: string | null;
+  barangayId: string;
+  barangayName: string;
+  barangayCode?: string;
   message: string;
   opsUserId: string;
   opsEmail: string | null;
