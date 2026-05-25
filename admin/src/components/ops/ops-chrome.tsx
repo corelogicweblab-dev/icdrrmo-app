@@ -11,6 +11,8 @@ import { useOpsSession } from "@/components/ops/ops-session-context";
 import { decodeJwtEmail, formatOpsClock } from "@/components/ops/ops-format";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { OpsVoiceRingOverlay } from "@/components/ops/ops-voice-ring-overlay";
+import { OpsAgencyCallBar } from "@/components/ops/ops-agency-call-bar";
+import { isOpsAuditor } from "@/lib/decode-jwt-role";
 import { IcdrrmoAiChat } from "@/components/ai/icdrrmo-ai-chat";
 
 export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
@@ -223,6 +225,12 @@ export function OpsChrome({ children }: { children: ReactNode }): ReactElement {
             </div>
           </div>
         </header>
+
+        {!isOpsAuditor(tokens?.accessToken) ? (
+          <div className="shrink-0 border-b border-amber-500/25 bg-amber-950/10 px-3 py-2 lg:px-5">
+            <OpsAgencyCallBar variant="hero" />
+          </div>
+        ) : null}
 
         <nav
           aria-label="Operational modules"

@@ -32,7 +32,6 @@ import type { OpsIncident } from "@/components/ops/ops-types";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { IncidentTimeline } from "@/components/ops/incident-timeline";
 import { OpsIncidentVoicePanel } from "@/components/ops-incident-voice-panel";
-import { OpsAgencyCallBar } from "@/components/ops/ops-agency-call-bar";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { EMERGENCY_TYPES } from "@/lib/icdrrmo-constants";
 import { ROUTED_AGENCIES, routedAgencyLabel } from "@/lib/incident-routing";
@@ -74,7 +73,8 @@ function toNum(v: unknown): number | null {
 
 export default function OpsIncidentsPage(): ReactElement {
   const router = useRouter();
-  const { queue, lastQueueSync, tokens, refreshQueue, realtimeSocket, socketState } = useOpsSession();
+  const { queue, lastQueueSync, tokens, refreshQueue, realtimeSocket, socketState, setCallFocusIncidentId } =
+    useOpsSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [responders, setResponders] = useState<AssignableResponder[]>([]);
   const [statusDraft, setStatusDraft] = useState<string>("OPEN");
@@ -157,6 +157,11 @@ export default function OpsIncidentsPage(): ReactElement {
   );
 
   const selected = useMemo(() => queue.find((q) => q.id === selectedId) ?? null, [queue, selectedId]);
+
+  useEffect(() => {
+    setCallFocusIncidentId(selectedId);
+    return () => setCallFocusIncidentId(null);
+  }, [selectedId, setCallFocusIncidentId]);
 
   useEffect(() => {
     if (!selected) return;
@@ -608,7 +613,6 @@ export default function OpsIncidentsPage(): ReactElement {
                 </div>
 
                 <div className="mt-4 space-y-3 rounded-xl border border-orange-500/12 bg-black/30 p-4">
-                  <OpsAgencyCallBar incidentId={selected.id} />
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">
                     Operations actions
                   </p>

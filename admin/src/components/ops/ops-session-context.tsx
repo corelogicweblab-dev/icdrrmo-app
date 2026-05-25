@@ -83,6 +83,9 @@ export type OpsSessionContextValue = {
   /** Incoming citizen voice ring (server `voice_incident_ring`). */
   voiceRing: VoiceIncidentRingPayload | null;
   dismissVoiceRing: () => void;
+  /** Active incident for EOC direct-call strip (set from Live incidents desk). */
+  callFocusIncidentId: string | null;
+  setCallFocusIncidentId: (id: string | null) => void;
 };
 
 const OpsSessionContext = createContext<OpsSessionContextValue | null>(null);
@@ -115,6 +118,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const [apiConfigWarning, setApiConfigWarning] = useState<string | null>(null);
   const [realtimeSocket, setRealtimeSocket] = useState<Socket | null>(null);
   const [voiceRing, setVoiceRing] = useState<VoiceIncidentRingPayload | null>(null);
+  const [callFocusIncidentId, setCallFocusIncidentId] = useState<string | null>(null);
 
   useEffect(() => {
     setTokens(loadOpsTokens());
@@ -377,6 +381,8 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       setSoundMuted,
       voiceRing,
       dismissVoiceRing,
+      callFocusIncidentId,
+      setCallFocusIncidentId,
     }),
     [
       tokens,
@@ -401,6 +407,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       setSoundMuted,
       voiceRing,
       dismissVoiceRing,
+      callFocusIncidentId,
     ],
   );
 
