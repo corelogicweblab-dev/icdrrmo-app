@@ -30,6 +30,7 @@ export function useCitizenRealtime(
     socket.on("incident_updated", schedule);
     socket.on("incident_created", schedule);
     socket.on("notification_created", schedule);
+    socket.on("emergency_notification", schedule);
     return () => {
       if (debounce) clearTimeout(debounce);
       socket.disconnect();

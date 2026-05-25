@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationType, Prisma } from '@prisma/client';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { NotificationType, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { CreateAdminNotificationDto } from './dto/create-admin-notification.dto';
+import { CreateBarangayAlertDto } from './dto/create-barangay-alert.dto';
 import { PushService, type PushChannel } from '../push/push.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { CitizenDashboardService } from '../citizen-dashboard/citizen-dashboard.service';
+import { getOperatorBarangayId } from '../common/ops-operator-scope';
 
 const NOTIFICATION_CREATE_CHUNK = 200;
 
@@ -14,6 +18,8 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogService,
     private readonly push: PushService,
+    private readonly realtime: RealtimeGateway,
+    private readonly citizenDashboard: CitizenDashboardService,
   ) {}
 
   listRecent(take = 100) {
@@ -80,7 +86,7 @@ export class NotificationsService {
   }): Promise<{ users: number; notificationsCreated: number; fcm: { tokensAttempted: number; success: number } }> {
     const citizens = await this.prisma.user.findMany({
       where: { role: 'CITIZEN', isActive: true },
-      select: { id: true },
+      select: { id: true, profile: { select: { barangayId: true } } },
     });
     const userIds = citizens.map((u) => u.id);
     const data = {
@@ -103,6 +109,10 @@ export class NotificationsService {
         metadata: { type: params.type, users: userIds.length, fcm } as Prisma.InputJsonValue,
       });
     }
+    this.syncCitizenFeeds(
+      citizens.map((u) => ({ userId: u.id, barangayId: u.profile?.barangayId ?? null })),
+      'broadcast_citizens',
+    );
     return { users: userIds.length, notificationsCreated: created, fcm };
   }
 
@@ -137,7 +147,46 @@ export class NotificationsService {
       ipAddress: params.meta.ip,
       userAgent: params.meta.ua,
     });
+    this.syncCitizenFeeds(
+      userIds.map((userId) => ({ userId, barangayId: params.barangayId })),
+      'barangay_alert',
+    );
     return { users: userIds.length, notificationsCreated: created, fcm };
+  }
+
+  async publishBarangayAlert(
+    actor: JwtPayload,
+    dto: CreateBarangayAlertDto,
+    meta: { ip?: string; ua?: string },
+  ) {
+    if (actor.role === UserRole.OPERATOR) {
+      const scope = await getOperatorBarangayId(this.prisma, actor);
+      if (!scope || scope !== dto.barangayId) {
+        throw new ForbiddenException('You may only publish alerts for your assigned barangay.');
+      }
+    }
+    const barangay = await this.prisma.barangay.findUnique({ where: { id: dto.barangayId } });
+    if (!barangay) throw new NotFoundException('Barangay not found');
+    const title = dto.title.trim().slice(0, 200);
+    const body = dto.body.trim().slice(0, 3500);
+    return this.notifyCitizensInBarangay({
+      barangayId: dto.barangayId,
+      title,
+      body,
+      data: { barangayCode: barangay.code },
+      actorId: actor.sub,
+      meta,
+    });
+  }
+
+  private syncCitizenFeeds(
+    users: { userId: string; barangayId: string | null }[],
+    reason: string,
+  ): void {
+    for (const { userId, barangayId } of users) {
+      this.citizenDashboard.invalidateFeedCache(userId, barangayId);
+      this.realtime.emitCitizenFeedUpdated(userId, { reason });
+    }
   }
 
   private async createNotificationsChunked(

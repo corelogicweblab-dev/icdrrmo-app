@@ -6,14 +6,12 @@ import { UserRole } from '@prisma/client';
 import { getOperatorBarangayId } from '../common/ops-operator-scope';
 import { UpdateBarangayOpsHazardDto } from './dto/update-barangay-ops-hazard.dto';
 import { NotificationsService } from '../notifications/notifications.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @Injectable()
 export class BarangaysService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-    private readonly realtime: RealtimeGateway,
   ) {}
 
   list() {
@@ -87,7 +85,18 @@ export class BarangaysService {
       (before.opsRedZoneMessage ?? '') !== (after.opsRedZoneMessage ?? '');
     const anyActive = after.opsFloodActive || after.opsRedZoneActive;
 
-    if (anyActive && changed) {
+    const customTitle = dto.citizenAlertTitle?.trim();
+    const customBody = dto.citizenAlertBody?.trim();
+    if (customTitle && customBody) {
+      await this.notifications.notifyCitizensInBarangay({
+        barangayId: after.id,
+        title: customTitle.slice(0, 200),
+        body: customBody.slice(0, 3500),
+        data: { barangayCode: after.code, kind: 'CUSTOM' },
+        actorId: actor.sub,
+        meta,
+      });
+    } else if (anyActive && changed) {
       const floodLine = after.opsFloodActive
         ? `Flood advisory: ${(after.opsFloodMessage ?? 'Avoid flooded areas; follow barangay / LGU instructions.').trim()}`
         : '';
@@ -108,7 +117,15 @@ export class BarangaysService {
         actorId: actor.sub,
         meta,
       });
-      this.realtime.emitEmergencyNotification({ title, body: body.slice(0, 800) });
+    } else if (changed && !anyActive) {
+      await this.notifications.notifyCitizensInBarangay({
+        barangayId: after.id,
+        title: `Advisory cleared — ${after.name}`.slice(0, 200),
+        body: 'Flood and red-zone hazard flags were turned off. Follow official channels for further updates.',
+        data: { barangayCode: after.code, cleared: 'true' },
+        actorId: actor.sub,
+        meta,
+      });
     }
 
     return after;

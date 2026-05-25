@@ -2,6 +2,7 @@
 
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Loader2, Mail, Megaphone, RefreshCw, Smartphone } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
@@ -36,6 +37,7 @@ export default function OpsNotificationsPage(): ReactElement {
   const { tokens } = useOpsSession();
   const role = jwtRole(tokens?.accessToken);
   const canAdminAlerts = role === "ADMIN" || role === "SUPER_ADMIN";
+  const canBarangayAlerts = canAdminAlerts || role === "OPERATOR";
 
   const [list, setList] = useState<NotifRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
@@ -156,6 +158,23 @@ export default function OpsNotificationsPage(): ReactElement {
 
   return (
     <div className="p-4 lg:p-6 grid gap-4 lg:grid-cols-12">
+      {canBarangayAlerts ? (
+        <OpsPanelCard
+          title="Citizen barangay alerts"
+          subtitle="Flood / red-zone flags and custom messages — synced to the citizen Alerts tab on save"
+          className="lg:col-span-12"
+        >
+          <p className="text-sm text-zinc-400">
+            Use{" "}
+            <Link href="/ops/barangays" className="font-semibold text-orange-300 hover:text-orange-200 underline">
+              Barangay hazards
+            </Link>{" "}
+            to pick a barangay, set advisories, and tap <strong className="text-zinc-200">Save &amp; alert citizens</strong>.
+            The SMS archive page only shows inbound/outbound text logs, not citizen in-app alerts.
+          </p>
+        </OpsPanelCard>
+      ) : null}
+
       <OpsPanelCard title="In-app broadcast" subtitle="Send alerts to selected user accounts" className="lg:col-span-6">
         {!canAdminAlerts ? (
           <p className="text-sm text-zinc-500">Admin or Super Admin role required for broadcast and direct SMS/email.</p>

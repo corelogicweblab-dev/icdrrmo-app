@@ -35,6 +35,9 @@ export default function OpsBarangaysPage(): ReactElement {
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Partial<BarangayRow>>>({});
+  const [citizenAlertTitle, setCitizenAlertTitle] = useState("");
+  const [citizenAlertBody, setCitizenAlertBody] = useState("");
+  const [saveOk, setSaveOk] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!tokens?.accessToken) return;
@@ -97,6 +100,9 @@ export default function OpsBarangaysPage(): ReactElement {
     const m = mergeRow(b);
     setSavingId(b.id);
     setErr(null);
+    setSaveOk(null);
+    const customTitle = citizenAlertTitle.trim();
+    const customBody = citizenAlertBody.trim();
     try {
       const updated = await opsFetchJson<BarangayRow>(`/barangays/${b.id}/ops-hazard`, tokens.accessToken, {
         method: "PATCH",
@@ -105,6 +111,9 @@ export default function OpsBarangaysPage(): ReactElement {
           opsFloodMessage: m.opsFloodMessage ?? "",
           opsRedZoneActive: m.opsRedZoneActive,
           opsRedZoneMessage: m.opsRedZoneMessage ?? "",
+          ...(customTitle && customBody
+            ? { citizenAlertTitle: customTitle, citizenAlertBody: customBody }
+            : {}),
         }),
       });
       setRows((prev) => prev.map((r) => (r.id === b.id ? { ...r, ...updated } : r)));
@@ -113,6 +122,17 @@ export default function OpsBarangaysPage(): ReactElement {
         delete n[b.id];
         return n;
       });
+      if (customTitle && customBody) {
+        setCitizenAlertTitle("");
+        setCitizenAlertBody("");
+      }
+      setSaveOk(
+        customTitle && customBody
+          ? "Saved. Custom alert sent to citizens in this barangay."
+          : m.opsFloodActive || m.opsRedZoneActive
+            ? "Saved. Hazard alert sent to citizens in this barangay."
+            : "Saved. Citizens were notified that hazard flags are cleared.",
+      );
     } catch (e: unknown) {
       setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Save failed");
     } finally {
@@ -136,6 +156,7 @@ export default function OpsBarangaysPage(): ReactElement {
           </p>
         ) : null}
         {err ? <p className="mb-3 text-sm text-rose-300">{err}</p> : null}
+        {saveOk ? <p className="mb-3 text-sm text-emerald-300">{saveOk}</p> : null}
         {loading ? (
           <p className="flex items-center gap-2 text-sm text-zinc-400">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading barangays…
@@ -144,29 +165,43 @@ export default function OpsBarangaysPage(): ReactElement {
           <p className="text-sm text-zinc-500">No barangays available.</p>
         ) : (
           <div className="space-y-5">
-            <label className="block max-w-md space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Barangay</span>
-              <select
-                value={selected?.id ?? ""}
-                onChange={(e) => setSelectedId(e.target.value)}
-                disabled={role === "OPERATOR" && visibleRows.length <= 1}
-                className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-rose-500/40 disabled:opacity-70"
-              >
-                {visibleRows.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
-                  </option>
-                ))}
-              </select>
-              {selected ? (
-                <p className="text-[10px] text-zinc-500 font-mono">
-                  Barangay ID: {selected.id}
-                  {selected.opsHazardUpdatedAt
-                    ? ` · Updated ${new Date(selected.opsHazardUpdatedAt).toLocaleString("en-PH")}`
-                    : ""}
+            {role === "OPERATOR" && visibleRows.length === 1 && selected ? (
+              <div className="max-w-md space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Your barangay</span>
+                <p className="rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2.5 text-sm text-zinc-100">
+                  {selected.name} ({selected.code})
                 </p>
-              ) : null}
-            </label>
+                <p className="text-[10px] text-zinc-500">
+                  Operators are assigned to one barangay. Admins can switch barangay from the list below.
+                </p>
+              </div>
+            ) : (
+              <label className="block max-w-md space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Barangay</span>
+                <select
+                  value={selected?.id ?? ""}
+                  onChange={(e) => {
+                    setSelectedId(e.target.value);
+                    setSaveOk(null);
+                  }}
+                  className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+                >
+                  {visibleRows.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {selected ? (
+              <p className="text-[10px] text-zinc-500 font-mono max-w-md">
+                Barangay ID: {selected.id}
+                {selected.opsHazardUpdatedAt
+                  ? ` · Updated ${new Date(selected.opsHazardUpdatedAt).toLocaleString("en-PH")}`
+                  : ""}
+              </p>
+            ) : null}
 
             {merged && selected ? (
               <div className="rounded-xl border border-orange-500/15 bg-black/35 p-4 space-y-4">
@@ -234,6 +269,31 @@ export default function OpsBarangaysPage(): ReactElement {
                     }
                   />
                 </label>
+                <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-3 space-y-3">
+                  <p className="text-xs text-amber-100/90">
+                    Optional: send a custom in-app alert to all registered citizens in this barangay (appears on their Alerts tab immediately).
+                  </p>
+                  <label className="block space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Alert title</span>
+                    <input
+                      className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600"
+                      placeholder="e.g. Flood watch tonight"
+                      value={citizenAlertTitle}
+                      disabled={dis}
+                      onChange={(e) => setCitizenAlertTitle(e.target.value)}
+                    />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Alert message</span>
+                    <textarea
+                      className="w-full min-h-[72px] rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600"
+                      placeholder="Evacuation routes, assembly points, hotline…"
+                      value={citizenAlertBody}
+                      disabled={dis}
+                      onChange={(e) => setCitizenAlertBody(e.target.value)}
+                    />
+                  </label>
+                </div>
                 {canHazard ? (
                   <button
                     type="button"

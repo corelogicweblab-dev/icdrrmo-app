@@ -8,6 +8,7 @@ const ROLE_CHIPS = [
   { label: "Responder", desc: "Field map · assignments" },
   { label: "Operations", desc: "EOC command console" },
   { label: "Chairman", desc: "Barangay first response" },
+  { label: "PNP / BFP", desc: "Agency partner desks" },
 ] as const;
 
 type IcdAuthShellProps = {

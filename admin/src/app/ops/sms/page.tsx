@@ -2,6 +2,7 @@
 
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, RefreshCw, Satellite } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
@@ -86,6 +87,13 @@ export default function OpsSmsPage(): ReactElement {
           </button>
         </div>
         {err ? <p className="text-sm text-rose-300 mb-3">{err}</p> : null}
+        <p className="text-sm text-zinc-500">
+          To push in-app alerts to citizens (Alerts tab), use{" "}
+          <Link href="/ops/barangays" className="text-orange-300 hover:text-orange-200 underline font-medium">
+            Barangay hazards
+          </Link>
+          , not this SMS log.
+        </p>
       </OpsPanelCard>
 
       <OpsPanelCard title="Inbound SMS" subtitle={`${inbound.length} recent`} className="lg:col-span-6">

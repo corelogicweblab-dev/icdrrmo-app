@@ -8,6 +8,7 @@ import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { CreateAdminNotificationDto } from './dto/create-admin-notification.dto';
+import { CreateBarangayAlertDto } from './dto/create-barangay-alert.dto';
 
 function clientMeta(req: Request): { ip?: string; ua?: string } {
   const forwarded = req.headers['x-forwarded-for'];
@@ -41,5 +42,15 @@ export class NotificationsController {
     @Req() req: Request,
   ) {
     return this.notifications.broadcast(actor, dto, clientMeta(req));
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATOR)
+  @Post('barangay-alert')
+  publishBarangayAlert(
+    @CurrentUser() actor: JwtPayload,
+    @Body() dto: CreateBarangayAlertDto,
+    @Req() req: Request,
+  ) {
+    return this.notifications.publishBarangayAlert(actor, dto, clientMeta(req));
   }
 }
