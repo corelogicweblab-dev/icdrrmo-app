@@ -4,6 +4,11 @@ import { OpsApiError } from "@/lib/ops-api";
 
 export type AiLanguage = "en" | "fil" | "ceb" | "cbk";
 
+export type AiChatHistoryItem = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type AiChatResponse = {
   reply: string;
   language: AiLanguage;
@@ -15,7 +20,7 @@ export type AiChatResponse = {
 export async function sendAiChat(
   accessToken: string,
   message: string,
-  opts?: { language?: AiLanguage; conversationId?: string },
+  opts?: { language?: AiLanguage; conversationId?: string; history?: AiChatHistoryItem[] },
 ): Promise<AiChatResponse> {
   const url = `${getApiBaseUrl()}/ai/chat`;
   const res = await fetchWithTimeout(
@@ -29,9 +34,10 @@ export async function sendAiChat(
       body: JSON.stringify({
         message,
         conversationId: opts?.conversationId,
+        history: opts?.history,
       }),
     },
-    22_000,
+    28_000,
   );
   const text = await res.text();
   if (!res.ok) {
@@ -43,7 +49,7 @@ export async function sendAiChat(
 /** Public portal chat (home page, no sign-in). */
 export async function sendGuestAiChat(
   message: string,
-  opts?: { language?: AiLanguage; conversationId?: string },
+  opts?: { language?: AiLanguage; conversationId?: string; history?: AiChatHistoryItem[] },
 ): Promise<AiChatResponse> {
   const url = `${getApiBaseUrl()}/ai/guest-chat`;
   const res = await fetchWithTimeout(
@@ -54,9 +60,10 @@ export async function sendGuestAiChat(
       body: JSON.stringify({
         message,
         conversationId: opts?.conversationId,
+        history: opts?.history,
       }),
     },
-    22_000,
+    28_000,
   );
   const text = await res.text();
   if (!res.ok) {

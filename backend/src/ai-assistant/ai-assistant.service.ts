@@ -15,6 +15,12 @@ const LANG_NAMES: Record<AiLanguage, string> = {
   cbk: 'Chavacano',
 };
 
+const GUEST_ACTOR: JwtPayload = {
+  sub: 'guest',
+  role: UserRole.CITIZEN,
+  email: 'guest@icdrrmo.portal',
+};
+
 @Injectable()
 export class AiAssistantService {
   private readonly logger = new Logger(AiAssistantService.name);
@@ -29,7 +35,7 @@ export class AiAssistantService {
     return preferred ?? 'en';
   }
 
-  /** Public portal assistant — fast RAG (no slow full-feed context). */
+  /** Public portal assistant — Gemini when configured, else guided fallback. */
   async guestChat(dto: AiChatDto): Promise<AiChatResponse> {
     const lang = this.detectLanguage(dto.message, dto.language);
     const conversationId = dto.conversationId?.trim() || randomUUID();
@@ -42,60 +48,82 @@ export class AiAssistantService {
       weather: await this.weatherService.getSituationSnapshot().catch(() => null),
     };
 
-    const reply = this.contextRagReply(dto.message, ctx, lang);
-    return {
-      reply,
-      language: lang,
-      engine: 'context-rag',
-      conversationId,
-      suggestedActions: ['sign_in', 'citizen_portal', 'map'],
-    };
+    return this.replyWithEngine(GUEST_ACTOR, dto, lang, conversationId, ctx, [
+      'sign_in',
+      'citizen_portal',
+      'map',
+    ]);
   }
 
   async chat(actor: JwtPayload, dto: AiChatDto): Promise<AiChatResponse> {
     const lang = this.detectLanguage(dto.message, dto.language);
     const conversationId = dto.conversationId?.trim() || randomUUID();
+    const ctx = await this.resolveContext(actor);
+    const actions =
+      actor.role === UserRole.CITIZEN
+        ? this.citizenActionIds()
+        : this.staffActionIds(actor.role);
 
-    if (actor.role === UserRole.CITIZEN) {
-      const ctx = await this.context.buildCitizenLight(actor);
-      const reply = this.contextRagReply(dto.message, ctx, lang);
-      return {
-        reply,
-        language: lang,
-        engine: 'context-rag',
-        conversationId,
-        suggestedActions: this.citizenActionIds(),
-      };
-    }
+    return this.replyWithEngine(actor, dto, lang, conversationId, ctx, actions);
+  }
 
-    let ctx: Awaited<ReturnType<AiContextService['build']>>;
-    try {
-      ctx = await this.context.build(actor);
-    } catch (e) {
-      this.logger.warn(
-        `AI context build failed: ${e instanceof Error ? e.message : String(e)}`,
-      );
-      ctx = {
-        role: actor.role,
-        generatedAt: new Date().toISOString(),
-        summary: `${actor.role} session — context loading.`,
-        metrics: { status: 'online', label: 'Live' },
-      };
-    }
-
-    const key =
+  private geminiApiKey(): string | undefined {
+    return (
       this.config.get<string>('GEMINI_API_KEY')?.trim() ||
-      this.config.get<string>('GOOGLE_AI_API_KEY')?.trim();
+      this.config.get<string>('GOOGLE_AI_API_KEY')?.trim() ||
+      undefined
+    );
+  }
 
+  private async resolveContext(actor: JwtPayload): Promise<AiRoleContext> {
+    if (actor.role !== UserRole.CITIZEN) {
+      try {
+        return await this.context.build(actor);
+      } catch (e) {
+        this.logger.warn(
+          `AI context build failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        return {
+          role: actor.role,
+          generatedAt: new Date().toISOString(),
+          summary: `${actor.role} session — context loading.`,
+          metrics: { status: 'online', label: 'Live' },
+        };
+      }
+    }
+
+    const light = await this.context.buildCitizenLight(actor);
+    try {
+      const rich = await Promise.race([
+        this.context.build(actor),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('citizen-context-timeout')), 9_000);
+        }),
+      ]);
+      return rich;
+    } catch {
+      return light;
+    }
+  }
+
+  private async replyWithEngine(
+    actor: JwtPayload,
+    dto: AiChatDto,
+    lang: AiLanguage,
+    conversationId: string,
+    ctx: AiRoleContext,
+    suggestedActions: string[],
+  ): Promise<AiChatResponse> {
+    const key = this.geminiApiKey();
     if (key) {
       try {
-        const reply = await this.geminiReply(key, lang, actor, dto.message, ctx);
+        const reply = await this.geminiReply(key, lang, actor, dto.message, ctx, dto.history);
         return {
           reply,
           language: lang,
           engine: 'gemini',
           conversationId,
-          suggestedActions: this.staffActionIds(actor.role),
+          suggestedActions,
         };
       } catch (e) {
         this.logger.warn(`Gemini fallback: ${e instanceof Error ? e.message : String(e)}`);
@@ -108,7 +136,7 @@ export class AiAssistantService {
       language: lang,
       engine: 'context-rag',
       conversationId,
-      suggestedActions: this.staffActionIds(actor.role),
+      suggestedActions,
     };
   }
 
@@ -121,7 +149,8 @@ export class AiAssistantService {
       'You are ICDRRMO AI for Isabela City, Basilan — greet with spirit of "HapIsabela!" (happy, prepared Isabela).',
       'Answer questions about disasters, this SMART app, SOS, evacuation, weather, preparedness, and barangay safety.',
       'Use CONTEXT when available; otherwise give accurate DRRM guidance for the Philippines / BARMM context.',
-      'Reply in English only — clear, concise, under 120 words unless step-by-step is requested.',
+      `Reply in ${LANG_NAMES[lang]} when the user writes in that language; default to clear English.`,
+      'Be conversational and helpful — this is a real chat, not a menu. Under 150 words unless step-by-step is requested.',
       `User role: ${actor.role}.`,
       citizenOnly,
       'Never refuse ICDRRMO-related questions. If unsure, suggest Map, Prepare, Profile, or SOS.',
@@ -133,29 +162,34 @@ export class AiAssistantService {
     lang: AiLanguage,
     actor: JwtPayload,
     message: string,
-    ctx: Awaited<ReturnType<AiContextService['build']>>,
+    ctx: AiRoleContext,
+    history?: AiChatDto['history'],
   ): Promise<string> {
     const model = this.config.get<string>('GEMINI_MODEL')?.trim() || 'gemini-2.0-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const contextJson = JSON.stringify(ctx).slice(0, 14_000);
+    const systemText = `${this.systemPrompt(lang, actor)}\n\nCONTEXT:\n${contextJson}`;
+
+    const prior = (history ?? []).slice(-10).map((h) => ({
+      role: h.role === 'assistant' ? ('model' as const) : ('user' as const),
+      parts: [{ text: h.content.trim().slice(0, 2000) }],
+    }));
+
+    const contents = [
+      ...prior,
+      { role: 'user' as const, parts: [{ text: message.trim() }] },
+    ];
+
     const body = {
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `${this.systemPrompt(lang, actor)}\n\nCONTEXT:\n${contextJson}\n\nUSER:\n${message}`,
-            },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0.35, maxOutputTokens: 512 },
+      systemInstruction: { parts: [{ text: systemText }] },
+      contents,
+      generationConfig: { temperature: 0.45, maxOutputTokens: 640 },
     };
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(18_000),
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');

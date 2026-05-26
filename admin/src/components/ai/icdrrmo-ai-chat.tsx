@@ -16,7 +16,7 @@ type ChatMessage = {
 };
 
 const INTRO =
-  "HapIsabela! I am ICDRRMO AI — Isabela City DRRMO assistant. Ask about SOS, weather, evacuation, preparedness, or how to use this app.";
+  "HapIsabela! I am ICDRRMO AI — your Isabela City DRRMO assistant. Ask me anything about emergencies, weather, evacuation, preparedness, or how to use this app.";
 
 export function IcdrrmoAiChat(props: {
   accessToken: string | null;
@@ -28,6 +28,7 @@ export function IcdrrmoAiChat(props: {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [lastEngine, setLastEngine] = useState<"gemini" | "context-rag" | null>(null);
   const introActions =
     props.portal === "citizen"
       ? ["sos", "map", "prepare"]
@@ -65,13 +66,18 @@ export function IcdrrmoAiChat(props: {
     const text = input.trim();
     if (!text || !canChat || busy) return;
     setInput("");
+    const history = messages.map((m) => ({
+      role: m.role,
+      content: m.text,
+    }));
     setMessages((m) => [...m, { role: "user", text }]);
     setBusy(true);
     try {
       const res: AiChatResponse = props.accessToken
-        ? await sendAiChat(props.accessToken, text, { conversationId })
-        : await sendGuestAiChat(text, { conversationId });
+        ? await sendAiChat(props.accessToken, text, { conversationId, history })
+        : await sendGuestAiChat(text, { conversationId, history });
       setConversationId(res.conversationId);
+      setLastEngine(res.engine);
       setMessages((m) => [
         ...m,
         {
@@ -102,7 +108,7 @@ export function IcdrrmoAiChat(props: {
     } finally {
       setBusy(false);
     }
-  }, [input, props.accessToken, canChat, busy, conversationId]);
+  }, [input, props.accessToken, canChat, busy, conversationId, messages]);
 
   if (!canChat) return null;
 
@@ -124,7 +130,10 @@ export function IcdrrmoAiChat(props: {
               <Bot className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               <div className="min-w-0">
                 <p className="text-xs font-bold text-white">AI Chat</p>
-                <p className="text-[9px] text-zinc-500 truncate">ICDRRMO · HapIsabela</p>
+                <p className="text-[9px] text-zinc-500 truncate">
+                  ICDRRMO · HapIsabela
+                  {lastEngine === "gemini" ? " · Live AI" : lastEngine === "context-rag" ? " · Guided" : ""}
+                </p>
               </div>
             </div>
             <button
@@ -178,7 +187,7 @@ export function IcdrrmoAiChat(props: {
             {busy ? (
               <div className="flex items-center gap-2 text-xs text-zinc-500 pl-1">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-400" />
-                Thinking…
+                ICDRRMO AI is typing…
               </div>
             ) : null}
             <div ref={endRef} className="h-px shrink-0" aria-hidden />
