@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { Activity, Brain, Users } from "lucide-react";
+import { Activity } from "lucide-react";
 import type { CitizenUnifiedFeed } from "@/lib/citizen-feed";
 
 export function CitizenEnterpriseStrip(props: {
@@ -9,11 +9,6 @@ export function CitizenEnterpriseStrip(props: {
   systemHealth: CitizenUnifiedFeed["systemHealth"];
 }): ReactElement {
   const alerts = props.enterprise.predictiveAlerts.slice(0, 3);
-  const engagement = props.enterprise.usageMetrics.advisoryEngagementPct;
-  const citizens = props.enterprise.usageMetrics.activeCitizensByBarangay.reduce(
-    (a, b) => a + b.count,
-    0,
-  );
 
   return (
     <div className="space-y-3">
@@ -37,19 +32,6 @@ export function CitizenEnterpriseStrip(props: {
             ({props.enterprise.myBarangayRisk.level})
           </span>
         ) : null}
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-[10px]">
-        <div className="rounded-lg border border-white/[0.06] bg-black/25 p-2.5">
-          <Users className="h-3.5 w-3.5 text-zinc-500 mb-1" aria-hidden />
-          <p className="text-zinc-500">Active citizens</p>
-          <p className="text-lg font-semibold text-zinc-100">{citizens}</p>
-        </div>
-        <div className="rounded-lg border border-white/[0.06] bg-black/25 p-2.5">
-          <Brain className="h-3.5 w-3.5 text-zinc-500 mb-1" aria-hidden />
-          <p className="text-zinc-500">Advisory engagement</p>
-          <p className="text-lg font-semibold text-zinc-100">{engagement}%</p>
-        </div>
       </div>
 
       {alerts.length > 0 ? (
