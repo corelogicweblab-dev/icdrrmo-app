@@ -3,7 +3,6 @@
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Loader2,
@@ -106,7 +105,6 @@ function vibrateAlarm(): void {
 }
 
 export default function ChairmanDashboardPage(): ReactElement {
-  const router = useRouter();
   const [tokens, setTokens] = useState<TokenPair | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

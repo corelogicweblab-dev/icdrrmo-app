@@ -10,6 +10,7 @@ import {
   CommunityPostCategory,
   IncidentStatus,
   NotificationType,
+  Prisma,
   UserRole,
 } from '@prisma/client';
 import Redis from 'ioredis';
@@ -29,6 +30,7 @@ import {
 } from './citizen-preparedness.defaults';
 import { PatchPreparednessDto } from './dto/patch-preparedness.dto';
 import { UpsertEmergencyContactDto } from './dto/upsert-emergency-contact.dto';
+import { SosTransparencyDto } from './dto/sos-transparency.dto';
 
 const REDIS_FEED_PREFIX = 'icdrrmo:citizen:feed:';
 const LIFECYCLE_MAP: Record<
@@ -579,6 +581,41 @@ export class CitizenDashboardService implements OnModuleInit {
     }
     const timeline = await this.incidents.getTimelineForReporter(actor, incidentId);
     return timeline;
+  }
+
+  /** Citizen SOS transparency acknowledgments (checkbox audit trail). */
+  async submitSosTransparency(
+    actor: JwtPayload,
+    incidentId: string,
+    dto: SosTransparencyDto,
+  ): Promise<{ saved: boolean; allRequiredAcknowledged: boolean }> {
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: { reporterId: true },
+    });
+    if (!incident) throw new NotFoundException('Incident not found');
+    if (incident.reporterId !== actor.sub) {
+      throw new ForbiddenException('Not your incident');
+    }
+    const required = ['received', 'location', 'contact', 'routing', 'track'] as const;
+    const checks = dto.checks ?? {};
+    const allRequiredAcknowledged = required.every((k) => checks[k] === true);
+    if (!allRequiredAcknowledged) {
+      throw new ForbiddenException('All transparency items must be acknowledged.');
+    }
+    await this.prisma.incidentLog.create({
+      data: {
+        incidentId,
+        action: 'citizen_sos_transparency_ack',
+        createdById: actor.sub,
+        details: {
+          checks,
+          allRequiredAcknowledged: true,
+          acknowledgedAt: new Date().toISOString(),
+        } as Prisma.InputJsonValue,
+      },
+    });
+    return { saved: true, allRequiredAcknowledged: true };
   }
 
   async getMedicalSnapshot(userId: string) {

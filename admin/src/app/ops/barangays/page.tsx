@@ -2,7 +2,7 @@
 
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, Waves } from "lucide-react";
+import { AlertTriangle, Waves } from "lucide-react";
 import { useOpsSession } from "@/components/ops/ops-session-context";
 import { OpsPanelCard } from "@/components/ops/ops-widgets";
 import { opsApiErrorUserMessage, opsFetchJson, OpsApiError } from "@/lib/ops-api";
@@ -32,7 +32,7 @@ export default function OpsBarangaysPage(): ReactElement {
   const [operatorBarangayId, setOperatorBarangayId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, Partial<BarangayRow>>>({});
   const [citizenAlertTitle, setCitizenAlertTitle] = useState("");
@@ -41,7 +41,6 @@ export default function OpsBarangaysPage(): ReactElement {
 
   const load = useCallback(async () => {
     if (!tokens?.accessToken) return;
-    setLoading(true);
     setErr(null);
     try {
       const list = await opsFetchJson<BarangayRow[]>("/barangays", tokens.accessToken);
@@ -62,7 +61,7 @@ export default function OpsBarangaysPage(): ReactElement {
     } catch (e: unknown) {
       setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Failed to load barangays");
     } finally {
-      setLoading(false);
+      setLoadedOnce(true);
     }
   }, [tokens?.accessToken, role]);
 
@@ -157,10 +156,8 @@ export default function OpsBarangaysPage(): ReactElement {
         ) : null}
         {err ? <p className="mb-3 text-sm text-rose-300">{err}</p> : null}
         {saveOk ? <p className="mb-3 text-sm text-emerald-300">{saveOk}</p> : null}
-        {loading ? (
-          <p className="flex items-center gap-2 text-sm text-zinc-400">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading barangays…
-          </p>
+        {!loadedOnce && visibleRows.length === 0 ? (
+          <p className="text-sm text-zinc-500">Loading barangay list in the background…</p>
         ) : visibleRows.length === 0 ? (
           <p className="text-sm text-zinc-500">No barangays available.</p>
         ) : (

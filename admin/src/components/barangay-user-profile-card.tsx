@@ -6,7 +6,7 @@ import { KeyRound, Loader2, Save, Shield } from "lucide-react";
 import { PasswordInput } from "@/components/password-input";
 import {
   barangayFieldsForPatch,
-  loadBarangaysForStaffSession,
+  loadBarangaysForProfileForm,
   resolveBarangaySelectValue,
   withProfileBarangay,
 } from "@/lib/public-barangays";
@@ -36,12 +36,15 @@ export type BarangayUserProfileCardProps = {
   accessToken: string;
   /** Force barangay selection even for roles that are not in the default set. */
   requireBarangay?: boolean;
+  /** PNP / BFP city-wide desk — no barangay ID (avoids wrong scope & redirect flows). */
+  agencyDesk?: boolean;
   className?: string;
 };
 
 export function BarangayUserProfileCard({
   accessToken,
   requireBarangay: requireBarangayProp,
+  agencyDesk = false,
   className = "",
 }: BarangayUserProfileCardProps): ReactElement {
   const [me, setMe] = useState<MeUser | null>(null);
@@ -62,9 +65,10 @@ export function BarangayUserProfileCard({
   const [pwdMsg, setPwdMsg] = useState<string | null>(null);
 
   const requireBarangay = useMemo(() => {
+    if (agencyDesk) return false;
     if (requireBarangayProp !== undefined) return requireBarangayProp;
     return me?.role ? ROLES_REQUIRING_BARANGAY.has(me.role) : false;
-  }, [requireBarangayProp, me?.role]);
+  }, [agencyDesk, requireBarangayProp, me?.role]);
 
   const selectedBarangay = useMemo(
     () => barangays.find((b) => b.id === barangayId) ?? me?.profile?.barangay ?? null,
@@ -75,21 +79,30 @@ export function BarangayUserProfileCard({
     setErr(null);
     try {
       const u = await opsFetchJson<MeUser>("/users/me", accessToken);
-      const raw = await loadBarangaysForStaffSession(accessToken);
-      const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
       setMe(u);
-      setBarangays(b);
+      if (!agencyDesk) {
+        const raw = await loadBarangaysForProfileForm(accessToken);
+        const b = u.profile?.barangay ? withProfileBarangay(raw, u.profile.barangay) : raw;
+        setBarangays(b);
+        if (u.profile) {
+          setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
+        }
+      } else {
+        setBarangays([]);
+        setBarangayId("");
+      }
       if (u.profile) {
         setFullName(u.profile.fullName);
         setPhone(u.phone ?? "");
-        setBarangayId(resolveBarangaySelectValue(u.profile.barangayId, u.profile.barangay, b));
         setAddress((u.profile.address ?? u.profile.streetPurok ?? "").trim());
+      } else {
+        setFullName("");
+        setPhone(u.phone ?? "");
       }
     } catch (e: unknown) {
-      setMe(null);
       setErr(e instanceof OpsApiError ? opsApiErrorUserMessage(e) : "Failed to load profile");
     }
-  }, [accessToken]);
+  }, [accessToken, agencyDesk]);
 
   useEffect(() => {
     void load();
@@ -110,7 +123,7 @@ export function BarangayUserProfileCard({
         body: JSON.stringify({
           fullName: fullName.trim(),
           phone: phone.trim() || null,
-          ...barangayFieldsForPatch(barangayId),
+          ...(agencyDesk ? {} : barangayFieldsForPatch(barangayId)),
           address: address.trim() || null,
           streetPurok: address.trim() || null,
         }),
@@ -164,60 +177,71 @@ export function BarangayUserProfileCard({
     }
   }
 
-  if (!me) {
-    return (
-      <div className={`flex items-center gap-2 text-sm text-zinc-500 ${className}`}>
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        Loading barangay profile…
-      </div>
-    );
-  }
+  const roleLabel = me?.role?.replace(/_/g, " ") ?? "—";
 
   return (
     <div className={`space-y-6 ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold text-white">Barangay profile</h2>
+          <h2 className="text-sm font-semibold text-white">
+            {agencyDesk ? "Agency account" : "Barangay profile"}
+          </h2>
           <p className="text-[11px] text-zinc-500 mt-0.5">
-            Barangay ID, full name, role, phone, address — required for dispatch and agency calls.
+            {agencyDesk
+              ? "City-wide agency desk — contact details and password only (no barangay assignment)."
+              : "Barangay ID, full name, role, phone, address — required for dispatch and agency calls."}
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-wide text-zinc-400">
           <Shield className="h-3.5 w-3.5 text-rose-400" aria-hidden />
-          {me.role.replace(/_/g, " ")}
+          {roleLabel}
         </span>
       </div>
 
-      {err ? <p className="text-sm text-rose-300/90">{err}</p> : null}
+      {err ? (
+        <p className="text-sm text-rose-300/90">
+          {err}{" "}
+          <button type="button" onClick={() => void load()} className="underline text-orange-300">
+            Retry
+          </button>
+        </p>
+      ) : null}
       {saved ? <p className="text-xs text-orange-400/90">Profile saved.</p> : null}
 
       <form
         onSubmit={(ev) => void onSaveProfile(ev)}
         className="rounded-2xl border border-orange-500/15 bg-black/35 p-5 space-y-4"
       >
-        <label className="block space-y-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Barangay ID</span>
-          <select
-            value={barangayId}
-            onChange={(e) => setBarangayId(e.target.value)}
-            required={requireBarangay}
-            className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
-          >
-            <option value="">— Select barangay —</option>
-            {barangays.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} ({b.code})
-              </option>
-            ))}
-          </select>
-          {selectedBarangay ? (
-            <p className="text-[10px] text-zinc-500 font-mono">
-              ID: {selectedBarangay.id} · Code: {selectedBarangay.code}
-            </p>
-          ) : (
-            <p className="text-[10px] text-amber-400/80">Select a barangay to save your official barangay ID.</p>
-          )}
-        </label>
+        {agencyDesk ? (
+          <p className="rounded-lg border border-orange-500/15 bg-orange-950/15 px-3 py-2 text-[11px] text-orange-100/90 leading-relaxed">
+            You are on the <strong className="text-white">{roleLabel}</strong> city-wide operations desk.
+            Incidents are routed by type (fire → BFP, crime → PNP), not by a single barangay profile.
+          </p>
+        ) : (
+          <label className="block space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Barangay ID</span>
+            <select
+              value={barangayId}
+              onChange={(e) => setBarangayId(e.target.value)}
+              required={requireBarangay}
+              className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
+            >
+              <option value="">— Select barangay —</option>
+              {barangays.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} ({b.code})
+                </option>
+              ))}
+            </select>
+            {selectedBarangay ? (
+              <p className="text-[10px] text-zinc-500 font-mono">
+                ID: {selectedBarangay.id} · Code: {selectedBarangay.code}
+              </p>
+            ) : (
+              <p className="text-[10px] text-amber-400/80">Select a barangay to save your official barangay ID.</p>
+            )}
+          </label>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1.5">
@@ -232,7 +256,7 @@ export function BarangayUserProfileCard({
           <label className="block space-y-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Role</span>
             <input
-              value={me.role.replace(/_/g, " ")}
+              value={roleLabel}
               readOnly
               className="w-full rounded-lg border border-white/5 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-500"
             />
@@ -249,17 +273,19 @@ export function BarangayUserProfileCard({
           <label className="block space-y-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Email</span>
             <input
-              value={me.email}
+              value={me?.email ?? ""}
               readOnly
               className="w-full rounded-lg border border-white/5 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-500"
             />
           </label>
           <label className="block space-y-1.5 sm:col-span-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Address</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+              {agencyDesk ? "Office / station (optional)" : "Address"}
+            </span>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Street, purok, sitio"
+              placeholder={agencyDesk ? "BFP/PNP station or duty location" : "Street, purok, sitio"}
               className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
             />
           </label>
@@ -294,7 +320,7 @@ export function BarangayUserProfileCard({
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+            inputClassName="rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -306,7 +332,7 @@ export function BarangayUserProfileCard({
               required
               minLength={12}
               autoComplete="new-password"
-              className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+              inputClassName="rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
             />
           </label>
           <label className="block space-y-1.5">
@@ -317,7 +343,7 @@ export function BarangayUserProfileCard({
               required
               minLength={12}
               autoComplete="new-password"
-              className="w-full rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100"
+              inputClassName="rounded-lg border border-orange-500/20 bg-black/40 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-rose-500/40"
             />
           </label>
         </div>

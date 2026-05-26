@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
+import Link from "next/link";
 import { Shield } from "lucide-react";
 import { useAgencySession } from "@/components/agency/agency-session-context";
 import { BarangayUserProfileCard } from "@/components/barangay-user-profile-card";
@@ -15,7 +16,7 @@ export default function PnpProfilePage(): ReactElement {
         <div>
           <h2 className="text-lg font-semibold text-white tracking-tight">My profile</h2>
           <p className="text-xs text-zinc-500 mt-1">
-            Contact and barangay scope for {config.portalTitle}.
+            Agency account for {config.portalTitle} — not tied to one barangay.
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange-500/20 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-wide text-zinc-400">
@@ -23,11 +24,14 @@ export default function PnpProfilePage(): ReactElement {
           PNP
         </span>
       </div>
-      <BarangayUserProfileCard accessToken={tokens.accessToken} />
+      <BarangayUserProfileCard accessToken={tokens.accessToken} agencyDesk />
       <OpsPanelCard title="Desk access" subtitle="Shared ICDRRMO agency console">
         <p className="text-sm text-zinc-400">
-          Incident queue and map sync from the EOC when cases are forwarded to PNP. Use{" "}
-          <strong className="text-zinc-200">Agency desk</strong> in the sidebar for live operations.
+          Use{" "}
+          <Link href={config.basePath} className="text-orange-300 hover:text-orange-200 underline font-medium">
+            Agency desk
+          </Link>{" "}
+          in the sidebar for the live incident queue and map. Saving profile here stays on this page.
         </p>
       </OpsPanelCard>
     </div>

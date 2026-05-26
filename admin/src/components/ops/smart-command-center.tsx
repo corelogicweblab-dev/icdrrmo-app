@@ -35,12 +35,12 @@ export function SmartCommandCenter(): ReactElement {
   const [snap, setSnap] = useState<CommandCenterSnapshot | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = true) => {
     const token = tokens?.accessToken;
     if (!token) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const { snapshot, usedLegacyFallback } = await loadCommandCenterSnapshot(token);
       setSnap(snapshot);
@@ -69,8 +69,8 @@ export function SmartCommandCenter(): ReactElement {
   }, [tokens?.accessToken]);
 
   useEffect(() => {
-    void load();
-    const t = window.setInterval(() => void load(), 45_000);
+    void load(true);
+    const t = window.setInterval(() => void load(true), 45_000);
     return () => window.clearInterval(t);
   }, [load]);
 

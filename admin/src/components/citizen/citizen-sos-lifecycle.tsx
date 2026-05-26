@@ -2,8 +2,15 @@
 
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { Check, Circle, Loader2 } from "lucide-react";
+import { Check, Circle } from "lucide-react";
 import { fetchCitizenTimeline, type IncidentTimeline } from "@/lib/citizen-feed";
+
+const PLACEHOLDER_STEPS: IncidentTimeline["steps"] = [
+  { key: "reported", label: "Report received", done: true, at: null },
+  { key: "verified", label: "Verified by EOC", done: false, at: null },
+  { key: "responded", label: "Responder dispatched", done: false, at: null },
+  { key: "resolved", label: "Resolved", done: false, at: null },
+];
 
 export function CitizenSosLifecycle(props: {
   accessToken: string;
@@ -19,33 +26,35 @@ export function CitizenSosLifecycle(props: {
         const t = await fetchCitizenTimeline(props.accessToken, props.incidentId);
         if (!cancelled) setTimeline(t);
       } catch {
-        if (!cancelled) setErr("Could not load incident status.");
+        if (!cancelled) setErr("Status will update automatically when EOC responds.");
       }
     })();
+    const poll = window.setInterval(() => {
+      void fetchCitizenTimeline(props.accessToken, props.incidentId)
+        .then((t) => {
+          if (!cancelled) setTimeline(t);
+        })
+        .catch(() => {});
+    }, 12_000);
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
     };
   }, [props.accessToken, props.incidentId]);
 
-  if (err) {
-    return <p className="text-xs text-rose-300/90">{err}</p>;
-  }
-  if (!timeline) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Tracking response…
-      </div>
-    );
-  }
+  const steps = timeline?.steps ?? PLACEHOLDER_STEPS;
+  const lifecycle = timeline?.lifecycle ?? "reported";
 
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400/90">
-        SOS lifecycle · {timeline.lifecycle}
+        SOS lifecycle · {lifecycle}
       </p>
+      {err && !timeline ? (
+        <p className="text-xs text-zinc-500">{err}</p>
+      ) : null}
       <ol className="space-y-2">
-        {timeline.steps.map((step) => (
+        {steps.map((step) => (
           <li key={step.key} className="flex items-center gap-3 text-xs">
             {step.done ? (
               <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />

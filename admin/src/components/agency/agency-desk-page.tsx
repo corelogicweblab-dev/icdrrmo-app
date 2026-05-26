@@ -2,7 +2,7 @@
 
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, MapPin, Shield, Siren } from "lucide-react";
+import { MapPin, Shield, Siren } from "lucide-react";
 import { AgencyCallOverlay } from "@/components/agency/agency-call-overlay";
 import { useSetAgencyChromeBridge } from "@/components/agency/agency-chrome-bridge";
 import { useAgencySession } from "@/components/agency/agency-session-context";
@@ -159,12 +159,10 @@ export function AgencyDeskPage(): ReactElement {
         subtitle="Select a row to view details on the map"
         className="lg:col-span-4"
       >
-        {loading ? (
-          <p className="text-sm text-zinc-500 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading…
+        {incidents.length === 0 ? (
+          <p className="text-sm text-zinc-600">
+            {loading ? "Syncing incident queue…" : "No open incidents in your agency queue."}
           </p>
-        ) : incidents.length === 0 ? (
-          <p className="text-sm text-zinc-600">No open incidents in your agency queue.</p>
         ) : (
           <ul className="space-y-2 max-h-[480px] overflow-y-auto scroll-ops">
             {incidents.map((i) => (

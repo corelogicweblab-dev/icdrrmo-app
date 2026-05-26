@@ -40,6 +40,17 @@ export async function loadBarangaysForStaffSession(accessToken: string): Promise
   return Array.isArray(rows) ? rows : [];
 }
 
+/** Profile forms: staff JWT list first, public pick list if role cannot access `/barangays`. */
+export async function loadBarangaysForProfileForm(accessToken: string): Promise<PublicBarangayRow[]> {
+  try {
+    const rows = await loadBarangaysForStaffSession(accessToken);
+    if (rows.length > 0) return rows;
+  } catch {
+    /* PNP/BFP or offline — fall through */
+  }
+  return loadBarangayPickList();
+}
+
 /** If the signed-in barangay is missing from the list (e.g. stale cache), append it so the select stays valid. */
 export function withProfileBarangay(
   rows: PublicBarangayRow[],

@@ -3,12 +3,13 @@
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Loader2, LocateFixed, MapPin } from "lucide-react";
+import { Bell, ChevronRight, LocateFixed, MapPin } from "lucide-react";
 import { CitizenWeatherMap } from "@/components/citizen/citizen-weather-map";
 import { CitizenSosRouteCard } from "@/components/citizen-sos-route-card";
 import { CitizenSosVoiceLive } from "@/components/citizen-sos-voice-live";
 import { CitizenSafetyBadge } from "@/components/citizen/citizen-safety-badge";
 import { CitizenSosLifecycle } from "@/components/citizen/citizen-sos-lifecycle";
+import { CitizenSosTransparencyModal } from "@/components/citizen/citizen-sos-transparency-modal";
 import { CitizenCommunityFeed } from "@/components/citizen/citizen-community-feed";
 import { CitizenPreparednessPanel } from "@/components/citizen/citizen-preparedness-panel";
 import { CitizenEnterpriseStrip } from "@/components/citizen/citizen-enterprise-strip";
@@ -72,17 +73,15 @@ export function SmartCitizenDashboard(props: {
     if (props.initialTab) setTab(parseCitizenTab(props.initialTab));
   }, [props.initialTab]);
   const [feed, setFeed] = useState<CitizenUnifiedFeed>(() => createDegradedCitizenFeed());
-  const [prep, setPrep] = useState<{
-    checklist: Array<{ id: string; label: string; done: boolean }>;
-    badges: string[];
-  } | null>(null);
-  const [live, setLive] = useState(false);
+  const [live, setLive] = useState(true);
+  const [realtimeLive, setRealtimeLive] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
   const [sosKind, setSosKind] = useState<(typeof SOS_TYPES)[number]["id"]>("MEDICAL_EMERGENCY");
   const [sosBusy, setSosBusy] = useState(false);
   const [sosPanel, setSosPanel] = useState<SosPanel | null>(null);
+  const [sosTransparencyOpen, setSosTransparencyOpen] = useState(false);
 
   const loadFeed = useCallback(async () => {
     const coords = lat != null && lon != null ? { lat, lng: lon } : undefined;
@@ -91,16 +90,6 @@ export function SmartCitizenDashboard(props: {
       setFeed(f);
       setLive(isLiveCitizenFeed(f));
       setErr(null);
-      void fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
-        headers: { Authorization: `Bearer ${props.accessToken}` },
-      })
-        .then(async (pRes) => {
-          if (pRes.ok) {
-            const p = (await pRes.json()) as typeof prep;
-            setPrep(p);
-          }
-        })
-        .catch(() => {});
     } catch {
       /* Keep last good feed — realtime + interval will retry silently */
     }
@@ -116,9 +105,13 @@ export function SmartCitizenDashboard(props: {
     return () => window.clearInterval(id);
   }, [loadFeed]);
 
-  useCitizenRealtime(props.accessToken, () => {
-    void loadFeed();
-  });
+  useCitizenRealtime(
+    props.accessToken,
+    () => {
+      void loadFeed();
+    },
+    setRealtimeLive,
+  );
 
   const captureLocation = useCallback(() => {
     if (!navigator.geolocation) return;
@@ -181,6 +174,7 @@ export function SmartCitizenDashboard(props: {
         emergencyLabel: label,
         routedAgency: body.routedAgency ?? defaultAgencyForType(sosKind),
       });
+      setSosTransparencyOpen(true);
       void loadFeed();
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "SOS failed");
@@ -205,12 +199,23 @@ export function SmartCitizenDashboard(props: {
 
   return (
     <div className="space-y-4">
+      {sosPanel ? (
+        <CitizenSosTransparencyModal
+          open={sosTransparencyOpen}
+          incidentId={sosPanel.incidentId}
+          accessToken={props.accessToken}
+          emergencyLabel={sosPanel.emergencyLabel}
+          routedAgency={sosPanel.routedAgency}
+          deduplicated={sosPanel.deduplicated}
+          onDone={() => setSosTransparencyOpen(false)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <CitizenSafetyBadge
           status={activeFeed.safetyStatus}
         />
         <span className="font-mono text-[9px] text-zinc-600">{SMART_CITIZEN_BUILD}</span>
-        {live ? (
+        {live || realtimeLive ? (
           <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/90">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
             Live
@@ -387,14 +392,7 @@ export function SmartCitizenDashboard(props: {
         <CitizenCommunityFeed posts={activeFeed.community} />
       ) : null}
 
-      {tab === "prepare" && prep ? (
-        <CitizenPreparednessPanel
-          accessToken={props.accessToken}
-          checklist={prep.checklist}
-          badges={prep.badges}
-          onUpdated={() => void loadFeed()}
-        />
-      ) : null}
+      {tab === "prepare" ? <CitizenPreparednessPanel /> : null}
 
       {tab === "home" ? (
         <Link

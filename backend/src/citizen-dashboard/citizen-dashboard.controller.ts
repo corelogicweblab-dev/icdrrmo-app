@@ -18,6 +18,7 @@ import { JwtPayload } from '../auth/types/jwt-payload.type';
 import { CitizenDashboardService } from './citizen-dashboard.service';
 import { PatchPreparednessDto } from './dto/patch-preparedness.dto';
 import { UpsertEmergencyContactDto } from './dto/upsert-emergency-contact.dto';
+import { SosTransparencyDto } from './dto/sos-transparency.dto';
 
 const CITIZEN_ROLES = [UserRole.CITIZEN, UserRole.BARANGAY_CHAIRMAN] as const;
 
@@ -61,6 +62,15 @@ export class CitizenDashboardController {
   @Get('incidents/:id/timeline')
   myTimeline(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.dashboard.getMyIncidentTimeline(user, id);
+  }
+
+  @Post('incidents/:id/sos-transparency')
+  sosTransparency(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: SosTransparencyDto,
+  ) {
+    return this.dashboard.submitSosTransparency(user, id, dto);
   }
 
   @Get('community')

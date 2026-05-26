@@ -4,13 +4,7 @@ import type { ReactElement } from "react";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Loader2,
-  LogOut,
-  UserCircle,
-  UserPlus,
-} from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, UserCircle } from "lucide-react";
 import { IcdrrmoLogo } from "@/components/icdrrmo-logo";
 import { PasswordInput } from "@/components/password-input";
 import { SmartCitizenDashboard } from "@/components/citizen/smart-citizen-dashboard";
@@ -75,7 +69,9 @@ function CitizenPageInner(): ReactElement {
   const [mode, setMode] = useState<"signin" | "register">(
     searchParams.get("register") === "1" ? "register" : "signin",
   );
-  const [tokens, setTokens] = useState<Tokens | null>(null);
+  const [tokens, setTokens] = useState<Tokens | null>(() =>
+    typeof window !== "undefined" ? loadTokens() : null,
+  );
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -124,10 +120,6 @@ function CitizenPageInner(): ReactElement {
     };
     reader.onerror = () => setMsg("Could not read the selected photo.");
     reader.readAsDataURL(f);
-  }, []);
-
-  useEffect(() => {
-    setTokens(loadTokens());
   }, []);
 
   useEffect(() => {
@@ -496,13 +488,7 @@ function CitizenPageInner(): ReactElement {
 
 export default function CitizenPage(): ReactElement {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[50dvh] items-center justify-center text-sm text-zinc-500">
-          Loading citizen portal…
-        </div>
-      }
-    >
+    <Suspense fallback={null}>
       <CitizenPageInner />
     </Suspense>
   );

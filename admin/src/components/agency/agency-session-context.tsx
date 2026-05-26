@@ -45,8 +45,12 @@ export function AgencySessionProvider({
   config: AgencyPortalConfig;
   children: ReactNode;
 }): ReactElement {
-  const [booted, setBooted] = useState(false);
-  const [tokens, setTokens] = useState<TokenPair | null>(null);
+  const [tokens, setTokens] = useState<TokenPair | null>(() => {
+    if (typeof window === "undefined") return null;
+    const t = loadAgencyTokens(config.storageKey);
+    if (t?.accessToken && decodeJwtPayload(t.accessToken)?.role === config.role) return t;
+    return null;
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -60,8 +64,8 @@ export function AgencySessionProvider({
       setTokens(t);
     } else if (t) {
       clearAgencyTokens(config.storageKey);
+      setTokens(null);
     }
-    setBooted(true);
   }, [config.storageKey, config.role]);
 
   useEffect(() => {
@@ -109,16 +113,6 @@ export function AgencySessionProvider({
     },
     [config.role, config.storageKey, email, password],
   );
-
-  if (!booted) {
-    return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-zinc-600 animate-live-pulse">
-          Initializing agency console…
-        </p>
-      </div>
-    );
-  }
 
   if (!tokens?.accessToken) {
     return (

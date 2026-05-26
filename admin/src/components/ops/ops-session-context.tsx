@@ -70,7 +70,7 @@ export type OpsSessionContextValue = {
   queue: OpsIncident[];
   queueError: string | null;
   queueLoading: boolean;
-  refreshQueue: (access: string) => Promise<void>;
+  refreshQueue: (access: string, opts?: { silent?: boolean }) => Promise<void>;
   apiReachable: boolean | null;
   lastHealthAt: Date | null;
   lastQueueSync: Date | null;
@@ -98,7 +98,9 @@ export function useOpsSession(): OpsSessionContextValue {
 export function OpsSessionProvider({ children }: { children: ReactNode }): ReactElement {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [tokens, setTokens] = useState<TokenPair | null>(null);
+  const [tokens, setTokens] = useState<TokenPair | null>(() =>
+    typeof window !== "undefined" ? loadOpsTokens() : null,
+  );
   const [socketState, setSocketState] = useState<"off" | "live" | "error">("off");
   const [feed, setFeed] = useState<string[]>([]);
   const [queue, setQueue] = useState<OpsIncident[]>([]);
@@ -112,16 +114,13 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
   const [lastSocketAt, setLastSocketAt] = useState<Date | null>(null);
   const [queueLoading, setQueueLoading] = useState(false);
   const [soundMuted, setSoundMutedState] = useState(false);
-  const [booted, setBooted] = useState(false);
   const [apiConfigWarning, setApiConfigWarning] = useState<string | null>(null);
   const [realtimeSocket, setRealtimeSocket] = useState<Socket | null>(null);
   const [voiceRing, setVoiceRing] = useState<VoiceIncidentRingPayload | null>(null);
   const [callFocusIncidentId, setCallFocusIncidentId] = useState<string | null>(null);
 
   useEffect(() => {
-    setTokens(loadOpsTokens());
     setSoundMutedState(loadSoundMuted());
-    setBooted(true);
   }, []);
 
   useEffect(() => {
@@ -142,8 +141,8 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
     setVoiceRing(null);
   }, []);
 
-  const refreshQueue = useCallback(async (access: string) => {
-    setQueueLoading(true);
+  const refreshQueue = useCallback(async (access: string, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setQueueLoading(true);
     try {
       const data = await opsFetchJson<OpsIncident[]>(API_INCIDENTS_QUEUE_PATH, access);
       setQueueError(null);
@@ -195,7 +194,7 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       setRealtimeSocket(null);
       return;
     }
-    void refreshQueue(tokens.accessToken);
+    void refreshQueue(tokens.accessToken, { silent: true });
     const socket: Socket = connectOpsRealtime(tokens.accessToken, {
       onIncidentCreated: (p: IncidentCreatedPayload) => {
         setFeed((f) =>
@@ -221,14 +220,14 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
             return [optimistic, ...prev];
           });
         }
-        void refreshQueue(tokens.accessToken);
+        void refreshQueue(tokens.accessToken, { silent: true });
       },
       onIncidentUpdated: (p) => {
         const st = p.status ? ` · ${p.status}` : "";
         setFeed((f) =>
           [`${new Date().toISOString()} · INCIDENT_UPDATED · ${p.incidentId}${st}`, ...f].slice(0, 80),
         );
-        void refreshQueue(tokens.accessToken);
+        void refreshQueue(tokens.accessToken, { silent: true });
       },
       onConnectError: (err: Error) => {
         setSocketState("error");
@@ -399,16 +398,6 @@ export function OpsSessionProvider({ children }: { children: ReactNode }): React
       callFocusIncidentId,
     ],
   );
-
-  if (!booted) {
-    return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-zinc-600 animate-live-pulse">
-          Initializing command console…
-        </p>
-      </div>
-    );
-  }
 
   if (!tokens) {
     return (

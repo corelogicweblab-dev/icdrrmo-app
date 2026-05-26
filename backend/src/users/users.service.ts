@@ -97,6 +97,13 @@ export class UsersService {
       include: { profile: true },
     });
     if (!existing?.profile) throw new NotFoundException('User not found');
+    if (existing.role === UserRole.PNP || existing.role === UserRole.BFP) {
+      if (dto.barangayId !== undefined || dto.barangayCode) {
+        throw new BadRequestException(
+          'Agency desk accounts (PNP/BFP) are city-wide and cannot be assigned to a barangay',
+        );
+      }
+    }
     if (dto.phone !== undefined && dto.phone !== null) {
       const clash = await this.prisma.user.findFirst({
         where: { phone: dto.phone, NOT: { id: userId } },

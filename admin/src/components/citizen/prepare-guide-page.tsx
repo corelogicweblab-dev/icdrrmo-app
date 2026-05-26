@@ -1,17 +1,14 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { use, useCallback, useEffect, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Backpack,
-  CheckCircle2,
-  Circle,
   FileText,
   Heart,
-  Loader2,
   Pill,
   Radio,
   Route,
@@ -19,9 +16,6 @@ import {
   Droplets,
 } from "lucide-react";
 import { getPrepareGuide } from "@/lib/preparedness-guides";
-import { patchCitizenPreparedness } from "@/lib/citizen-feed";
-import { getApiBaseUrl } from "@/lib/env";
-import { CITIZEN_STORAGE_KEY } from "@/lib/unified-auth";
 
 const ICONS = {
   bag: Backpack,
@@ -38,57 +32,6 @@ export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }):
   const { topic } = use(props.params);
   const router = useRouter();
   const guide = getPrepareGuide(topic);
-  const [done, setDone] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CITIZEN_STORAGE_KEY);
-      if (!raw) return;
-      const p = JSON.parse(raw) as { accessToken?: string };
-      if (!p.accessToken) return;
-      setToken(p.accessToken);
-      void fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
-        headers: { Authorization: `Bearer ${p.accessToken}` },
-      })
-        .then(async (r) => {
-          if (!r.ok || !guide) return;
-          const data = (await r.json()) as { checklist: Array<{ id: string; done: boolean }> };
-          const row = data.checklist?.find((c) => c.id === guide.id);
-          if (row) setDone(row.done);
-        })
-        .catch(() => {});
-    } catch {
-      /* ignore */
-    }
-  }, [guide]);
-
-  const markDone = useCallback(
-    async (nextDone: boolean) => {
-      if (!token || !guide) return;
-      setBusy(true);
-      try {
-        const res = await fetch(`${getApiBaseUrl()}/citizen/preparedness`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const current = res.ok
-          ? ((await res.json()) as { checklist: Array<{ id: string; done: boolean }> })
-          : { checklist: [] };
-        const checklist = (current.checklist ?? []).map((c) =>
-          c.id === guide.id ? { id: c.id, done: nextDone } : { id: c.id, done: c.done },
-        );
-        if (!checklist.some((c) => c.id === guide.id)) {
-          checklist.push({ id: guide.id, done: nextDone });
-        }
-        await patchCitizenPreparedness(token, checklist);
-        setDone(nextDone);
-      } finally {
-        setBusy(false);
-      }
-    },
-    [token, guide],
-  );
 
   if (!guide) {
     return (
@@ -162,30 +105,9 @@ export function PrepareGuidePage(props: { params: Promise<{ topic: string }> }):
         </ul>
       </section>
 
-      {token ? (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void markDone(!done)}
-          className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 to-rose-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : done ? (
-            <CheckCircle2 className="h-4 w-4" aria-hidden />
-          ) : (
-            <Circle className="h-4 w-4" aria-hidden />
-          )}
-          {done ? "Marked complete — tap to uncheck" : "Mark as completed"}
-        </button>
-      ) : (
-        <p className="mt-8 text-center text-xs text-zinc-500">
-          <Link href="/" className="text-orange-300 underline">
-            Sign in
-          </Link>{" "}
-          to save your progress.
-        </p>
-      )}
+      <p className="mt-8 text-center text-xs text-zinc-500 leading-relaxed">
+        This guide stays available anytime. Review steps before typhoons and after drills.
+      </p>
 
       <Link
         href="/citizen"

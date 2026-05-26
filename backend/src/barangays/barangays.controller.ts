@@ -44,6 +44,9 @@ export class BarangaysController {
     UserRole.OPERATOR,
     UserRole.RESPONDER,
     UserRole.CITIZEN,
+    UserRole.BARANGAY_CHAIRMAN,
+    UserRole.PNP,
+    UserRole.BFP,
   )
   @Get()
   list() {

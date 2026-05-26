@@ -8,14 +8,17 @@ type Props = Omit<React.ComponentProps<"input">, "type"> & {
   inputClassName?: string;
 };
 
-export function PasswordInput({ inputClassName = "", className: _c, ...rest }: Props): ReactElement {
+export function PasswordInput({ inputClassName = "", className = "", ...rest }: Props): ReactElement {
   const [show, setShow] = useState(false);
+  const inputClasses = ["w-full min-w-0 pr-11", className, inputClassName]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <div className="relative w-full">
+    <div className="relative w-full min-w-0">
       <input
         {...rest}
         type={show ? "text" : "password"}
-        className={`${inputClassName} pr-11`}
+        className={inputClasses}
       />
       <button
         type="button"
